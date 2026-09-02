@@ -6,6 +6,8 @@ builder.Services.AddSingleton<FakeBrain>();
 
 var app = builder.Build();
 
+app.UseAntiforgery();
+
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 app.MapGet("/brain", async (
     string input,
