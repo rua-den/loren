@@ -47,6 +47,7 @@ jobs:
           dotnet ef migrations add M0Initial \
             --project spikes/adr-002/persistence/Loren.Spike.Persistence.csproj \
             --output-dir GeneratedMigrations \
+            --configuration Release \
             --no-build
           dotnet run --project spikes/adr-002/persistence/Loren.Spike.Persistence.csproj --configuration Release
 
