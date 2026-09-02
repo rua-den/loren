@@ -3,7 +3,7 @@ name: M0 ADR-002 Spike
 on:
   push:
     branches:
-      - spike/adr-002-m0
+      - 'spike/adr-002-*'
   pull_request:
     paths:
       - 'spikes/adr-002/**'
@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 jobs:
-  brain-loop-build:
+  validate:
     runs-on: ubuntu-latest
 
     steps:
@@ -25,8 +25,44 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Restore
-        run: dotnet restore spikes/adr-002/brain-loop/Loren.Spike.Brain.csproj
+      - name: Build brain-loop spike
+        if: ${{ hashFiles('spikes/adr-002/brain-loop/Loren.Spike.Brain.csproj') != '' }}
+        run: |
+          dotnet restore spikes/adr-002/brain-loop/Loren.Spike.Brain.csproj
+          dotnet build spikes/adr-002/brain-loop/Loren.Spike.Brain.csproj --configuration Release --no-restore
 
-      - name: Build
-        run: dotnet build spikes/adr-002/brain-loop/Loren.Spike.Brain.csproj --configuration Release --no-restore
+      - name: Run MCP client spike
+        if: ${{ hashFiles('spikes/adr-002/mcp-client/Loren.Spike.Mcp.csproj') != '' }}
+        run: |
+          dotnet restore spikes/adr-002/mcp-client/Loren.Spike.Mcp.csproj
+          dotnet run --project spikes/adr-002/mcp-client/Loren.Spike.Mcp.csproj --configuration Release
+
+      - name: Run SQLite and EF migration/restore spike
+        if: ${{ hashFiles('spikes/adr-002/persistence/Loren.Spike.Persistence.csproj') != '' }}
+        run: |
+          dotnet restore spikes/adr-002/persistence/Loren.Spike.Persistence.csproj
+          dotnet build spikes/adr-002/persistence/Loren.Spike.Persistence.csproj --configuration Release --no-restore
+          dotnet tool install --global dotnet-ef --version 10.0.11
+          rm -rf spikes/adr-002/persistence/GeneratedMigrations
+          dotnet ef migrations add M0Initial \
+            --project spikes/adr-002/persistence/Loren.Spike.Persistence.csproj \
+            --output-dir GeneratedMigrations \
+            --no-build
+          dotnet run --project spikes/adr-002/persistence/Loren.Spike.Persistence.csproj --configuration Release
+
+      - name: Build and smoke-test ASP.NET/Blazor host spike
+        if: ${{ hashFiles('spikes/adr-002/web-host/Loren.Spike.Web.csproj') != '' }}
+        run: |
+          dotnet restore spikes/adr-002/web-host/Loren.Spike.Web.csproj
+          dotnet build spikes/adr-002/web-host/Loren.Spike.Web.csproj --configuration Release --no-restore
+          dotnet run --project spikes/adr-002/web-host/Loren.Spike.Web.csproj \
+            --configuration Release --no-build --urls http://127.0.0.1:5088 \
+            > /tmp/loren-web.log 2>&1 &
+          echo $! > /tmp/loren-web.pid
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:5088/health >/dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:5088/ | grep -q 'Loren M0 Host Spike'
+          curl -fsS 'http://127.0.0.1:5088/brain?input=hello' | grep -q 'fake-brain:hello'
+          kill "$(cat /tmp/loren-web.pid)"
