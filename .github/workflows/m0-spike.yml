@@ -1,0 +1,32 @@
+name: M0 ADR-002 Spike
+
+on:
+  push:
+    branches:
+      - spike/adr-002-m0
+  pull_request:
+    paths:
+      - 'spikes/adr-002/**'
+      - '.github/workflows/m0-spike.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  brain-loop-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore spikes/adr-002/brain-loop/Loren.Spike.Brain.csproj
+
+      - name: Build
+        run: dotnet build spikes/adr-002/brain-loop/Loren.Spike.Brain.csproj --configuration Release --no-restore
