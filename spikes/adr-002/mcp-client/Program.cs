@@ -42,7 +42,7 @@ internal static class LorenMcpGateway
     private static readonly HashSet<string> AllowedReadOnlyActions =
         new(StringComparer.Ordinal) { "echo" };
 
-    public static Task<CallToolResult> ExecuteReadOnlyAsync(
+    public static ValueTask<CallToolResult> ExecuteReadOnlyAsync(
         McpClient client,
         string action,
         IReadOnlyDictionary<string, object?> arguments,
