@@ -41,6 +41,8 @@ List<ResponseItem> inputItems =
         "After observing the tool result, answer in one concise sentence."),
 ];
 
+bool observedGatewayAction = false;
+
 Console.WriteLine($"[spike] model={model}");
 Console.WriteLine("[spike] starting Loren-controlled brain/tool loop");
 
@@ -68,6 +70,7 @@ for (int turn = 1; turn <= MaxTurns; turn++)
             functionCall.FunctionName,
             functionCall.FunctionArguments);
 
+        observedGatewayAction = true;
         Console.WriteLine($"[gateway] result={actionResult}");
         inputItems.Add(new FunctionCallOutputResponseItem(functionCall.CallId, actionResult));
         continue;
@@ -79,6 +82,12 @@ for (int turn = 1; turn <= MaxTurns; turn++)
 
     if (message is not null)
     {
+        if (!observedGatewayAction)
+        {
+            throw new InvalidOperationException(
+                "Brain returned a final message before any action crossed Loren's ActionGateway.");
+        }
+
         string text = string.Join(
             Environment.NewLine,
             message.Content.Select(part => part.Text).Where(text => !string.IsNullOrWhiteSpace(text)));
