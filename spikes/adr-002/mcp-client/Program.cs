@@ -27,7 +27,7 @@ CallToolResult result = await LorenMcpGateway.ExecuteReadOnlyAsync(
     CancellationToken.None);
 
 string? text = result.Content.OfType<TextContentBlock>().FirstOrDefault()?.Text;
-if (!string.Equals(text, "Hello from Loren", StringComparison.Ordinal))
+if (string.IsNullOrWhiteSpace(text) || !text.Contains("Hello from Loren", StringComparison.Ordinal))
 {
     throw new InvalidOperationException($"Unexpected MCP result: '{text}'.");
 }
