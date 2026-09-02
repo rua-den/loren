@@ -93,14 +93,14 @@ throw new InvalidOperationException($"Brain spike exceeded the hard limit of {Ma
 
 internal static class ActionGateway
 {
-    public static string Execute(string functionName, string arguments)
+    public static string Execute(string functionName, BinaryData arguments)
     {
         if (!string.Equals(functionName, "get_project_status", StringComparison.Ordinal))
         {
             throw new InvalidOperationException($"Action '{functionName}' is not registered.");
         }
 
-        using JsonDocument document = JsonDocument.Parse(arguments);
+        using JsonDocument document = JsonDocument.Parse(arguments.ToString());
         JsonElement root = document.RootElement;
 
         if (!root.TryGetProperty("project", out JsonElement projectElement))
