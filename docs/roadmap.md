@@ -1,50 +1,44 @@
 # Loren Roadmap
 
-This roadmap is capability-driven rather than date-driven. Loren should advance only when the previous stage is trustworthy enough to support the next one.
+This is the concise product roadmap. The authoritative delivery sequence, milestones, and version gates live in [`docs/plans/master-plan.md`](plans/master-plan.md).
 
-## Phase 0 — Product and architecture definition
+Loren advances by **proven capability and trust**, not by calendar dates.
 
-**Current phase.**
+## Current status
 
-Goals:
+**Current stage:** `v0.0 — Architecture and feasibility`  
+**Passed:** ADR-001 — Loren-owned core/runtime boundary  
+**Open:** ADR-002 — v0.1 technology stack validation
 
-- define Loren's product boundary;
-- research existing agent runtimes;
-- establish memory, permission, skill, and security principles;
-- resolve the v0.1 runtime strategy through ADR-001;
-- define the credential/action boundary before external writes;
-- avoid implementation before the highest-impact architecture choices are understood.
+Next step:
 
-Exit criteria:
+```text
+ADR-002 technical spike
+-> accept/revise stack
+-> scaffold solution
+-> begin v0.1 walking skeleton
+```
 
-- ADR-001 accepted from implementation-level evidence;
-- v0.1 architecture is specific enough to implement;
-- canonical ownership of identity/memory/policy is clear;
-- first skill and action-execution boundary are defined;
-- threat model, memory trust model, approval path, and credential boundary are reflected in design.
+---
 
-## Phase 1 — Loren v0.1: trustworthy personal project assistant
+## v0.0 — Architecture and feasibility
 
-Primary objective:
+Goal: establish the ownership boundary and prove the concrete v0.1 stack is implementable.
 
-> Loren can be used repeatedly for project-oriented work, remembers trusted context across restarts, and can perform a narrow GitHub workflow through an enforceable permission boundary.
+Exit requires:
 
-Core capabilities:
+- ADR-001 Accepted;
+- ADR-002 Accepted after a small technical spike;
+- v0.1 implementation plan finalized;
+- brain/action/MCP/persistence boundaries proven enough to scaffold production code.
 
-- owner-authenticated minimal interface;
-- persistent Loren identity;
-- minimal world model for projects and repositories;
-- durable memory with provenance, trust classes, correction, and forgetting;
-- canonical-state export/restore proof;
-- one selected agent/runtime path behind a Loren-owned boundary;
-- GitHub read + narrow write capabilities;
-- deterministic action/permission gateway;
-- credential isolation from the reasoning runtime;
-- minimal audit from the first vertical slice;
-- end-to-end security/reliability tests;
-- fake runtime support for core tests.
+---
 
-Required release flows:
+## v0.1 — Trustworthy Core
+
+Goal: build the smallest trustworthy Loren.
+
+Required flows:
 
 ```text
 "Loren, repo wedding hiện sao rồi?"
@@ -53,173 +47,148 @@ Required release flows:
 "Tại sao mày vừa làm việc đó?"
 ```
 
-Not required for the v0.1 tag:
+Core capabilities:
 
-- general web research;
-- reminders/scheduler;
+- one-owner web interface;
+- initial OpenAI brain adapter behind `IBrain`;
+- bounded Loren-owned agent loop;
+- Project/Repository canonical state;
+- trusted durable memory with correction/provenance;
+- Action Gateway + approvals;
+- credential-isolated GitHub read/narrow writes;
+- audit trail;
+- export/wipe/restore proof;
+- adversarial security/reliability tests.
+
+Explicitly not required:
+
+- web research;
+- scheduler/reminders;
+- Gmail/Calendar;
 - voice;
-- native mobile app;
-- smart home;
-- unrestricted desktop automation;
-- broad email/calendar access;
-- fully autonomous production changes;
-- multi-user product support.
+- proactive/background autonomy.
 
-Exit criteria:
+Detailed plan: [`docs/plans/v0.1.md`](plans/v0.1.md)
 
-- Loren survives restart without losing canonical identity/project context;
-- trusted memory corrections work and hostile external content cannot silently become owner policy;
-- canonical state can be exported, wiped, restored, and used again;
-- GitHub status comes from GitHub rather than model assumptions;
-- all external writes pass the action/permission gateway;
-- privileged credentials are resolved only at the controlled executor boundary;
-- consequential writes are post-verified and auditable;
-- core/domain tests can run using a fake runtime without framework internals;
-- owner can repeatedly complete the four v0.1 release flows from the application interface.
+---
 
-## Phase 1.x — Immediate capability extensions
+## v0.2 — Useful Project Assistant
 
-These capabilities intentionally follow the v0.1 trust boundary rather than expanding the initial release.
+Goal: make the trusted core useful for richer daily project work.
 
-### v0.1.1 candidate — Web research
+Candidate capabilities:
 
-Potential capabilities:
+- public web research with source provenance;
+- explicit research-to-memory/decision promotion;
+- persistent reminders/light scheduler;
+- project decisions/procedures;
+- richer GitHub project health summaries;
+- improved memory retrieval/conflict handling;
+- model/run cost visibility;
+- optional second brain-provider proof if useful.
 
-- public web research;
-- source provenance/citations;
-- explicit promotion of research conclusions into durable project memory;
-- untrusted-content isolation;
-- SSRF/private-network protections and fetch policy.
+Before moving into private/background personal operations, the scheduler/background execution gate must be proven.
 
-### v0.1.2 candidate — Reminders and scheduler
+---
 
-Potential capabilities:
+## v0.3 — Personal Operations
 
-- persistent one-time reminders;
-- timezone-aware scheduling;
-- cancellation and visible task list;
-- restart/missed-run semantics;
-- bounded retries;
-- notification delivery.
+Goal: expand Loren into a controlled personal digital operator.
 
-The ordering of these extensions should follow real usage rather than version-number aesthetics.
-
-## Phase 2 — Personal operations
-
-Primary objective:
-
-> Loren expands from project assistant to personal digital operator.
-
-Potential capabilities:
+Candidate capabilities:
 
 - Gmail;
 - Google Calendar;
-- server/VPS operations;
-- richer filesystem access;
+- server/VPS health and constrained actions;
+- filesystem integrations;
 - notifications;
-- improved scheduler/background jobs;
-- event ingestion;
-- project-aware daily brief;
-- stronger procedural memory;
-- trusted-device/session management.
+- cross-tool project context;
+- project-aware/day-aware brief;
+- stronger data classification and credential scopes.
 
-Example:
+Exit requires private-data handling, connector failures, and consequential external actions to remain within the same permission/audit boundaries proven earlier.
 
-```text
-"What matters today?"
-"Do I have any important email related to this project?"
-"Check the server before tonight's release."
-```
+---
 
-Exit criteria:
+## v0.4 — Voice and Device Presence
 
-- cross-tool context works without leaking excessive data into prompts;
-- approval experience remains understandable despite more tools;
-- event/background execution has visible controls and cancellation;
-- secret isolation and credential scopes are mature.
+Goal: make Loren convenient away from the desktop without creating a second identity or security model.
 
-## Phase 3 — Voice and device presence
+Candidate capabilities:
 
-Primary objective:
-
-> Loren becomes easy to access without sitting at a computer.
-
-Potential capabilities:
-
-- PWA/mobile client;
+- mobile-friendly/PWA interface;
+- trusted devices;
 - push-to-talk;
-- speech-to-text and text-to-speech;
+- speech-to-text / text-to-speech;
 - notification actions;
-- trusted phone/device enrollment;
-- optional messaging channels;
-- optional desktop node/computer-use adapter.
+- optional desktop/device node;
+- optional messaging-channel adapters.
 
-Voice is an interface over the same core. It must not create a second memory or permission system.
+Before this version, trusted-device enrollment/revocation and voice-approval rules must be decided.
 
-Exit criteria:
+---
 
-- voice interactions can safely handle approval and ambiguity;
-- trusted-device identity is reliable;
-- privacy expectations for microphones/audio are explicit;
-- critical actions do not rely on weak voice-only confirmation by default.
+## v0.5 — Proactive Loren
 
-## Phase 4 — Proactive Loren
+Goal: let Loren notice meaningful events and perform bounded background work under explicit standing policy.
 
-Primary objective:
+Candidate capabilities:
 
-> Loren can notice meaningful changes and act or notify within explicit standing policies.
-
-Potential capabilities:
-
-- event bus;
+- event ingestion;
 - GitHub/webhook watchers;
-- server health triggers;
-- calendar preparation;
-- email-derived follow-up tasks;
-- proactive project health monitoring;
-- priority/attention model;
-- recurring workflows;
-- background research;
-- policy-controlled self-created tasks.
+- server/calendar/email triggers;
+- proactive notifications;
+- recurring/background workflows;
+- allowlisted standing permissions;
+- quotas/rate limits;
+- active-task visibility;
+- global pause/kill switch.
 
-Example:
+This version requires a dedicated proactive-autonomy gate before release.
 
-```text
-"The production build failed after the latest merge. I found the failing test; I have not deployed anything."
+---
 
-"You have a meeting in 20 minutes. The latest thread with that person changed the scope of Project X."
-```
+## v0.6+ — Real-use hardening
 
-Exit criteria:
+Do not pre-design these versions deeply. Let actual usage determine priorities.
 
-- low false-positive notification rate;
-- background tasks are bounded, visible, and cancellable;
-- prompt injection from event content cannot grant permissions;
-- autonomy can be disabled globally;
-- standing policies are easy to inspect and revoke.
+Possible themes:
 
-## Phase 5 — Ambient personal intelligence
+- memory consolidation;
+- additional brain providers/local models;
+- Home Assistant;
+- desktop/computer use;
+- more integrations;
+- offline/private execution;
+- performance/cost optimization;
+- packaging and deployment simplification.
 
-Long-term territory, not a committed implementation plan.
+---
 
-Possible directions:
+## v1.0 — Stable Personal Daily Driver
 
-- Home Assistant integration;
-- room/device context;
-- local wake word;
-- private voice hardware;
-- cross-device continuity;
-- richer personal knowledge graph;
-- selective local-model execution for privacy-sensitive tasks;
-- learned routines promoted into explicit procedures;
-- multiple specialized subagents behind one Loren identity.
+v1.0 does not mean "all Jarvis features". It means Loren's core can be trusted as a long-lived daily assistant.
 
-The project should reach this phase only if the earlier personal-intelligence core proves useful. A sophisticated ambient interface around an unreliable assistant would not meet Loren's goal.
+Minimum properties:
 
-## Ongoing architectural rule
+- stable daily-use workflows;
+- tested backup/export/restore and schema migration;
+- upgrades preserve identity/memory/policy;
+- brain/action/skill boundaries are maintainable;
+- trusted devices/background execution have strong controls;
+- secret rotation/revocation is documented and tested;
+- consequential behavior is reconstructable through audit;
+- integrations can fail without destroying Loren core state;
+- model/provider replacement remains possible behind the brain boundary.
 
-At every phase ask:
+The full v1.0 gate is defined in the master plan.
 
-> Does this capability strengthen Loren's personal intelligence, or are we rebuilding infrastructure another mature project already handles better?
+---
 
-Prefer adapters and reuse for infrastructure. Spend custom engineering on identity, memory, policy, world model, personal semantics, and trustworthy autonomy.
+## Ongoing rule
+
+At every version ask:
+
+> Does this capability strengthen Loren's personal intelligence, or are we rebuilding infrastructure a mature project already solves better?
+
+Reuse infrastructure where it is safe and replaceable. Spend custom engineering on Loren's identity, memory, policy, personal semantics, and trustworthy behavior.
