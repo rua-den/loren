@@ -31,7 +31,11 @@ await using (var db = LorenSpikeDbContext.Create(connectionString))
 
 string exportPath = Path.Combine(root, "export.json");
 await File.WriteAllTextAsync(exportPath, JsonSerializer.Serialize(export));
-File.Delete(databasePath);
+
+await using (var db = LorenSpikeDbContext.Create(connectionString))
+{
+    await db.Database.EnsureDeletedAsync();
+}
 
 LorenExport restored = JsonSerializer.Deserialize<LorenExport>(await File.ReadAllTextAsync(exportPath))
     ?? throw new InvalidOperationException("Could not deserialize Loren export.");
