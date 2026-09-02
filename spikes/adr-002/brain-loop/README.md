@@ -22,6 +22,7 @@ This spike is intentionally disposable. It is not production Loren architecture.
 - .NET 10 SDK
 - `OPENAI_API_KEY`
 - optional `LOREN_OPENAI_MODEL` (defaults to `gpt-5-mini`, matching the validated OpenAI .NET 2.12.0 Responses examples)
+- optional `LOREN_OPENAI_TIMEOUT_SECONDS` (defaults to 60)
 
 ## Run
 
@@ -29,12 +30,19 @@ This spike is intentionally disposable. It is not production Loren architecture.
 dotnet run --project spikes/adr-002/brain-loop/Loren.Spike.Brain.csproj
 ```
 
+The loop uses the async Responses API and passes one cancellation token through every provider call. `Ctrl+C` cancels the current run; the timeout provides a second hard bound.
+
 ## Validation
 
-The repository-level `M0 ADR-002 Spike` workflow compiles this spike on .NET 10 for the spike PR. The live API round trip remains an explicit validation step because CI does not receive an OpenAI API key by default.
+The repository-level `M0 ADR-002 Spike` workflow compiles this spike on .NET 10. A live API round trip requires `OPENAI_API_KEY` supplied outside the repository.
+
+The live validation must prove both:
+
+1. normal path: model requests `get_project_status` -> Loren gateway -> structured result -> final model response -> `PASS`;
+2. cancellation path: cancel an in-flight provider request and observe `CANCELLED` without bypassing the Loren boundary.
 
 ## Pass criteria
 
-The process must print a final `PASS` line after a model-requested `get_project_status` action crosses Loren-owned code and the structured result is returned to the model.
+The normal process must print a final `PASS` line after a model-requested `get_project_status` action crosses Loren-owned code and the structured result is returned to the model.
 
-The spike has a hard six-turn limit. No privileged external credential is exposed to the action request or fake executor.
+The spike has a hard six-turn limit plus a wall-clock timeout. No privileged external credential is exposed to the action request or fake executor.
