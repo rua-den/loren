@@ -1,11 +1,13 @@
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
 
+const string ReferenceServerPackage = "@modelcontextprotocol/server-everything@2026.8.31";
+
 var transport = new StdioClientTransport(new StdioClientTransportOptions
 {
     Name = "Everything",
     Command = "npx",
-    Arguments = ["-y", "@modelcontextprotocol/server-everything"],
+    Arguments = ["-y", ReferenceServerPackage],
 });
 
 await using var client = await McpClient.CreateAsync(transport);
@@ -32,6 +34,7 @@ if (string.IsNullOrWhiteSpace(text) || !text.Contains("Hello from Loren", String
     throw new InvalidOperationException($"Unexpected MCP result: '{text}'.");
 }
 
+Console.WriteLine($"[spike] reference-server={ReferenceServerPackage}");
 Console.WriteLine($"[spike] normalized-tools={normalized.Length}");
 Console.WriteLine("[spike] PASS: MCP metadata normalized -> Loren gateway -> read-only MCP call -> structured result");
 
