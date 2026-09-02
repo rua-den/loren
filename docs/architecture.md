@@ -1,162 +1,266 @@
 # Loren Architecture
 
-**Status:** Proposed baseline for planning. Runtime choice remains unresolved in ADR-001.
+**Status:** Active baseline. Core ownership is accepted in ADR-001; concrete v0.1 technology stack is proposed in ADR-002.
 
 ## Architectural objective
 
-Loren should own stable personal state and policy while treating language models, agent runtimes, communication channels, and execution environments as replaceable infrastructure.
+Loren owns stable personal state, context, policy, and action authorization while treating language models, MCP, vendor APIs, UI clients, and execution runtimes as replaceable infrastructure.
+
+The key distinction is:
+
+> **The model is the reasoning brain. Loren is the stateful system that gives the brain identity, memory, context, tools, and boundaries.**
+
+## Top-level architecture
 
 ```text
-                       Interfaces
-          Web / Mobile / Voice / Messaging
-                         |
-                         v
-                  +--------------+
-                  |  Loren API   |
-                  +------+-------+
-                         |
-                         v
-              +---------------------+
-              | Personal Agent Core |
-              |---------------------|
-              | Context assembly    |
-              | Intent/task state   |
-              | Planning/orchestration
-              | Tool routing        |
-              +----+----------+-----+
-                   |          |
-          +--------+          +----------------+
-          v                                    v
- +------------------+                  +------------------+
- | Loren-owned state|                  | Runtime adapters |
- |------------------|                  |------------------|
- | Identity         |                  | Model providers  |
- | Memory           |                  | OpenClaw?        |
- | World model      |                  | Letta?           |
- | Projects         |                  | Custom runtime?  |
- | Permissions      |                  +---------+--------+
- | Audit history    |                            |
- +--------+---------+                            v
-          |                              +---------------+
-          |                              | Skills / Tools|
-          |                              +-------+-------+
-          |                                      |
-          +------------------+-------------------+
-                             v
-       GitHub / Web / Gmail / Calendar / Server / Files /
-       Home Assistant / Browser / Desktop / future systems
+                        Interfaces
+             Web / Mobile / Voice / Messaging
+                           |
+                           v
+                    +-------------+
+                    | Loren Host  |
+                    +------+------+ 
+                           |
+                           v
+                 +-------------------+
+                 |   Loren Runtime   |
+                 |-------------------|
+                 | context assembly  |
+                 | bounded agent loop|
+                 | task/run state    |
+                 +----+---------+----+
+                      |         |
+                      |         v
+                      |     +--------+
+                      |     | IBrain |
+                      |     +---+----+
+                      |         |
+                      |   OpenAI / future
+                      |   cloud/local brains
+                      |
+                      v
+                ActionRequest
+                      |
+                      v
+               +--------------+
+               |Action Gateway|
+               +--+-------+---+
+                  |       |
+             policy/      | audit
+             approval     |
+                  |       |
+                  v       v
+             +----------------+
+             | Controlled     |
+             | Executors      |
+             +-------+--------+
+                     |
+              secret resolution
+                     |
+        +------------+-------------+
+        |            |             |
+        v            v             v
+      GitHub        MCP         direct APIs
+                                 / systems
+
+         +--------------------------------+
+         |       Loren-owned state        |
+         |--------------------------------|
+         | Identity                       |
+         | Projects / world model         |
+         | Memory + provenance            |
+         | Permission rules               |
+         | Audit history                  |
+         | Integration metadata           |
+         +--------------------------------+
 ```
 
-## Boundary 1: Loren-owned state
+## Boundary 1 — Loren-owned state
 
-These concepts must remain portable even if every external runtime is replaced.
+These concepts must remain usable even if the brain provider, MCP implementation, UI, or external runtime is replaced.
 
 ### Identity
 
-Stable system behavior, operating rules, name, communication preferences, and policy defaults.
+Stable Loren behavior, operating rules, owner relationship, communication preferences, and policy defaults.
 
 ### Personal world model
 
-Structured entities and relationships such as:
+Structured anchors for the owner's world. v0.1 intentionally starts small:
 
 ```text
-Person
+Owner
 Project
-Device
-Place
-Service
-CredentialReference
-Decision
-Preference
-Event
-Task
+Repository
 ```
 
-Example relationship:
-
-```text
-Project:wedding-online
-  repository -> GitHub:rua-den/wedding-online
-  environment -> production VPS
-  related_people -> [...]
-  decisions -> [...]
-```
-
-The world model is not intended to replace raw memory. It gives Loren stable anchors for resolving phrases such as "that project", "my server", or "the wedding site".
-
-### Memory
-
-Durable knowledge and episodic experience. See `memory.md`.
-
-### Permissions
-
-Policies describing what Loren may read, draft, write, execute, publish, delete, or spend. See `permissions.md`.
-
-### Audit history
-
-Append-oriented records of significant actions, approvals, failures, memory mutations, automation runs, and external side effects.
-
-## Boundary 2: Agent/runtime layer
-
-This layer is responsible for executing an agent turn or task. Its implementation is intentionally undecided.
-
-Candidate responsibilities:
-
-- model invocation and provider routing;
-- context-window management;
-- tool-call loop;
-- task continuation;
-- background/scheduled execution;
-- sandbox or execution host integration;
-- streaming responses;
-- retries and provider failover.
-
-Possible implementations include OpenClaw, Letta, a custom runtime, or a hybrid. Loren should expose an internal interface that prevents runtime-specific types from leaking into durable state.
-
-Conceptual interface:
-
-```text
-AgentRuntime.run(task, context, tools, policy) -> RunResult
-AgentRuntime.resume(run_id, input) -> RunResult
-AgentRuntime.schedule(task, trigger) -> ScheduledHandle
-```
-
-This is conceptual only; no language or framework is chosen yet.
-
-## Boundary 3: Skills and tools
-
-A skill packages one capability domain and describes:
-
-- actions it exposes;
-- required credentials;
-- input/output schemas;
-- read/write/destructive classification;
-- approval defaults;
-- audit metadata;
-- optional event subscriptions.
+Later versions may add entities such as Person, Device, Place, Service, Environment, Decision, Procedure, Event, or Task only when real workflows justify them.
 
 Example:
 
 ```text
-GitHub skill
-  inspect_repository      read
-  search_code             read
-  create_branch           safe-write
-  push_commit             external-write
-  merge_pull_request      privileged-write
-  delete_repository       destructive
+Project:wedding-online
+  alias -> "web đám cưới"
+  repository -> GitHub:rua-den/wedding-online
 ```
 
-Skills should return structured results rather than prose whenever practical. The reasoning layer can then summarize results for the owner.
+The world model gives Loren stable referents for phrases such as "that project" or "the wedding site". It does not replace memory.
 
-## Boundary 4: Events and proactivity
+### Memory
 
-Loren v0.1 is primarily user-driven, but the architecture must not prevent future event-driven operation.
+Durable knowledge and experience with provenance, trust/source classes, correction, and forgetting. See `memory.md` and the v0.1 plan.
 
-Potential event sources:
+### Permissions
+
+Policies describing which actions are allowed, denied, or approval-gated. Authorization is deterministic application behavior, not an LLM decision. See `permissions.md`.
+
+### Audit history
+
+Append-oriented records of important runs, action requests, policy decisions, approvals, executions, verifications, failures, and memory mutations.
+
+## Boundary 2 — Brain
+
+A brain is a replaceable reasoning provider.
+
+Conceptual contract:
 
 ```text
-cron/schedule
+IBrain.Think(context, available_actions) -> BrainTurnResult
+```
+
+A brain may:
+
+- interpret user intent;
+- reason over supplied context;
+- select/request an action;
+- use structured tool results;
+- produce a final response.
+
+A brain may **not**:
+
+- authorize itself;
+- receive raw privileged tool credentials as ordinary context;
+- directly mutate Loren canonical state outside controlled services;
+- define Loren's durable identity.
+
+v0.1 proposes OpenAI Responses API as the first `IBrain` implementation. Future implementations may use other cloud or local models.
+
+## Boundary 3 — Loren runtime
+
+The runtime is deliberately small. It coordinates a turn/task but does not own Loren's durable identity.
+
+v0.1 responsibilities:
+
+- build the brain context;
+- call `IBrain`;
+- receive final output or structured action requests;
+- route action requests to the Action Gateway;
+- append structured action results back to the brain context;
+- stop on final output, cancellation, error, or hard loop limit;
+- maintain correlation/run IDs.
+
+Conceptual loop:
+
+```text
+prepare context
+-> brain turn
+-> final answer OR ActionRequest
+-> Action Gateway
+-> ActionResult
+-> brain turn
+-> ... bounded ...
+```
+
+Do not build generic workflow/orchestration features until Loren has a concrete use for them.
+
+## Boundary 4 — Action Gateway
+
+The Action Gateway is the security-critical boundary between reasoning and side effects.
+
+Flow:
+
+```text
+ActionRequest
+    |
+    v
+schema validation
+    |
+    v
+policy evaluation
+    |
+    +--> deny
+    |
+    +--> request owner approval
+    |
+    v
+controlled executor
+    |
+    v
+postcondition verification
+    |
+    v
+ActionResult + audit
+```
+
+No privileged integration may have an alternate route that bypasses this gateway.
+
+## Boundary 5 — Skills, tools, MCP, and APIs
+
+Loren has an internal action model independent of any one tool protocol.
+
+Each action should describe at least:
+
+- stable action name;
+- human-readable description;
+- typed input/output contract;
+- external target/resource;
+- side-effect characteristics;
+- policy metadata;
+- verification strategy when consequential.
+
+Execution may come from:
+
+```text
+Loren-native adapter
+direct vendor API
+MCP client/server
+future desktop/computer-use adapter
+future external runtime/service
+```
+
+### MCP rule
+
+MCP is an integration protocol, not Loren's brain and not Loren's authorization model.
+
+MCP tool definitions/results should be normalized into Loren action contracts. Provider-managed remote MCP must not be used for privileged actions if doing so would bypass Loren's Action Gateway or credential boundary.
+
+## Boundary 6 — Credentials and secrets
+
+Canonical memory stores opaque credential references only.
+
+Preferred execution flow:
+
+```text
+brain/runtime
+    |
+ActionRequest
+    |
+Action Gateway
+    |
+authorized executor
+    |
+Secret Resolver
+    |
+external system
+```
+
+Write-capable secrets should be readable only by the narrow executor boundary that needs them.
+
+## Boundary 7 — Events and proactivity
+
+v0.1 is user-driven. Later versions may ingest events such as:
+
+```text
+schedule
 GitHub webhook
 calendar
 email
@@ -165,7 +269,7 @@ Home Assistant
 manual task
 ```
 
-All events should normalize to a small internal envelope such as:
+Events eventually normalize into an internal envelope, but an event never grants authorization by itself.
 
 ```text
 Event {
@@ -179,59 +283,71 @@ Event {
 }
 ```
 
-An event does **not** automatically authorize an action. It merely wakes evaluation. Permission policy remains authoritative.
+Background/proactive execution requires the dedicated gates in `docs/plans/master-plan.md`.
 
-## Boundary 5: Interfaces
+## Boundary 8 — Interfaces
 
-Interfaces should be thin clients over the same Loren core.
+Interfaces are thin clients over the same Loren core.
 
-Expected evolution:
+Expected progression:
 
-1. web chat / development console;
-2. installable PWA or mobile client;
-3. messaging channels;
-4. voice push-to-talk;
-5. wake word / ambient interfaces.
+1. v0.1 web interface;
+2. mobile-friendly/PWA;
+3. optional messaging channels;
+4. push-to-talk voice;
+5. device nodes / ambient interfaces.
 
-Voice must not own business logic. Switching from text to voice should not change Loren's memory, permissions, or tools.
+Switching interface must not create separate memory, policy, or identity systems.
 
 ## Data ownership rules
 
-1. Durable Loren state must have a canonical store controlled by the project owner.
-2. External runtime memory may be used as a cache or execution aid, but must not silently become the only copy of important personal state.
-3. Secrets must be referenced, not embedded in memories or prompts.
-4. Sensitive tool outputs should have retention and redaction policies.
-5. Export should be possible without dependence on one model vendor.
+1. Durable Loren state has a canonical owner-controlled store.
+2. Provider/runtime session state is integration metadata/cache, not canonical personal state.
+3. Secrets are referenced, not embedded in memories or prompts.
+4. Sensitive tool outputs need retention/redaction rules.
+5. Canonical state must have a versioned export/restore path.
+6. External/provider-specific identifiers never become Loren primary identity.
 
 ## Reliability principles
 
+### Bounded loops
+
+Every agent run has hard cancellation/tool-call/turn/runtime limits.
+
 ### Idempotency
 
-Actions with side effects should carry operation IDs where supported so retries do not duplicate emails, deployments, payments, or other writes.
+Consequential actions should use operation/idempotency identifiers where practical so retry does not duplicate effects.
 
 ### Check before act
 
-For mutable external systems, Loren should fetch current state immediately before important writes when stale context could be dangerous.
+Fetch current mutable state before important writes when stale context could make the action unsafe.
 
 ### Verify after act
 
-Important operations should have explicit postconditions: deployment health checks, commit SHA confirmation, calendar event retrieval, etc.
+Consequential writes must confirm explicit postconditions instead of assuming success.
 
-### Bounded autonomy
+### Fail closed
 
-Agent loops need hard limits for tool calls, time, spend, and recursive task creation.
+If Loren cannot determine authorization, it does not execute the action.
 
-### Fail closed for privilege escalation
+### Recoverable state
 
-If Loren cannot determine whether an action is authorized, it must not perform the action.
+A model/provider/runtime failure must not destroy canonical Loren state. Export/wipe/restore is a v0.1 release requirement.
 
-## Architecture questions still open
+## Current decisions
 
-- Which agent runtime should power v0.1?
-- What database or storage split best fits structured world state versus semantic/episodic memory?
-- Which skill protocol should be native: custom schemas, MCP-compatible tools, OpenClaw skills, or adapters across them?
-- How should authentication work across owner devices?
-- Which tasks deserve isolated execution sandboxes?
-- How should proactive events be prioritized to avoid notification spam?
+- **ADR-001 — Accepted:** Loren-owned core with replaceable brain/runtime/tool adapters.
+- **ADR-002 — Proposed:** .NET 10 / ASP.NET Core / thin Loren agent loop / OpenAI Responses brain / MCP C# adapter / SQLite+EF Core / Blazor for v0.1.
 
-These questions should be resolved through ADRs before their implementation becomes difficult to reverse.
+## Remaining major decisions
+
+Resolve them only when they are about to become expensive to reverse:
+
+- exact credential store/auth method for GitHub writes;
+- long-term canonical storage if SQLite stops being sufficient;
+- background scheduler/event model before private proactive work;
+- trusted-device model before mobile/voice;
+- standing-permission model before proactive autonomy;
+- additional/local brain routing when real usage justifies it.
+
+See `docs/plans/master-plan.md` for the version gates that control these decisions.
