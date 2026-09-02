@@ -1,6 +1,7 @@
 name: M0 ADR-002 Spike
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - 'spike/adr-002-*'
@@ -30,6 +31,26 @@ jobs:
         run: |
           dotnet restore spikes/adr-002/brain-loop/Loren.Spike.Brain.csproj
           dotnet build spikes/adr-002/brain-loop/Loren.Spike.Brain.csproj --configuration Release --no-restore
+
+      - name: Detect optional OpenAI secret
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        id: openai-secret
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          if [ -n "$OPENAI_API_KEY" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run live OpenAI brain round trip
+        if: ${{ github.event_name == 'workflow_dispatch' && steps.openai-secret.outputs.available == 'true' }}
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          LOREN_OPENAI_MODEL: gpt-5-mini
+          LOREN_OPENAI_TIMEOUT_SECONDS: '60'
+        run: dotnet run --project spikes/adr-002/brain-loop/Loren.Spike.Brain.csproj --configuration Release --no-build
 
       - name: Run MCP client spike
         if: ${{ hashFiles('spikes/adr-002/mcp-client/Loren.Spike.Mcp.csproj') != '' }}
