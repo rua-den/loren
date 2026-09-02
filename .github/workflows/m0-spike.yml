@@ -54,6 +54,8 @@ jobs:
       - name: Build and smoke-test ASP.NET/Blazor host spike
         if: ${{ hashFiles('spikes/adr-002/web-host/Loren.Spike.Web.csproj') != '' }}
         run: |
+          set -e
+          trap 'cat /tmp/loren-web.log || true' ERR
           dotnet restore spikes/adr-002/web-host/Loren.Spike.Web.csproj
           dotnet build spikes/adr-002/web-host/Loren.Spike.Web.csproj --configuration Release --no-restore
           dotnet run --project spikes/adr-002/web-host/Loren.Spike.Web.csproj \
