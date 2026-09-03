@@ -26,7 +26,8 @@ Loren is not intended to be just another chat UI or an agent-framework clone. Th
 **Last updated: 2026-09-03**  
 **Phase:** `v0.0 — Architecture / Feasibility`  
 **Current gate:** `Gate B — v0.1 implementation stack`  
-**Current milestone:** `M0 — ADR-002 technical validation`
+**Current milestone:** `M0 — ADR-002 technical validation`  
+**Current blocker:** `OPENAI_API_KEY` GitHub Actions repository secret is missing
 
 Gate A is complete: ADR-001 establishes a Loren-owned core with models/runtimes/MCP as replaceable adapters.
 
@@ -36,16 +37,17 @@ Gate B has completed all no-secret implementation work. Current M0 evidence:
 | --- | --- |
 | OpenAI brain-loop compile boundary | ✅ PASS |
 | Live OpenAI proof automation | ✅ PASS |
-| Trusted connector-safe live trigger | ✅ PASS / validating |
+| Trusted connector-safe live trigger | ✅ PASS |
+| Repository `OPENAI_API_KEY` | ❌ MISSING / BLOCKER |
 | Live OpenAI Responses round trip | ⏳ OPEN |
 | Live provider cancellation execution | ⏳ OPEN |
 | MCP client + Loren gateway | ✅ PASS |
 | SQLite + EF Core migration/recovery | ✅ PASS |
 | ASP.NET Core + Blazor host | ✅ PASS |
 
-The final Gate B evidence is one trusted secret-backed OpenAI run. Manual `workflow_dispatch` from `main` remains supported. Because the connected GitHub tooling does not expose workflow dispatch, Loren also has a one-shot branch trigger: `spike/adr-002-live-proof-run`. Before any secret-backed step runs, CI fetches `main` and requires the live branch SHA to equal the current `main` SHA exactly.
+Trusted live validation run #53 executed from the one-shot branch at the exact `main` SHA. The SHA/security guard passed, then the workflow detected an empty `OPENAI_API_KEY` and failed closed exactly as designed. No live provider call was attempted.
 
-The live run proves both:
+After the repository Actions secret named exactly `OPENAI_API_KEY` exists, the trusted validation must prove both:
 
 ```text
 normal path:
