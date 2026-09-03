@@ -26,7 +26,8 @@ Loren không được xây để trở thành một giao diện chat khác hay m
 **Cập nhật lần cuối: 2026-09-03**  
 **Phase:** `v0.0 — Architecture / Feasibility`  
 **Gate hiện tại:** `Gate B — v0.1 implementation stack`  
-**Milestone hiện tại:** `M0 — ADR-002 technical validation`
+**Milestone hiện tại:** `M0 — ADR-002 technical validation`  
+**Blocker hiện tại:** thiếu GitHub Actions repository secret `OPENAI_API_KEY`
 
 Gate A đã hoàn tất: ADR-001 chốt Loren-owned core, còn model/runtime/MCP là adapter có thể thay thế.
 
@@ -36,16 +37,17 @@ Gate B đã hoàn thành toàn bộ phần implementation không cần secret. E
 | --- | --- |
 | OpenAI brain-loop compile boundary | ✅ PASS |
 | Automation cho live OpenAI proof | ✅ PASS |
-| Trusted live trigger dùng được qua connector | ✅ PASS / đang validate |
+| Trusted live trigger dùng được qua connector | ✅ PASS |
+| Repository `OPENAI_API_KEY` | ❌ MISSING / BLOCKER |
 | Live OpenAI Responses round trip | ⏳ OPEN |
 | Live provider cancellation execution | ⏳ OPEN |
 | MCP client + Loren gateway | ✅ PASS |
 | SQLite + EF Core migration/recovery | ✅ PASS |
 | ASP.NET Core + Blazor host | ✅ PASS |
 
-Evidence cuối của Gate B là một lần chạy OpenAI thật có secret theo trusted path. Manual `workflow_dispatch` từ `main` vẫn được giữ. Vì GitHub connector hiện không expose thao tác workflow dispatch, Loren có thêm một one-shot branch trigger: `spike/adr-002-live-proof-run`. Trước khi bất kỳ step nào nhận secret, CI sẽ fetch `main` và bắt buộc SHA của live branch phải đúng bằng SHA hiện tại của `main`.
+Trusted live validation run #53 đã chạy từ one-shot branch tại đúng SHA của `main`. SHA/security guard pass, sau đó workflow phát hiện `OPENAI_API_KEY` rỗng và fail-closed đúng thiết kế. Không có live provider call nào được thực hiện.
 
-Live run phải chứng minh cả hai path:
+Sau khi repository Actions secret tên chính xác `OPENAI_API_KEY` tồn tại, trusted validation phải chứng minh cả hai path:
 
 ```text
 normal path:
