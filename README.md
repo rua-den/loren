@@ -21,16 +21,34 @@ Loren is a long-lived personal intelligence system with persistent memory, expli
 **Phase:** `v0.1 — Trustworthy Core development`  
 **Current milestone:** `M2 — Walking Skeleton`
 
-Completed so far:
+Completed:
 
 - **Gate A / ADR-001:** Loren owns canonical identity/state/policy/action authorization.
-- **Gate B / ADR-002:** the provider-neutral v0.1 stack is accepted and M0 is complete.
-- **M1:** production engineering foundation is complete.
-- **M2 Slice 1:** production read-only ActionGateway, Loren-owned correlation IDs, audit path, and structured `github.read_repository` executor are complete.
-- **M2 Slice 2:** production `OllamaBrain : IBrain` is complete, including provider-neutral action-schema translation, deterministic tool-call/observation tests, cancellation, and provider-secret isolation.
-- **M2 Slice 3 (deterministic):** the actual ASP.NET host now wires OllamaBrain, AgentLoop, ActionGateway, read-only GitHub execution, and audit through DI; the full production-component read path passes deterministic integration tests.
+- **Gate B / ADR-002:** provider-neutral v0.1 stack accepted; M0 complete.
+- **M1:** production engineering foundation complete.
+- **M2 Slice 1:** read-only ActionGateway + structured `github.read_repository` + Loren-owned run/action IDs + audit.
+- **M2 Slice 2:** production `OllamaBrain : IBrain` with typed action schemas, observation replay, cancellation, and provider-secret isolation.
+- **M2 Slice 3:** production ASP.NET host composes OllamaBrain, AgentLoop, ActionGateway, read-only GitHub execution, and audit through DI; deterministic production-component E2E coverage passes.
+- **M2 Slice 4:** **trusted live production proof passed** on exact `main`.
 
-M2 remains active. The next proof is a trusted live Ollama run through this production host composition, followed by one-owner auth/session and the minimal owner UI.
+Trusted run `33781183510` proved:
+
+```text
+real Ollama Cloud (gpt-oss:120b)
+ -> production Loren.Web
+ -> production OllamaBrain
+ -> ActionRequest(github.read_repository)
+ -> production AgentLoop / ActionGateway / ReadOnlyActionPolicy
+ -> real GET https://api.github.com/repos/rua-den/loren
+ -> structured ActionResult
+ -> real Ollama second turn
+ -> final answer: rua-den/loren / main
+ -> correlated audit
+```
+
+Observed result: `turns=2`, `actionCount=1`, audit sequence `ActionRequested -> PolicyEvaluated -> ActionCompleted`, final action outcome `succeeded`.
+
+M2 now has a real model-to-tool vertical path. Remaining work before M2 exits is **one-owner auth/session, minimal owner UI/endpoint, and owner-visible audit presentation**.
 
 Detailed status: [`docs/status.md`](docs/status.md).
 
@@ -50,176 +68,61 @@ Blazor Web App
 xUnit / Microsoft Testing Platform
 ```
 
-## Brain architecture
+## Current production read architecture
 
 ```text
-                Loren Core
-                    │
-                  IBrain
-                    │
-        ┌───────────┼───────────┐
-        │           │           │
-     Ollama       OpenAI      future
-        │           │           │
-        └──── ActionRequest ─────┘
-                    │
-             Loren ActionGateway
-                    │
-            Policy / Executor / Audit
-```
-
-Changing providers must not require migrating Loren's identity, memory, permissions, projects, or audit history.
-
-## M0 proof
-
-Trusted M0 run #70 proved the complete real-brain path with Ollama Cloud (`gpt-oss:120b`):
-
-```text
-real model
- -> get_project_status ActionRequest
- -> Loren ActionGateway
- -> structured ActionResult
- -> real model final answer
- -> PASS
-```
-
-The same run proved live provider cancellation and completed MCP, SQLite/EF recovery, and ASP.NET/Blazor regressions successfully. Provider secrets remained masked.
-
-Ollama was the first provider that closed the brain proof, not Loren's permanent identity. OpenAI remains an optional adapter.
-
-## M1 engineering foundation — complete
-
-Production code began with deliberately small boundaries:
-
-```text
-src/
-├── Loren.Core/
-├── Loren.Runtime/
-├── Loren.Brain.Ollama/
-├── Loren.Brain.OpenAI/
-├── Loren.Infrastructure/
-└── Loren.Web/
-
-tests/
-├── Loren.Core.Tests/
-└── Loren.Runtime.Tests/
-```
-
-M1 established:
-
-- .NET SDK `10.0.400`, `net10.0`, C# 14;
-- central package versions;
-- nullable + warnings-as-errors + formatting policy;
-- provider-neutral `IBrain` and action contracts in `Loren.Core`;
-- bounded/cancellable `AgentLoop` in `Loren.Runtime`;
-- deterministic xUnit/Microsoft Testing Platform tests;
-- CI restore/build/test/format checks;
-- basic secret and dependency-vulnerability checks;
-- `/health` startup smoke test;
-- `.env.example` and [`docs/development.md`](docs/development.md).
-
-`Loren.Core` has no provider/MCP/EF Core/ASP.NET Core/Blazor package dependency. The `spikes/` directory remains technical evidence, not production architecture.
-
-## Current work — M2 Walking Skeleton
-
-Target owner flow:
-
-```text
-"Loren, check repo rua-den/loren."
-
-minimal UI
- -> Loren Runtime
- -> configured IBrain
- -> github.read_repository ActionRequest
- -> Loren ActionGateway
- -> GitHub read executor
- -> structured ActionResult
- -> IBrain final response
- -> Audit
-```
-
-### M2 Slice 1 — read boundary complete
-
-Production includes:
-
-```text
-RunId / ActionId created by Loren Runtime
- -> ActionGateway
- -> ReadOnlyActionPolicy
- -> GitHubReadRepositoryExecutor
- -> structured ActionResult
- -> append-oriented audit
+Owner (next: authenticated UI)
+        |
+        v
+Loren.Web
+        |
+        v
+AgentLoop -> IBrain -> Ollama
+        |
+        v
+ActionRequest
+        |
+        v
+ActionGateway
+  -> ReadOnlyActionPolicy
+  -> Audit
+        |
+        v
+GitHubReadRepositoryExecutor
+        |
+        v
+real public GitHub GET
 ```
 
 Important invariants already proven:
 
-- the model cannot choose trusted run/action correlation IDs;
-- unregistered or non-read-only actions fail closed before execution;
-- policy failures do not reach executors;
-- executor errors return safe structured failures;
-- cancellation records terminal `cancelled` audit state before propagating;
-- `github.read_repository` performs public HTTP GET only and has no write or GitHub credential path;
-- deterministic integration tests prove fake brain -> gateway -> fake GitHub -> structured result -> final answer.
+- every action crosses Loren's ActionGateway;
+- model output cannot choose trusted Loren run/action IDs;
+- non-read-only/unregistered actions fail closed;
+- provider API key stays outside model-visible request JSON and owner-visible live response;
+- Ollama and GitHub transports are separated;
+- `github.read_repository` has no GitHub write credential path;
+- the temporary `/internal/dev/run` route is absent by default and may only exist in Development with an explicit flag;
+- trusted live-secret validation requires an exact-current-main guard.
 
-### M2 Slice 2 — production Ollama brain complete
+No GitHub write path is allowed in M2.
 
-Production has a real `OllamaBrain : IBrain` behind the same Loren-owned contract.
-
-```text
-Loren ActionDefinition
- -> provider-neutral typed parameters
- -> Ollama function-tool JSON
- -> provider tool_call
- -> Loren ActionRequest
-```
-
-The adapter reconstructs prior `BrainActionObservation` values as assistant tool-call + tool-result messages for the next provider turn.
-
-Security/behavior rules proven in deterministic tests:
-
-- `OLLAMA_API_KEY` is not part of serializable options or request JSON;
-- the key is held privately by the adapter and sent only as `Authorization: Bearer ...`;
-- raw provider error bodies are not copied into exception messages;
-- cancellation propagates at the provider await;
-- parallel tool calls fail explicitly until the Loren runtime intentionally supports them;
-- provider JSON types stay outside `Loren.Core`.
-
-### M2 Slice 3 — production host wiring complete deterministically
-
-The ASP.NET host now composes the production read path:
+## Next
 
 ```text
-Loren.Web DI
- -> OllamaBrain
- -> AgentLoop
- -> ActionGateway
- -> ReadOnlyActionPolicy
- -> GitHubReadRepositoryExecutor
- -> InMemoryAuditSink
+one-owner authentication/session
+ -> minimal owner request UI
+ -> owner-visible audit
+ -> "Loren, check repo rua-den/loren."
+ -> FIRST OWNER-TESTABLE LOREN PREVIEW
+ -> M3 Canonical State
 ```
-
-A deterministic integration test runs the complete production-component sequence with fake HTTP endpoints and proves the provider bearer token is present only on the Ollama request and absent from the GitHub request.
-
-The temporary `/internal/dev/run` route is disabled by default. It is mapped only when `LOREN_ENABLE_DEVELOPMENT_RUN_ENDPOINT=true` under the `Development` environment; enabling it outside Development fails startup. CI explicitly verifies the normal host returns `404` for that route.
-
-### Next M2 proof
-
-```text
-trusted live Ollama
- -> production host composition
- -> ActionRequest(github.read_repository)
- -> real public GitHub read
- -> structured ActionResult
- -> live Ollama final answer
-```
-
-After that proof, M2 continues with one-owner auth/session and the minimal owner UI. No GitHub write path is allowed in M2.
 
 ## Version path
 
 ```text
 v0.0  architecture / feasibility        ✓ complete
-v0.1  trustworthy core                 <- current development / M2
+v0.1  trustworthy core                 <- current / M2
 v0.2  useful project assistant
 v0.3  personal operations
 v0.4  voice + device presence
@@ -229,17 +132,6 @@ v1.0  stable personal daily driver
 ```
 
 Versions advance by exit gates, not dates or code volume.
-
-## Progress discipline
-
-Any merge that changes capability, milestone completion, ADR status, validated providers/dependencies, or the next execution target must update:
-
-- [`docs/status.md`](docs/status.md)
-- `README.md`
-- [`README.vi.md`](README.vi.md)
-- the relevant ADR/plan when needed
-
-A milestone is not closed until code/tests and repository documentation agree.
 
 ## Documentation
 
@@ -255,7 +147,5 @@ A milestone is not closed until code/tests and repository documentation agree.
 - [`docs/permissions.md`](docs/permissions.md) — permission model
 - [`docs/security.md`](docs/security.md) — security baseline
 - [`docs/skills.md`](docs/skills.md) — skill/tool model
-
-## Repository role
 
 This repository is the source of truth for Loren's product decisions, architecture, delivery plans, implementation, progress, and release history.
