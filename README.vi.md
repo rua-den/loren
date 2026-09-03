@@ -30,29 +30,38 @@ Loren không được xây để trở thành một giao diện chat khác hay m
 
 Gate A đã hoàn tất: ADR-001 chốt Loren-owned core, còn model/runtime/MCP là adapter có thể thay thế.
 
-Gate B gần hoàn tất. Evidence M0 hiện tại:
+Gate B giờ đã chuẩn bị xong toàn bộ phần không cần secret. Evidence M0 hiện tại:
 
 | Phần | Trạng thái |
 | --- | --- |
 | OpenAI brain-loop compile boundary | ✅ PASS |
+| Automation cho live OpenAI proof | ✅ PASS |
 | Live OpenAI Responses round trip | ⏳ OPEN |
-| Live provider cancellation evidence | ⏳ OPEN |
+| Live provider cancellation execution | ⏳ OPEN |
 | MCP client + Loren gateway | ✅ PASS |
 | SQLite + EF Core migration/recovery | ✅ PASS |
 | ASP.NET Core + Blazor host | ✅ PASS |
 
-Blocker còn lại của Gate B là live OpenAI proof với API key được cấp bên ngoài source control:
+Blocker cuối của Gate B chỉ còn một lần chạy manual `workflow_dispatch` thành công với `OPENAI_API_KEY` lưu trong GitHub Actions repository secret. Workflow này được cấu hình fail-closed nếu thiếu secret và sẽ chứng minh cả hai path:
 
 ```text
+normal path:
 OpenAI brain
   -> ActionRequest
   -> Loren ActionGateway
   -> structured fake result
   -> OpenAI brain
   -> final response
+  -> PASS
+
+cancellation path:
+OpenAI provider call
+  -> Loren cancellation token
+  -> provider call bị cancel
+  -> PASS
 ```
 
-ADR-002 vẫn là **Proposed** cho tới khi round trip thật và cancellation với provider thật được verify. Chỉ sau đó mới bắt đầu scaffold production cho v0.1.
+ADR-002 vẫn là **Proposed** cho tới khi cả hai live check pass. Chỉ sau đó mới bắt đầu scaffold production cho v0.1.
 
 Chi tiết tiến độ chuẩn nằm tại [`docs/status.md`](docs/status.md).
 
