@@ -10,7 +10,7 @@ This file is the authoritative progress ledger for the repository. The English a
 
 ## Current status
 
-Loren has completed the architecture ownership decision and all no-secret preparation required to run the final v0.1 stack gate. The remaining evidence is now a single credential-backed manual workflow run against the real OpenAI provider.
+Loren has completed the architecture ownership decision and all no-secret preparation required to run the final v0.1 stack gate. The remaining evidence is a credential-backed live run against the real OpenAI provider.
 
 ### Gate A — Core ownership
 
@@ -39,8 +39,9 @@ Blazor Web App
 | Proof | Status | Evidence |
 | --- | --- | --- |
 | OpenAI brain-loop compile boundary | PASS | OpenAI .NET 2.12.0 compiles on .NET 10; structured function call is intercepted by Loren-owned code; six-turn bound enforced |
-| Live OpenAI proof automation | PASS | Manual `workflow_dispatch` now fails closed without `OPENAI_API_KEY` and, when present, runs both the normal tool round trip and explicit provider cancellation proof |
-| OpenAI live provider round trip | OPEN | Requires one successful manual secret-backed workflow run proving real model -> ActionGateway -> structured result -> final model response |
+| Live OpenAI proof automation | PASS | Normal round trip + explicit cancellation modes are implemented and fail closed without the repository secret |
+| Trusted live trigger boundary | PASS / awaiting merge | Live secret access is allowed only for `workflow_dispatch` from `main` or the dedicated one-shot branch `spike/adr-002-live-proof-run`; the branch path must point exactly at current `main` before any secret step runs |
+| OpenAI live provider round trip | OPEN | Requires one successful trusted secret-backed run proving real model -> ActionGateway -> structured result -> final model response |
 | Provider cancellation path | READY / OPEN | Async provider call, shared cancellation token, timeout, explicit cancel-after mode, and expected-cancellation assertion are implemented; real provider execution evidence remains open |
 | MCP client/gateway | PASS | `ModelContextProtocol` 2.2.0; pinned `server-everything@2026.8.31`; tool enumeration + allow-listed read-only call passed in CI |
 | SQLite + EF Core | PASS | EF Core 10.0.11 migration -> persist -> export -> wipe -> migrate -> restore -> reload passed in CI |
@@ -81,11 +82,11 @@ Established:
 - async OpenAI Responses path;
 - one cancellation token propagated through provider calls;
 - Ctrl+C and wall-clock timeout bounds;
-- live OpenAI workflow can only receive repository secret through manual `workflow_dispatch`, never through PR CI.
+- live OpenAI workflow can only receive repository secret through a trusted live-validation path, never through ordinary PR CI.
 
 ### PR #4 — Final live-proof automation
 
-Validated in PR CI.
+Merged into `main`.
 
 Established:
 
@@ -96,9 +97,21 @@ Established:
 - cancellation is considered PASS only when explicitly expected and observed through the provider boundary;
 - the full no-secret regression chain still passes: brain compile, MCP, persistence, and web-host smoke test.
 
+### Current branch — connector-safe live trigger
+
+In validation before merge.
+
+Adds a second trusted trigger because the GitHub connector does not expose `workflow_dispatch`:
+
+- exact branch name: `spike/adr-002-live-proof-run`;
+- the branch must point exactly at current `main`;
+- workflow fetches `origin/main` and compares SHA before any secret-backed step;
+- PR and ordinary spike branch runs remain secret-free;
+- manual `workflow_dispatch` from `main` remains supported.
+
 ## Current blocker
 
-The only remaining Gate B blocker is to execute the already-prepared manual workflow with a repository `OPENAI_API_KEY` secret and observe both live proofs pass:
+The only remaining Gate B blocker is to execute the trusted live workflow with a repository `OPENAI_API_KEY` secret and observe both live proofs pass:
 
 ```text
 Proof A — normal path
@@ -120,13 +133,18 @@ OpenAI provider call
 
 Until both pass, ADR-002 remains **Proposed** and production v0.1 scaffolding does not begin.
 
-## Next milestones
+## Next execution sequence
 
 ```text
 NOW
 v0.0 / Gate B / M0
     |
-    +-- run manual OpenAI workflow (normal + cancellation)
+    +-- merge trusted live-trigger change after CI/self-review
+    |
+    +-- create one-shot branch at exact main HEAD
+    |      spike/adr-002-live-proof-run
+    |
+    +-- observe normal + cancellation OpenAI proof
     |
     v
 Accept ADR-002

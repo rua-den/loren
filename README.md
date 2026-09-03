@@ -30,19 +30,22 @@ Loren is not intended to be just another chat UI or an agent-framework clone. Th
 
 Gate A is complete: ADR-001 establishes a Loren-owned core with models/runtimes/MCP as replaceable adapters.
 
-Gate B is now fully prepared for its final credential-backed proof. Current M0 evidence:
+Gate B has completed all no-secret implementation work. Current M0 evidence:
 
 | Area | Status |
 | --- | --- |
 | OpenAI brain-loop compile boundary | ✅ PASS |
 | Live OpenAI proof automation | ✅ PASS |
+| Trusted connector-safe live trigger | ✅ PASS / validating |
 | Live OpenAI Responses round trip | ⏳ OPEN |
 | Live provider cancellation execution | ⏳ OPEN |
 | MCP client + Loren gateway | ✅ PASS |
 | SQLite + EF Core migration/recovery | ✅ PASS |
 | ASP.NET Core + Blazor host | ✅ PASS |
 
-The remaining Gate B blocker is one successful manual `workflow_dispatch` with `OPENAI_API_KEY` stored as a GitHub Actions repository secret. That run is configured to fail closed without the secret and to prove both:
+The final Gate B evidence is one trusted secret-backed OpenAI run. Manual `workflow_dispatch` from `main` remains supported. Because the connected GitHub tooling does not expose workflow dispatch, Loren also has a one-shot branch trigger: `spike/adr-002-live-proof-run`. Before any secret-backed step runs, CI fetches `main` and requires the live branch SHA to equal the current `main` SHA exactly.
+
+The live run proves both:
 
 ```text
 normal path:

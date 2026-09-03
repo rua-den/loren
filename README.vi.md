@@ -30,19 +30,22 @@ Loren không được xây để trở thành một giao diện chat khác hay m
 
 Gate A đã hoàn tất: ADR-001 chốt Loren-owned core, còn model/runtime/MCP là adapter có thể thay thế.
 
-Gate B giờ đã chuẩn bị xong toàn bộ phần không cần secret. Evidence M0 hiện tại:
+Gate B đã hoàn thành toàn bộ phần implementation không cần secret. Evidence M0 hiện tại:
 
 | Phần | Trạng thái |
 | --- | --- |
 | OpenAI brain-loop compile boundary | ✅ PASS |
 | Automation cho live OpenAI proof | ✅ PASS |
+| Trusted live trigger dùng được qua connector | ✅ PASS / đang validate |
 | Live OpenAI Responses round trip | ⏳ OPEN |
 | Live provider cancellation execution | ⏳ OPEN |
 | MCP client + Loren gateway | ✅ PASS |
 | SQLite + EF Core migration/recovery | ✅ PASS |
 | ASP.NET Core + Blazor host | ✅ PASS |
 
-Blocker cuối của Gate B chỉ còn một lần chạy manual `workflow_dispatch` thành công với `OPENAI_API_KEY` lưu trong GitHub Actions repository secret. Workflow này được cấu hình fail-closed nếu thiếu secret và sẽ chứng minh cả hai path:
+Evidence cuối của Gate B là một lần chạy OpenAI thật có secret theo trusted path. Manual `workflow_dispatch` từ `main` vẫn được giữ. Vì GitHub connector hiện không expose thao tác workflow dispatch, Loren có thêm một one-shot branch trigger: `spike/adr-002-live-proof-run`. Trước khi bất kỳ step nào nhận secret, CI sẽ fetch `main` và bắt buộc SHA của live branch phải đúng bằng SHA hiện tại của `main`.
+
+Live run phải chứng minh cả hai path:
 
 ```text
 normal path:
