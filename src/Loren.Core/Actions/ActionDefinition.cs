@@ -2,10 +2,10 @@ namespace Loren.Core.Actions;
 
 public enum ActionParameterType
 {
-    String,
-    Integer,
-    Number,
-    Boolean,
+    Text,
+    WholeNumber,
+    DecimalNumber,
+    Flag,
 }
 
 public sealed record ActionParameterDefinition(
