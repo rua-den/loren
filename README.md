@@ -1,5 +1,7 @@
 # Loren
 
+**English** · [Tiếng Việt](README.vi.md)
+
 Loren is a personal intelligence system: a long-lived assistant with persistent memory, explicit permissions, tool use, and eventually proactive behavior across the owner's digital life.
 
 Loren is not intended to be just another chat UI or an agent-framework clone. The project owns the parts that make Loren *Loren*—identity, memory, personal world model, permissions, project context, action boundaries, and experience—while treating models and execution infrastructure as replaceable components.
@@ -17,29 +19,81 @@ Loren is not intended to be just another chat UI or an agent-framework clone. Th
 5. **Model-independent** — model providers are replaceable reasoning engines, not Loren's identity.
 6. **Auditable** — actions, approvals, important memory changes, and background work should be reconstructable.
 7. **Local ownership where practical** — personal state and secrets should remain under the owner's control whenever possible.
-8. **Progressive autonomy** — Loren starts user-driven and gains background/proactive behavior only after the lower-level trust boundaries are proven.
+8. **Progressive autonomy** — Loren starts user-driven and gains background/proactive behavior only after lower-level trust boundaries are proven.
 
-## Current stage
+## Current status
 
-**v0.0 — Architecture and feasibility. No production source code yet.**
+**Last updated: 2026-09-03**  
+**Phase:** `v0.0 — Architecture / Feasibility`  
+**Current gate:** `Gate B — v0.1 implementation stack`  
+**Current milestone:** `M0 — ADR-002 technical validation`
 
-Accepted architecture:
+Gate A is complete: ADR-001 establishes a Loren-owned core with models/runtimes/MCP as replaceable adapters.
 
-- Loren owns canonical identity/state/memory/policy/audit;
-- brain providers, MCP, vendor APIs, UI, and future runtimes are adapters;
-- privileged actions must pass the Loren Action Gateway;
-- privileged tool credentials stay outside model/runtime context.
+Gate B is almost complete. Current M0 evidence:
 
-Current open gate:
+| Area | Status |
+| --- | --- |
+| OpenAI brain-loop compile boundary | ✅ PASS |
+| Live OpenAI Responses round trip | ⏳ OPEN |
+| Live provider cancellation evidence | ⏳ OPEN |
+| MCP client + Loren gateway | ✅ PASS |
+| SQLite + EF Core migration/recovery | ✅ PASS |
+| ASP.NET Core + Blazor host | ✅ PASS |
 
-- **ADR-002:** validate the proposed v0.1 stack (`.NET 10 + ASP.NET Core + thin Loren agent loop + OpenAI Responses brain + MCP C# adapter + SQLite/EF Core + Blazor`).
+The remaining Gate B blocker is a live OpenAI proof using an API key supplied outside source control:
 
-After ADR-002 is accepted, production implementation begins with the v0.1 walking skeleton.
+```text
+OpenAI brain
+  -> ActionRequest
+  -> Loren ActionGateway
+  -> structured fake result
+  -> OpenAI brain
+  -> final response
+```
+
+ADR-002 remains **Proposed** until that round trip and live cancellation behavior are verified. Production v0.1 scaffolding starts only after the gate is accepted.
+
+For the detailed, authoritative progress ledger, see [`docs/status.md`](docs/status.md).
+
+## First testable Loren preview
+
+The first owner-facing preview is planned for **v0.1 M2 — Walking Skeleton**:
+
+```text
+"Loren, check repo rua-den/loren."
+
+UI
+ -> Loren Runtime
+ -> Brain
+ -> github.read_repository ActionRequest
+ -> Action Gateway
+ -> GitHub read executor
+ -> structured result
+ -> Brain final response
+ -> Audit
+```
+
+M1 will establish the engineering foundation; M2 is the first milestone intended to feel like actually using Loren.
+
+## Proposed v0.1 stack
+
+Pending final ADR-002 acceptance:
+
+```text
+C# 14 / .NET 10
+ASP.NET Core
+small Loren-owned agent loop
+OpenAI Responses API as first brain
+MCP C# SDK behind Loren adapters
+SQLite + EF Core
+Blazor Web App
+```
 
 ## Version path
 
 ```text
-v0.0  architecture / feasibility
+v0.0  architecture / feasibility        <- current
 v0.1  trustworthy core
 v0.2  useful project assistant
 v0.3  personal operations
@@ -51,8 +105,22 @@ v1.0  stable personal daily driver
 
 Versions advance by exit gates, not dates or code volume.
 
+## Progress discipline
+
+Repository progress must stay synchronized with implementation.
+
+Any merge that changes capability, milestone completion, ADR status, validated dependency versions, or the next execution target must update:
+
+- [`docs/status.md`](docs/status.md) — authoritative detailed status;
+- `README.md` — English summary;
+- [`README.vi.md`](README.vi.md) — Vietnamese summary;
+- the relevant ADR/plan when a decision or milestone changes.
+
+A milestone is not considered fully closed until code/tests and repository documentation agree.
+
 ## Documentation
 
+- [`docs/status.md`](docs/status.md) — authoritative current progress and next target
 - [`docs/vision.md`](docs/vision.md) — product vision and target experience
 - [`docs/architecture.md`](docs/architecture.md) — active system boundaries
 - [`docs/plans/master-plan.md`](docs/plans/master-plan.md) — authoritative version milestones and transition gates
@@ -60,7 +128,7 @@ Versions advance by exit gates, not dates or code volume.
 - [`docs/roadmap.md`](docs/roadmap.md) — concise capability roadmap
 - [`docs/research/agent-landscape.md`](docs/research/agent-landscape.md) — relevant existing projects and reuse opportunities
 - [`docs/decisions/001-agent-runtime-strategy.md`](docs/decisions/001-agent-runtime-strategy.md) — accepted Loren-owned core/runtime boundary
-- [`docs/decisions/002-v0.1-technology-stack.md`](docs/decisions/002-v0.1-technology-stack.md) — proposed v0.1 implementation stack and validation gate
+- [`docs/decisions/002-v0.1-technology-stack.md`](docs/decisions/002-v0.1-technology-stack.md) — proposed v0.1 implementation stack and validation evidence
 - [`docs/memory.md`](docs/memory.md) — memory model
 - [`docs/permissions.md`](docs/permissions.md) — permission model
 - [`docs/security.md`](docs/security.md) — security baseline
@@ -68,4 +136,4 @@ Versions advance by exit gates, not dates or code volume.
 
 ## Repository role
 
-This repository is the source of truth for Loren's product decisions, architecture, delivery plans, implementation, and release history.
+This repository is the source of truth for Loren's product decisions, architecture, delivery plans, implementation, current progress, and release history.
