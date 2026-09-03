@@ -4,6 +4,7 @@ using Loren.Core.Actions;
 using Loren.Core.Audit;
 using Loren.Core.Brains;
 using Loren.Infrastructure.Audit;
+using Loren.Runtime;
 using Loren.Tools.GitHub;
 using Xunit;
 
