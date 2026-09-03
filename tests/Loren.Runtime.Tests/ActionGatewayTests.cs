@@ -61,6 +61,55 @@ public sealed class ActionGatewayTests
         Assert.Equal("denied", audit.Events[^1].Outcome);
     }
 
+    [Fact]
+    public async Task ExecutorCancellationWritesTerminalAuditBeforePropagating()
+    {
+        ActionDefinition definition = new("read", "read", true);
+        CancellingExecutor executor = new("read");
+        RecordingAuditSink audit = new();
+        ActionGateway gateway = new(
+            [definition],
+            [executor],
+            new ReadOnlyActionPolicy(),
+            audit);
+        ActionExecutionRequest execution = new(
+            RunId.New(),
+            ActionId.New(),
+            new ActionRequest("read", new Dictionary<string, string>()));
+        using CancellationTokenSource cancellation = new();
+
+        Task run = gateway.ExecuteAsync(execution, cancellation.Token);
+        cancellation.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => run);
+        Assert.Equal(AuditEventKind.ActionCompleted, audit.Events[^1].Kind);
+        Assert.Equal("cancelled", audit.Events[^1].Outcome);
+    }
+
+    [Fact]
+    public async Task PolicyFailureFailsClosedAndAuditsTerminalFailure()
+    {
+        ActionDefinition definition = new("read", "read", true);
+        RecordingExecutor executor = new("read");
+        RecordingAuditSink audit = new();
+        ActionGateway gateway = new(
+            [definition],
+            [executor],
+            new ThrowingPolicy(),
+            audit);
+        ActionExecutionRequest execution = new(
+            RunId.New(),
+            ActionId.New(),
+            new ActionRequest("read", new Dictionary<string, string>()));
+
+        ActionResult result = await gateway.ExecuteAsync(execution, CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Empty(executor.Requests);
+        Assert.Equal("error", result.Data["policy"]);
+        Assert.Equal("failed", audit.Events[^1].Outcome);
+    }
+
     private sealed class RecordingExecutor(string actionName) : IActionExecutor
     {
         public string ActionName { get; } = actionName;
@@ -78,6 +127,28 @@ public sealed class ActionGatewayTests
                 true,
                 new Dictionary<string, string> { ["status"] = "ok" }));
         }
+    }
+
+    private sealed class CancellingExecutor(string actionName) : IActionExecutor
+    {
+        public string ActionName { get; } = actionName;
+
+        public async Task<ActionResult> ExecuteAsync(
+            ActionRequest request,
+            CancellationToken cancellationToken)
+        {
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            throw new InvalidOperationException("Unreachable.");
+        }
+    }
+
+    private sealed class ThrowingPolicy : IActionPolicy
+    {
+        public Task<PolicyDecision> EvaluateAsync(
+            ActionDefinition definition,
+            ActionRequest request,
+            CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("policy detail must not escape");
     }
 
     private sealed class RecordingAuditSink : IAuditSink
