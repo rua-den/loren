@@ -15,8 +15,8 @@ public sealed class OllamaBrainTests
         "Read repository metadata.",
         true,
         [
-            new("owner", "Repository owner.", ActionParameterType.String, true),
-            new("repository", "Repository name.", ActionParameterType.String, true),
+            new("owner", "Repository owner.", ActionParameterType.Text, true),
+            new("repository", "Repository name.", ActionParameterType.Text, true),
         ]);
 
     [Fact]
@@ -78,10 +78,10 @@ public sealed class OllamaBrainTests
             CancellationToken.None);
 
         Assert.False(result.IsFinal);
-        Assert.NotNull(result.ActionRequest);
-        Assert.Equal("github.read_repository", result.ActionRequest.Name);
-        Assert.Equal("rua-den", result.ActionRequest.Arguments["owner"]);
-        Assert.Equal("loren", result.ActionRequest.Arguments["repository"]);
+        ActionRequest request = Assert.IsType<ActionRequest>(result.ActionRequest);
+        Assert.Equal("github.read_repository", request.Name);
+        Assert.Equal("rua-den", request.Arguments["owner"]);
+        Assert.Equal("loren", request.Arguments["repository"]);
     }
 
     [Fact]
@@ -119,7 +119,8 @@ public sealed class OllamaBrainTests
                 messages[1].GetProperty("tool_calls")[0].GetProperty("function").GetProperty("name").GetString());
             Assert.Equal("tool", messages[2].GetProperty("role").GetString());
             Assert.Equal("github.read_repository", messages[2].GetProperty("tool_name").GetString());
-            Assert.Contains("rua-den/loren", messages[2].GetProperty("content").GetString(), StringComparison.Ordinal);
+            string toolContent = Assert.IsType<string>(messages[2].GetProperty("content").GetString());
+            Assert.Contains("rua-den/loren", toolContent, StringComparison.Ordinal);
 
             return JsonResponse("""
                 {
