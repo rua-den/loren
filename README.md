@@ -19,27 +19,15 @@ Loren is a long-lived personal intelligence system with persistent memory, expli
 
 **Last updated:** 2026-09-03  
 **Phase:** `v0.1 — Trustworthy Core development`  
-**Current milestone:** `M1 — Engineering foundation`
+**Current milestone:** `M2 — Walking Skeleton`
 
-Both architecture gates required to start production are now passed:
+The architecture and engineering-foundation gates needed for real product work are now complete:
 
 - **Gate A / ADR-001:** Loren owns canonical identity/state/policy/action authorization.
 - **Gate B / ADR-002:** the provider-neutral v0.1 stack is accepted and M0 is complete.
+- **M1:** the production solution, provider-neutral contracts, bounded runtime loop, deterministic tests, CI/static checks, secret/dependency checks, and health smoke test are complete.
 
-Trusted M0 run #70 proved the complete real brain path with Ollama Cloud (`gpt-oss:120b`):
-
-```text
-real model
- -> get_project_status ActionRequest
- -> Loren ActionGateway
- -> structured ActionResult
- -> real model final answer
- -> PASS
-```
-
-The same run proved live provider cancellation and completed MCP, SQLite/EF recovery, and ASP.NET/Blazor regressions successfully. Provider secrets remained masked.
-
-Ollama is the **first provider that closed the brain proof**, not Loren's permanent identity. OpenAI remains an optional adapter; its currently configured API account is blocked by provider credit, which no longer blocks Loren's architecture.
+M2 is now building the first owner-testable vertical slice.
 
 Detailed status: [`docs/status.md`](docs/status.md).
 
@@ -56,7 +44,7 @@ provider-neutral IBrain
 MCP C# SDK behind Loren action contracts
 SQLite + EF Core
 Blazor Web App
-xUnit
+xUnit / Microsoft Testing Platform
 ```
 
 ## Brain architecture
@@ -79,47 +67,81 @@ xUnit
 
 Changing providers must not require migrating Loren's identity, memory, permissions, projects, or audit history.
 
-## Current work — M1
+## M0 proof
 
-M1 builds the production engineering foundation:
+Trusted M0 run #70 proved the complete real-brain path with Ollama Cloud (`gpt-oss:120b`):
 
-- production .NET solution/project boundaries;
-- pinned SDK/packages;
-- deterministic xUnit tests;
-- CI restore/build/test/static checks;
-- nullable/warnings/analyzers/formatting policy;
-- `.env.example` and local setup docs;
-- secret/dependency scanning;
-- startup/health test;
-- `Loren.Core` remains free of provider/MCP/EF/Blazor dependencies.
+```text
+real model
+ -> get_project_status ActionRequest
+ -> Loren ActionGateway
+ -> structured ActionResult
+ -> real model final answer
+ -> PASS
+```
 
-The `spikes/` directory remains technical evidence, not production architecture.
+The same run proved live provider cancellation and completed MCP, SQLite/EF recovery, and ASP.NET/Blazor regressions successfully. Provider secrets remained masked.
 
-## First owner-testable preview
+Ollama was the first provider that closed the brain proof, not Loren's permanent identity. OpenAI remains an optional adapter.
 
-The first meaningful owner-facing preview is still **v0.1 M2 — Walking Skeleton**:
+## M1 engineering foundation — complete
+
+Production code now starts with deliberately small boundaries:
+
+```text
+src/
+├── Loren.Core/
+├── Loren.Runtime/
+├── Loren.Brain.Ollama/
+├── Loren.Brain.OpenAI/
+├── Loren.Infrastructure/
+└── Loren.Web/
+
+tests/
+├── Loren.Core.Tests/
+└── Loren.Runtime.Tests/
+```
+
+M1 established:
+
+- .NET SDK `10.0.400`, `net10.0`, C# 14;
+- central package versions;
+- nullable + warnings-as-errors + formatting policy;
+- provider-neutral `IBrain` and action contracts in `Loren.Core`;
+- bounded/cancellable `AgentLoop` in `Loren.Runtime`;
+- deterministic xUnit/Microsoft Testing Platform tests;
+- CI restore/build/test/format checks;
+- basic secret and dependency-vulnerability checks;
+- `/health` startup smoke test;
+- `.env.example` and [`docs/development.md`](docs/development.md).
+
+`Loren.Core` has no provider/MCP/EF Core/ASP.NET Core/Blazor package dependency. The `spikes/` directory remains technical evidence, not production architecture.
+
+## Current work — M2 Walking Skeleton
+
+M2 is the first milestone intended to feel like actually using Loren:
 
 ```text
 "Loren, check repo rua-den/loren."
 
-UI
+minimal UI
  -> Loren Runtime
  -> configured IBrain
  -> github.read_repository ActionRequest
- -> Action Gateway
+ -> Loren ActionGateway
  -> GitHub read executor
- -> structured result
+ -> structured ActionResult
  -> IBrain final response
  -> Audit
 ```
 
-M1 is engineering foundation. M2 is the first milestone intended to feel like actually using Loren.
+M2 will add the narrow production pieces needed for that flow: one-owner auth/session, a production brain adapter plus fake brain, read-only GitHub execution, correlation IDs, and minimal audit. No GitHub write path is allowed yet.
 
 ## Version path
 
 ```text
 v0.0  architecture / feasibility        ✓ complete
-v0.1  trustworthy core                 <- current development
+v0.1  trustworthy core                 <- current development / M2
 v0.2  useful project assistant
 v0.3  personal operations
 v0.4  voice + device presence
@@ -144,6 +166,7 @@ A milestone is not closed until code/tests and repository documentation agree.
 ## Documentation
 
 - [`docs/status.md`](docs/status.md) — authoritative current progress
+- [`docs/development.md`](docs/development.md) — build/test/configuration/dependency guidance
 - [`docs/vision.md`](docs/vision.md) — product vision
 - [`docs/architecture.md`](docs/architecture.md) — active system boundaries
 - [`docs/plans/master-plan.md`](docs/plans/master-plan.md) — version milestones and gates
