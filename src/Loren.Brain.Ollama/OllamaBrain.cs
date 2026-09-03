@@ -283,10 +283,10 @@ public sealed class OllamaBrain : IBrain
 
     private static string MapParameterType(ActionParameterType type) => type switch
     {
-        ActionParameterType.String => "string",
-        ActionParameterType.Integer => "integer",
-        ActionParameterType.Number => "number",
-        ActionParameterType.Boolean => "boolean",
+        ActionParameterType.Text => "string",
+        ActionParameterType.WholeNumber => "integer",
+        ActionParameterType.DecimalNumber => "number",
+        ActionParameterType.Flag => "boolean",
         _ => throw new OllamaBrainException($"Unsupported action parameter type '{type}'."),
     };
 }
