@@ -3,16 +3,24 @@
 **Last updated:** 2026-09-03  
 **Current version phase:** `v0.0 — Architecture / Feasibility`  
 **Current decision gate:** `Gate B — v0.1 implementation stack`  
-**Gate B status:** `BLOCKED — repository OPENAI_API_KEY secret missing`  
+**Gate B status:** `BLOCKED — OpenAI API credit balance exhausted`  
 **Current milestone:** `M0 — ADR-002 technical validation`
 
 This file is the authoritative progress ledger for the repository. The English and Vietnamese READMEs summarize this file.
 
 ## Current status
 
-Loren has completed the architecture ownership decision and all no-secret implementation required for Gate B. The trusted live trigger has now been executed against exact `main`; it passed the SHA/security guard and then failed closed because the repository currently has no `OPENAI_API_KEY` Actions secret.
+Loren has completed the architecture ownership decision and all no-secret implementation required for Gate B. The trusted live OpenAI path now accepts the repository `OPENAI_API_KEY` successfully and reaches the real OpenAI Responses API.
 
-This means the remaining blocker is operational credential configuration, not code or architecture discovered so far.
+The current blocker is no longer credential configuration. Trusted live validation rerun attempt #2 reached the provider and received:
+
+```text
+HTTP 429
+insufficient_quota: credit_balance_exhausted
+You have no credits remaining.
+```
+
+This is an OpenAI API billing/quota blocker. No new architecture or SDK incompatibility has been observed yet because the request was rejected before model execution.
 
 ### Gate A — Core ownership
 
@@ -22,7 +30,7 @@ Loren owns canonical identity, state, memory, policy, action authorization, and 
 
 ### Gate B — v0.1 implementation stack
 
-**BLOCKED** via ADR-002 pending the credential-backed OpenAI proof.
+**BLOCKED** via ADR-002 pending a funded credential-backed OpenAI proof.
 
 Proposed v0.1 stack:
 
@@ -41,11 +49,12 @@ Blazor Web App
 | Proof | Status | Evidence |
 | --- | --- | --- |
 | OpenAI brain-loop compile boundary | PASS | OpenAI .NET 2.12.0 compiles on .NET 10; structured function call is intercepted by Loren-owned code; six-turn bound enforced |
-| Live OpenAI proof automation | PASS | Normal round trip + explicit cancellation modes are implemented and fail closed without the repository secret |
-| Trusted live trigger boundary | PASS | PR #5 merged; one-shot branch `spike/adr-002-live-proof-run` pointed exactly at `main`; run #53 fetched `origin/main`, passed SHA equality, and only then evaluated secret access |
-| Repository `OPENAI_API_KEY` | MISSING / BLOCKER | Run #53 observed an empty `OPENAI_API_KEY` environment and failed at the explicit `Require OpenAI secret for trusted live validation` step |
-| OpenAI live provider round trip | OPEN | Cannot execute until the repository Actions secret exists |
-| Provider cancellation path | READY / OPEN | Async provider call, shared cancellation token, timeout, explicit cancel-after mode, and expected-cancellation assertion are implemented; real provider execution evidence remains open |
+| Live OpenAI proof automation | PASS | Normal round trip + explicit cancellation modes are implemented and fail closed without trusted credentials |
+| Trusted live trigger boundary | PASS | One-shot branch must equal current `main` SHA before any secret-backed step runs |
+| Repository `OPENAI_API_KEY` | PASS | Trusted rerun received the secret; logs mask the value as `***` |
+| OpenAI API quota | BLOCKER | Real provider request returned `429 insufficient_quota: credit_balance_exhausted` before model execution |
+| OpenAI live provider round trip | OPEN | Retry after API credit is available |
+| Provider cancellation path | READY / OPEN | Async provider call, shared cancellation token, timeout, explicit cancel-after mode, and expected-cancellation assertion are implemented; live execution remains open |
 | MCP client/gateway | PASS | `ModelContextProtocol` 2.2.0; pinned `server-everything@2026.8.31`; tool enumeration + allow-listed read-only call passed in CI |
 | SQLite + EF Core | PASS | EF Core 10.0.11 migration -> persist -> export -> wipe -> migrate -> restore -> reload passed in CI |
 | ASP.NET Core + Blazor host | PASS | Host boot, `/health`, Blazor render, DI fake brain, cancellation/logging boundary, and `/brain` smoke test passed in CI |
@@ -56,94 +65,68 @@ Blazor Web App
 
 Merged into `main`.
 
-Established:
-
-- .NET 10 brain spike;
-- OpenAI Responses function-calling compile boundary;
-- Loren-owned `ActionGateway` interception;
-- structured fake action result;
-- mandatory gateway crossing before spike can report PASS;
-- hard turn bound.
+Established .NET 10 brain spike, OpenAI Responses function-calling compile boundary, Loren-owned `ActionGateway`, structured fake results, mandatory gateway crossing before PASS, and hard turn bounds.
 
 ### PR #2 — MCP, persistence, and host
 
 Merged into `main`.
 
-Established:
-
-- real MCP stdio connection and read-only call through Loren gateway;
-- pinned MCP test server version;
-- SQLite/EF migration and recovery proof;
-- ASP.NET Core/Blazor host smoke test.
+Established real MCP stdio connection through the Loren gateway, pinned MCP test server, SQLite/EF migration and recovery proof, and ASP.NET Core/Blazor host smoke test.
 
 ### PR #3 — Async/cancellation preparation
 
 Merged into `main`.
 
-Established:
-
-- async OpenAI Responses path;
-- one cancellation token propagated through provider calls;
-- Ctrl+C and wall-clock timeout bounds;
-- secret-backed provider execution remains outside ordinary PR CI.
+Established async OpenAI Responses calls, one cancellation token propagated through provider calls, Ctrl+C/wall-clock timeout bounds, and secret isolation from ordinary PR CI.
 
 ### PR #4 — Final live-proof automation
 
 Merged into `main`.
 
-Established:
-
-- live validation fails closed if `OPENAI_API_KEY` is missing;
-- normal provider tool round trip is automated;
-- dedicated cancellation mode exercises cancellation at the provider await;
-- ordinary PR/push CI remains secret-free.
+Established normal provider round-trip automation, dedicated provider-await cancellation mode, fail-closed missing-secret behavior, and secret-free ordinary PR/push CI.
 
 ### PR #5 — Connector-safe trusted live trigger
 
 Merged into `main`.
 
-Established:
+Established manual `workflow_dispatch` only from `main` plus connector-triggered live validation only from `spike/adr-002-live-proof-run`, with exact-current-main SHA verification before secret access.
 
-- manual `workflow_dispatch` is permitted only from `main`;
-- connector-triggered live validation uses only the exact branch `spike/adr-002-live-proof-run`;
-- before secret access, the workflow fetches `origin/main` and requires the trigger SHA to equal current `main` exactly;
-- ordinary branches cannot access the secret-backed path.
+## Live validation evidence
 
-### Live validation run #53
-
-Triggered from `spike/adr-002-live-proof-run` at the exact `main` commit `315d21661aae4d9c8da30617f91a93e8b31d85ff`.
-
-Observed:
+### Run #53 — missing secret proof
 
 ```text
-brain spike build                  PASS
-trusted trigger / SHA guard        PASS
-secret detection                   PASS
-OPENAI_API_KEY present?            NO
-fail-closed secret requirement     EXPECTED FAILURE
-live OpenAI round trip             NOT RUN
-live cancellation proof            NOT RUN
+brain build                         PASS
+trusted SHA guard                   PASS
+OPENAI_API_KEY present              NO
+fail-closed secret requirement      EXPECTED FAILURE
 ```
 
-The log contains the explicit message:
+### Run #54 / rerun attempt #2 — real provider reached
+
+After the repository secret was configured:
 
 ```text
-OPENAI_API_KEY repository secret is required to close ADR-002 Gate B.
+brain build                         PASS
+trusted SHA guard                   PASS
+OPENAI_API_KEY present              YES
+secret value exposed in logs        NO (masked)
+OpenAI Responses request            REACHED PROVIDER
+provider response                   HTTP 429
+provider error                      insufficient_quota: credit_balance_exhausted
+normal round trip                   BLOCKED BEFORE MODEL EXECUTION
+cancellation proof                  NOT RUN (previous step failed)
 ```
+
+This proves the secret path and provider network/API path work. It does not yet satisfy the M0 brain behavior proof because no model response was produced.
 
 ## Current blocker
 
-Configure a GitHub Actions repository secret named exactly:
+Add API credit / enable API billing for the OpenAI organization/project associated with the configured `OPENAI_API_KEY`.
 
-```text
-OPENAI_API_KEY
-```
+Do not change or expose the key unless the billing account/project association itself is wrong.
 
-Do not place the key in source, README, issues, PR comments, prompts, or committed environment files.
-
-After the secret exists, re-run the trusted validation. The existing run/branch path is sufficient; no production code change is required just to retry the proof.
-
-The rerun must prove:
+After credit is available, re-run the trusted validation. The rerun must prove:
 
 ```text
 Proof A — normal path
@@ -171,7 +154,9 @@ Until both pass, ADR-002 remains **Proposed** and production v0.1 scaffolding do
 NOW
 v0.0 / Gate B / M0
     |
-    +-- configure GitHub Actions secret: OPENAI_API_KEY
+    +-- add/enable OpenAI API credit for the key's project/org
+    |
+    +-- fast-forward trusted live branch to current main
     |
     +-- rerun trusted live validation
     |      normal provider round trip
