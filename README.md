@@ -26,9 +26,10 @@ Completed so far:
 - **Gate A / ADR-001:** Loren owns canonical identity/state/policy/action authorization.
 - **Gate B / ADR-002:** the provider-neutral v0.1 stack is accepted and M0 is complete.
 - **M1:** production engineering foundation is complete.
-- **M2 Slice 1:** production read-only ActionGateway, Loren-owned correlation IDs, audit path, and structured `github.read_repository` executor are complete and covered by deterministic integration tests.
+- **M2 Slice 1:** production read-only ActionGateway, Loren-owned correlation IDs, audit path, and structured `github.read_repository` executor are complete.
+- **M2 Slice 2:** production `OllamaBrain : IBrain` is complete, including provider-neutral action-schema translation, deterministic tool-call/observation tests, cancellation, and provider-secret isolation.
 
-M2 remains active. The next slice wires a production brain into this read boundary, then exposes the first owner-facing request path.
+M2 remains active. The next slice wires the production brain, runtime, ActionGateway, audit, and GitHub reader together through the actual host path, then runs the first trusted live production-provider read flow.
 
 Detailed status: [`docs/status.md`](docs/status.md).
 
@@ -138,7 +139,7 @@ minimal UI
 
 ### M2 Slice 1 — read boundary complete
 
-Production now includes:
+Production includes:
 
 ```text
 RunId / ActionId created by Loren Runtime
@@ -159,13 +160,34 @@ Important invariants already proven:
 - `github.read_repository` performs public HTTP GET only and has no write or GitHub credential path;
 - deterministic integration tests prove fake brain -> gateway -> fake GitHub -> structured result -> final answer.
 
+### M2 Slice 2 — production Ollama brain complete
+
+Production now also has a real `OllamaBrain : IBrain` behind the same Loren-owned contract.
+
+```text
+Loren ActionDefinition
+ -> provider-neutral typed parameters
+ -> Ollama function-tool JSON
+ -> provider tool_call
+ -> Loren ActionRequest
+```
+
+The adapter also reconstructs prior `BrainActionObservation` values as assistant tool-call + tool-result messages for the next provider turn.
+
+Security/behavior rules proven in deterministic tests:
+
+- `OLLAMA_API_KEY` is not part of serializable options or request JSON;
+- the key is held privately by the adapter and sent only as `Authorization: Bearer ...`;
+- raw provider error bodies are not copied into exception messages;
+- cancellation propagates at the provider await;
+- parallel tool calls fail explicitly until the Loren runtime intentionally supports them;
+- provider JSON types stay outside `Loren.Core`.
+
 ### Next M2 slice
 
 ```text
-production Ollama IBrain
- -> DI wiring
- -> production AgentLoop + ActionGateway + GitHub reader
- -> trusted live provider proof
+wire OllamaBrain + AgentLoop + ActionGateway + GitHub reader through DI
+ -> trusted live provider production read proof
  -> one-owner auth/session
  -> minimal owner UI
 ```
