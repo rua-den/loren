@@ -21,13 +21,14 @@ Loren is a long-lived personal intelligence system with persistent memory, expli
 **Phase:** `v0.1 — Trustworthy Core development`  
 **Current milestone:** `M2 — Walking Skeleton`
 
-The architecture and engineering-foundation gates needed for real product work are now complete:
+Completed so far:
 
 - **Gate A / ADR-001:** Loren owns canonical identity/state/policy/action authorization.
 - **Gate B / ADR-002:** the provider-neutral v0.1 stack is accepted and M0 is complete.
-- **M1:** the production solution, provider-neutral contracts, bounded runtime loop, deterministic tests, CI/static checks, secret/dependency checks, and health smoke test are complete.
+- **M1:** production engineering foundation is complete.
+- **M2 Slice 1:** production read-only ActionGateway, Loren-owned correlation IDs, audit path, and structured `github.read_repository` executor are complete and covered by deterministic integration tests.
 
-M2 is now building the first owner-testable vertical slice.
+M2 remains active. The next slice wires a production brain into this read boundary, then exposes the first owner-facing request path.
 
 Detailed status: [`docs/status.md`](docs/status.md).
 
@@ -86,7 +87,7 @@ Ollama was the first provider that closed the brain proof, not Loren's permanent
 
 ## M1 engineering foundation — complete
 
-Production code now starts with deliberately small boundaries:
+Production code began with deliberately small boundaries:
 
 ```text
 src/
@@ -119,7 +120,7 @@ M1 established:
 
 ## Current work — M2 Walking Skeleton
 
-M2 is the first milestone intended to feel like actually using Loren:
+Target owner flow:
 
 ```text
 "Loren, check repo rua-den/loren."
@@ -135,7 +136,41 @@ minimal UI
  -> Audit
 ```
 
-M2 will add the narrow production pieces needed for that flow: one-owner auth/session, a production brain adapter plus fake brain, read-only GitHub execution, correlation IDs, and minimal audit. No GitHub write path is allowed yet.
+### M2 Slice 1 — read boundary complete
+
+Production now includes:
+
+```text
+RunId / ActionId created by Loren Runtime
+ -> ActionGateway
+ -> ReadOnlyActionPolicy
+ -> GitHubReadRepositoryExecutor
+ -> structured ActionResult
+ -> append-oriented audit
+```
+
+Important invariants already proven:
+
+- the model cannot choose trusted run/action correlation IDs;
+- unregistered or non-read-only actions fail closed before execution;
+- policy failures do not reach executors;
+- executor errors return safe structured failures;
+- cancellation records terminal `cancelled` audit state before propagating;
+- `github.read_repository` performs public HTTP GET only and has no write or GitHub credential path;
+- deterministic integration tests prove fake brain -> gateway -> fake GitHub -> structured result -> final answer.
+
+### Next M2 slice
+
+```text
+production Ollama IBrain
+ -> DI wiring
+ -> production AgentLoop + ActionGateway + GitHub reader
+ -> trusted live provider proof
+ -> one-owner auth/session
+ -> minimal owner UI
+```
+
+No GitHub write path is allowed in M2.
 
 ## Version path
 
