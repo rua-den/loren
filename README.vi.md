@@ -28,8 +28,9 @@ Loren là một hệ thống trí tuệ cá nhân sống lâu dài, có memory b
 - **M1:** engineering foundation production đã hoàn tất.
 - **M2 Slice 1:** production read-only ActionGateway, Loren-owned correlation IDs, audit path và structured `github.read_repository` executor đã hoàn tất.
 - **M2 Slice 2:** production `OllamaBrain : IBrain` đã hoàn tất, gồm provider-neutral action-schema translation, deterministic tool-call/observation tests, cancellation và provider-secret isolation.
+- **M2 Slice 3 (deterministic):** ASP.NET host thật đã wire OllamaBrain, AgentLoop, ActionGateway, read-only GitHub execution và audit qua DI; full production-component read path đã PASS deterministic integration test.
 
-M2 vẫn đang ACTIVE. Slice kế tiếp sẽ wire production brain, runtime, ActionGateway, audit và GitHub reader qua host path thật, sau đó chạy trusted live production-provider read flow đầu tiên.
+M2 vẫn ACTIVE. Proof kế tiếp là trusted live Ollama chạy xuyên production host composition này, sau đó mới tới one-owner auth/session và minimal owner UI.
 
 Chi tiết chuẩn: [`docs/status.md`](docs/status.md).
 
@@ -162,7 +163,7 @@ Các invariant quan trọng đã được chứng minh:
 
 ### M2 Slice 2 — production Ollama brain đã xong
 
-Production giờ có `OllamaBrain : IBrain` thật nằm sau cùng Loren-owned contract.
+Production có `OllamaBrain : IBrain` thật nằm sau cùng Loren-owned contract.
 
 ```text
 Loren ActionDefinition
@@ -172,7 +173,7 @@ Loren ActionDefinition
  -> Loren ActionRequest
 ```
 
-Adapter cũng reconstruct `BrainActionObservation` cũ thành assistant tool-call + tool-result messages cho provider turn kế tiếp.
+Adapter reconstruct `BrainActionObservation` cũ thành assistant tool-call + tool-result messages cho provider turn kế tiếp.
 
 Các security/behavior rule đã được deterministic test:
 
@@ -183,16 +184,36 @@ Các security/behavior rule đã được deterministic test:
 - parallel tool calls fail explicit cho tới khi Loren runtime chủ động support;
 - provider JSON types không lọt vào `Loren.Core`.
 
-### Slice M2 kế tiếp
+### M2 Slice 3 — production host wiring đã PASS deterministic
+
+ASP.NET host giờ compose production read path thật:
 
 ```text
-wire OllamaBrain + AgentLoop + ActionGateway + GitHub reader qua DI
- -> trusted live provider production read proof
- -> one-owner auth/session
- -> minimal owner UI
+Loren.Web DI
+ -> OllamaBrain
+ -> AgentLoop
+ -> ActionGateway
+ -> ReadOnlyActionPolicy
+ -> GitHubReadRepositoryExecutor
+ -> InMemoryAuditSink
 ```
 
-M2 chưa được phép có GitHub write path.
+Deterministic integration test chạy toàn bộ production components với fake HTTP endpoints và chứng minh provider bearer token chỉ xuất hiện ở Ollama request, không xuất hiện trong GitHub request.
+
+Route tạm `/internal/dev/run` mặc định bị tắt. Nó chỉ được map khi `LOREN_ENABLE_DEVELOPMENT_RUN_ENDPOINT=true` và environment là `Development`; bật ngoài Development sẽ fail startup. CI còn assert host bình thường trả `404` cho route này.
+
+### Proof M2 kế tiếp
+
+```text
+trusted live Ollama
+ -> production host composition
+ -> ActionRequest(github.read_repository)
+ -> real public GitHub read
+ -> structured ActionResult
+ -> live Ollama final answer
+```
+
+Sau proof đó M2 tiếp tục với one-owner auth/session và minimal owner UI. M2 chưa được phép có GitHub write path.
 
 ## Lộ trình version
 

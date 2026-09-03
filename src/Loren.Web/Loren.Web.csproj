@@ -2,5 +2,8 @@
   <ItemGroup>
     <ProjectReference Include="../Loren.Core/Loren.Core.csproj" />
     <ProjectReference Include="../Loren.Runtime/Loren.Runtime.csproj" />
+    <ProjectReference Include="../Loren.Brain.Ollama/Loren.Brain.Ollama.csproj" />
+    <ProjectReference Include="../Loren.Infrastructure/Loren.Infrastructure.csproj" />
+    <ProjectReference Include="../Loren.Tools.GitHub/Loren.Tools.GitHub.csproj" />
   </ItemGroup>
 </Project>

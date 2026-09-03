@@ -47,7 +47,7 @@ jobs:
       - name: Dependency vulnerability scan
         run: dotnet package list --project Loren.slnx --vulnerable --include-transitive
 
-      - name: Web health smoke test
+      - name: Web health and default-surface smoke test
         shell: bash
         run: |
           set -euo pipefail
@@ -56,11 +56,23 @@ jobs:
             > /tmp/loren-web.log 2>&1 &
           pid=$!
           trap 'cat /tmp/loren-web.log || true; kill "$pid" 2>/dev/null || true' EXIT
+
+          ready=false
           for i in {1..30}; do
             if curl -fsS http://127.0.0.1:5091/health | grep -q '"status":"ok"'; then
-              exit 0
+              ready=true
+              break
             fi
             sleep 1
           done
-          echo 'Loren web health check did not become ready.'
-          exit 1
+
+          if [[ "$ready" != "true" ]]; then
+            echo 'Loren web health check did not become ready.'
+            exit 1
+          fi
+
+          status="$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:5091/internal/dev/run)"
+          if [[ "$status" != "404" ]]; then
+            echo "Development run endpoint must be absent by default; got HTTP $status."
+            exit 1
+          fi

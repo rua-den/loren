@@ -17,8 +17,9 @@ Loren has completed `v0.0 — Architecture / Feasibility` and the first producti
 - **M1 COMPLETE**: the production engineering foundation is scaffolded, deterministic tests and CI are green, and `Loren.Core` remains provider/framework independent.
 - **M2 Slice 1 COMPLETE**: Loren has a production read-only ActionGateway path, Loren-owned run/action correlation IDs, terminal audit behavior, and a structured `github.read_repository` executor proven with deterministic integration tests.
 - **M2 Slice 2 COMPLETE**: Loren has a production `OllamaBrain : IBrain` adapter with provider-neutral action-schema translation, tool-call parsing, observation replay, cancellation propagation, and explicit provider-secret isolation, all covered by deterministic fake-HTTP tests.
+- **M2 Slice 3 COMPLETE (deterministic)**: `Loren.Web` now composes the production Ollama brain, AgentLoop, ActionGateway, read-only GitHub executor, and audit sink through DI. A full deterministic production-component round trip passes, and the temporary development run route is absent from the default host surface.
 
-Current work remains **M2 — Walking Skeleton**. The next slice wires the production Ollama brain into the host/runtime read boundary and proves the complete production provider -> ActionGateway -> GitHub read -> final answer path before owner auth/UI is added.
+Current work remains **M2 — Walking Skeleton**. The next gate is a trusted live run through the production host path. After that, M2 moves to one-owner authentication/session and the minimal owner UI.
 
 ## Accepted v0.1 stack
 
@@ -247,7 +248,71 @@ Deterministic fake-HTTP tests prove:
 - cancellation at the provider await;
 - provider failure does not expose the raw response body.
 
-The full repository CI chain passes with the production adapter. A trusted **live** run through the production host path remains intentionally pending until the next M2 slice wires DI/runtime/tool execution together.
+## M2 progress — Slice 3 production host wiring
+
+The third M2 slice composes the already-proven boundaries into the actual ASP.NET host without exposing an unauthenticated production chat/tool endpoint.
+
+### Host composition
+
+```text
+Loren.Web DI
+ -> OllamaBrain
+ -> AgentLoop
+ -> ActionGateway
+ -> ReadOnlyActionPolicy
+ -> GitHubReadRepositoryExecutor
+ -> InMemoryAuditSink
+```
+
+`LorenRunService` owns the M2 host-level run composition and exposes only `github.read_repository` to the agent loop.
+
+### HTTP/credential separation
+
+Ollama and GitHub use separate named `HttpClient` instances. The deterministic production-component test proves:
+
+```text
+Ollama request
+  Authorization: Bearer <test provider key>
+        |
+        v
+ActionRequest(github.read_repository)
+        |
+        v
+GitHub GET
+  Authorization: <absent>
+        |
+        v
+structured ActionResult
+        |
+        v
+Ollama final response
+```
+
+The provider key remains absent from model-visible request JSON and is not propagated to the GitHub executor.
+
+### Development-only host proof surface
+
+The temporary M2 route `/internal/dev/run` is **not mapped by default**. It exists only when both conditions hold:
+
+- `ASPNETCORE_ENVIRONMENT=Development`;
+- `LOREN_ENABLE_DEVELOPMENT_RUN_ENDPOINT=true`.
+
+If the flag is enabled outside Development, startup fails closed. Regular CI starts the normal host and explicitly verifies `/internal/dev/run` returns HTTP `404`.
+
+Deterministic integration coverage now proves the production components can complete:
+
+```text
+user message
+ -> production OllamaBrain (fake HTTP provider)
+ -> ActionRequest
+ -> production AgentLoop / ActionGateway / policy
+ -> production GitHubReadRepositoryExecutor (fake HTTP GitHub)
+ -> structured ActionResult
+ -> production OllamaBrain final turn
+ -> LorenRunResult + correlated audit
+```
+
+The next proof must replace the fake provider/GitHub HTTP with the real trusted Ollama provider and real public GitHub read while using this same host composition.
 
 ## Current milestone — M2 Walking Skeleton
 
@@ -272,25 +337,23 @@ Completed inside M2:
 - [x] Loren-owned correlation/run/action IDs;
 - [x] minimal append-oriented in-memory audit contract/path;
 - [x] deterministic fake-brain integration test;
-- [x] production Ollama `IBrain` adapter with deterministic provider-boundary tests.
+- [x] production Ollama `IBrain` adapter with deterministic provider-boundary tests;
+- [x] production host/DI composition with deterministic end-to-end read-path test;
+- [x] default host surface keeps the unauthenticated development run route disabled.
 
 Still required before M2 exits:
 
-- [ ] wire the production `IBrain` into Loren host/runtime DI;
-- [ ] trusted live provider proof through the production M2 read path;
+- [ ] trusted live provider proof through the production M2 host/read path;
 - [ ] one-owner authentication/session;
 - [ ] minimal owner request UI/endpoint;
 - [ ] owner-visible audit for the round trip;
-- [ ] provider/GitHub credential isolation verified through the actual host path.
+- [ ] provider/GitHub credential isolation verified in the trusted live host run.
 
 ## Next execution sequence
 
 ```text
 NOW
-wire OllamaBrain + AgentLoop + ActionGateway + GitHub reader through DI
-    |
-    v
-trusted live provider -> production read boundary proof
+trusted live Ollama -> production host -> ActionGateway -> real GitHub read proof
     |
     v
 one-owner auth/session + minimal owner UI
