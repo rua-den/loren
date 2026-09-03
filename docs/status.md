@@ -15,9 +15,10 @@ Loren has completed `v0.0 — Architecture / Feasibility` and the first producti
 - **Gate B PASSED** through ADR-002: the v0.1 implementation stack and provider-neutral brain boundary are technically proven.
 - **M0 COMPLETE**: real provider loop, cancellation, MCP, persistence/recovery, and web-host proofs passed.
 - **M1 COMPLETE**: the production engineering foundation is scaffolded, deterministic tests and CI are green, and `Loren.Core` remains provider/framework independent.
-- **M2 Slice 1 COMPLETE**: Loren now has a production read-only ActionGateway path, Loren-owned run/action correlation IDs, terminal audit behavior, and a structured `github.read_repository` executor proven with deterministic integration tests.
+- **M2 Slice 1 COMPLETE**: Loren has a production read-only ActionGateway path, Loren-owned run/action correlation IDs, terminal audit behavior, and a structured `github.read_repository` executor proven with deterministic integration tests.
+- **M2 Slice 2 COMPLETE**: Loren has a production `OllamaBrain : IBrain` adapter with provider-neutral action-schema translation, tool-call parsing, observation replay, cancellation propagation, and explicit provider-secret isolation, all covered by deterministic fake-HTTP tests.
 
-Current work remains **M2 — Walking Skeleton**. The next slice wires a production brain into this read boundary and then exposes the first owner-facing request path.
+Current work remains **M2 — Walking Skeleton**. The next slice wires the production Ollama brain into the host/runtime read boundary and proves the complete production provider -> ActionGateway -> GitHub read -> final answer path before owner auth/UI is added.
 
 ## Accepted v0.1 stack
 
@@ -148,7 +149,7 @@ Development/setup guidance lives in `docs/development.md`, and `.env.example` co
 
 ## M2 progress — Slice 1 read boundary
 
-The first M2 production slice establishes the security/audit path before adding a live provider or owner UI.
+The first M2 production slice established the security/audit path before adding a live provider or owner UI.
 
 ### New Loren-owned contracts
 
@@ -191,7 +192,62 @@ fake/deterministic IBrain
 - successful/denied/failed actions retain the same Loren-owned `RunId`/`ActionId` across audit events;
 - normal action audit sequence is `ActionRequested -> PolicyEvaluated -> ActionCompleted`.
 
-Deterministic runtime and integration tests cover the gateway, deny behavior, policy failure, cancellation, structured GitHub result, and fake brain round trip. The full repository CI chain passes after these changes.
+Deterministic runtime and integration tests cover the gateway, deny behavior, policy failure, cancellation, structured GitHub result, and fake brain round trip.
+
+## M2 progress — Slice 2 production Ollama brain
+
+The second M2 slice replaced the Ollama marker project with a real provider adapter behind the existing provider-neutral `IBrain` contract.
+
+### Provider-neutral action schema
+
+`ActionDefinition` now carries minimal typed parameter metadata without importing Ollama/JSON SDK types into `Loren.Core`:
+
+```text
+ActionParameterDefinition
+  name
+  description
+  type: Text | WholeNumber | DecimalNumber | Flag
+  required
+```
+
+`github.read_repository` declares `owner` and `repository` as required text parameters. `OllamaBrain` translates these Loren-owned definitions into Ollama function-tool JSON at the provider boundary.
+
+### Production adapter behavior
+
+```text
+BrainContext
+ -> OllamaBrain
+ -> POST /api/chat
+ -> one tool_call
+ -> Loren ActionRequest
+
+BrainContext + BrainActionObservation
+ -> reconstructed assistant tool call + tool result
+ -> POST /api/chat
+ -> final assistant content
+ -> BrainTurnResult.Final
+```
+
+The current runtime accepts one action per brain turn, so parallel provider tool calls fail explicitly rather than being executed or silently collapsed.
+
+### Provider-secret boundary
+
+The Ollama API key is deliberately **not** part of `OllamaBrainOptions`. It is supplied separately to `OllamaBrain`, retained in a private field, and written only to the outbound `Authorization: Bearer ...` header. This avoids accidental record/options serialization or `ToString()` leakage and keeps the credential out of model-visible request JSON.
+
+Provider HTTP failures return a safe status-only `OllamaBrainException`; raw provider response bodies are not copied into exception messages.
+
+Deterministic fake-HTTP tests prove:
+
+- Loren action schema -> Ollama function-tool translation;
+- API key is in the authorization header and absent from the request body;
+- one provider tool call -> Loren `ActionRequest`;
+- `BrainActionObservation` -> assistant tool-call + tool-result replay;
+- final response parsing;
+- parallel tool-call rejection;
+- cancellation at the provider await;
+- provider failure does not expose the raw response body.
+
+The full repository CI chain passes with the production adapter. A trusted **live** run through the production host path remains intentionally pending until the next M2 slice wires DI/runtime/tool execution together.
 
 ## Current milestone — M2 Walking Skeleton
 
@@ -215,12 +271,13 @@ Completed inside M2:
 - [x] GitHub read-only executor returning structured repository state;
 - [x] Loren-owned correlation/run/action IDs;
 - [x] minimal append-oriented in-memory audit contract/path;
-- [x] deterministic fake-brain integration test.
+- [x] deterministic fake-brain integration test;
+- [x] production Ollama `IBrain` adapter with deterministic provider-boundary tests.
 
 Still required before M2 exits:
 
-- [ ] production `IBrain` implementation wired to the runtime;
-- [ ] trusted live provider proof through the production M2 path;
+- [ ] wire the production `IBrain` into Loren host/runtime DI;
+- [ ] trusted live provider proof through the production M2 read path;
 - [ ] one-owner authentication/session;
 - [ ] minimal owner request UI/endpoint;
 - [ ] owner-visible audit for the round trip;
@@ -230,10 +287,7 @@ Still required before M2 exits:
 
 ```text
 NOW
-production Ollama IBrain adapter
-    |
-    v
-wire AgentLoop + ActionGateway + GitHub reader through DI
+wire OllamaBrain + AgentLoop + ActionGateway + GitHub reader through DI
     |
     v
 trusted live provider -> production read boundary proof
