@@ -12,12 +12,12 @@ public static class GitHubActions
             new ActionParameterDefinition(
                 "owner",
                 "GitHub repository owner or organization name.",
-                ActionParameterType.String,
+                ActionParameterType.Text,
                 true),
             new ActionParameterDefinition(
                 "repository",
                 "GitHub repository name without the owner prefix.",
-                ActionParameterType.String,
+                ActionParameterType.Text,
                 true),
         ]);
 }
