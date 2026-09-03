@@ -11,44 +11,53 @@ Loren is a long-lived personal intelligence system with persistent memory, expli
 1. **Memory-first** — durable state survives conversations, restarts, and provider changes.
 2. **Tool-first** — external facts/actions come from authoritative tools instead of model guessing.
 3. **Permission-first** — a model may request an action; Loren authorizes and executes it.
-4. **Model-independent** — OpenAI, Ollama, Claude, local models, and future providers are adapters.
+4. **Model-independent** — Ollama, OpenAI, Claude, local models, and future providers are adapters.
 5. **Auditable** — consequential actions and important state changes must be reconstructable.
 6. **Progressive autonomy** — proactive/background behavior comes only after lower-level trust boundaries are proven.
 
 ## Current status
 
 **Last updated:** 2026-09-03  
-**Phase:** `v0.0 — Architecture / Feasibility`  
-**Gate:** `Gate B — v0.1 implementation stack`  
-**Milestone:** `M0 — ADR-002 technical validation`
+**Phase:** `v0.1 — Trustworthy Core development`  
+**Current milestone:** `M1 — Engineering foundation`
 
-Gate A is **PASSED**. Loren owns canonical state and the action/security boundary.
+Both architecture gates required to start production are now passed:
 
-Gate B is now being completed as a **provider-neutral brain proof**. OpenAI credential/provider reachability was proven, but model execution was blocked by `429 credit_balance_exhausted`. That vendor billing issue no longer defines the architecture gate.
+- **Gate A / ADR-001:** Loren owns canonical identity/state/policy/action authorization.
+- **Gate B / ADR-002:** the provider-neutral v0.1 stack is accepted and M0 is complete.
 
-PR #6 adds a native Ollama Cloud brain path and updates trusted validation to choose an available provider:
+Trusted M0 run #70 proved the complete real brain path with Ollama Cloud (`gpt-oss:120b`):
 
 ```text
-OLLAMA_API_KEY present  -> Ollama
-else OPENAI_API_KEY     -> OpenAI
-else                    -> fail closed
+real model
+ -> get_project_status ActionRequest
+ -> Loren ActionGateway
+ -> structured ActionResult
+ -> real model final answer
+ -> PASS
 ```
 
-Current M0 evidence:
+The same run proved live provider cancellation and completed MCP, SQLite/EF recovery, and ASP.NET/Blazor regressions successfully. Provider secrets remained masked.
 
-| Area | Status |
-| --- | --- |
-| Loren-owned ActionGateway / bounded loop | ✅ PASS |
-| OpenAI adapter compile + provider reachability | ✅ PASS |
-| OpenAI behavioral proof | ⚠️ blocked by provider credit |
-| Ollama brain spike compile | ✅ PASS |
-| Ollama live tool round trip | ⏳ OPEN after PR #6 merge |
-| Ollama live cancellation | ⏳ OPEN after PR #6 merge |
-| MCP client + Loren gateway | ✅ PASS |
-| SQLite + EF Core migration/recovery | ✅ PASS |
-| ASP.NET Core + Blazor host | ✅ PASS |
+Ollama is the **first provider that closed the brain proof**, not Loren's permanent identity. OpenAI remains an optional adapter; its currently configured API account is blocked by provider credit, which no longer blocks Loren's architecture.
 
 Detailed status: [`docs/status.md`](docs/status.md).
+
+## Accepted v0.1 stack
+
+```text
+C# 14 / .NET 10 LTS
+ASP.NET Core
+small Loren-owned bounded agent loop
+provider-neutral IBrain
+  ├─ Ollama adapter
+  ├─ OpenAI adapter
+  └─ future providers/local models
+MCP C# SDK behind Loren action contracts
+SQLite + EF Core
+Blazor Web App
+xUnit
+```
 
 ## Brain architecture
 
@@ -70,16 +79,32 @@ Detailed status: [`docs/status.md`](docs/status.md).
 
 Changing providers must not require migrating Loren's identity, memory, permissions, projects, or audit history.
 
+## Current work — M1
+
+M1 builds the production engineering foundation:
+
+- production .NET solution/project boundaries;
+- pinned SDK/packages;
+- deterministic xUnit tests;
+- CI restore/build/test/static checks;
+- nullable/warnings/analyzers/formatting policy;
+- `.env.example` and local setup docs;
+- secret/dependency scanning;
+- startup/health test;
+- `Loren.Core` remains free of provider/MCP/EF/Blazor dependencies.
+
+The `spikes/` directory remains technical evidence, not production architecture.
+
 ## First owner-testable preview
 
-The first meaningful owner-facing preview remains **v0.1 M2 — Walking Skeleton**:
+The first meaningful owner-facing preview is still **v0.1 M2 — Walking Skeleton**:
 
 ```text
 "Loren, check repo rua-den/loren."
 
 UI
  -> Loren Runtime
- -> IBrain
+ -> configured IBrain
  -> github.read_repository ActionRequest
  -> Action Gateway
  -> GitHub read executor
@@ -88,29 +113,13 @@ UI
  -> Audit
 ```
 
-M1 establishes the engineering foundation. M2 is the first milestone intended to feel like actually using Loren.
-
-## Proposed v0.1 stack
-
-Pending final ADR-002 acceptance:
-
-```text
-C# 14 / .NET 10
-ASP.NET Core
-small Loren-owned agent loop
-provider-neutral IBrain
-Ollama and OpenAI adapters
-MCP C# SDK behind Loren adapters
-SQLite + EF Core
-Blazor Web App
-xUnit
-```
+M1 is engineering foundation. M2 is the first milestone intended to feel like actually using Loren.
 
 ## Version path
 
 ```text
-v0.0  architecture / feasibility        <- current
-v0.1  trustworthy core
+v0.0  architecture / feasibility        ✓ complete
+v0.1  trustworthy core                 <- current development
 v0.2  useful project assistant
 v0.3  personal operations
 v0.4  voice + device presence
@@ -138,9 +147,9 @@ A milestone is not closed until code/tests and repository documentation agree.
 - [`docs/vision.md`](docs/vision.md) — product vision
 - [`docs/architecture.md`](docs/architecture.md) — active system boundaries
 - [`docs/plans/master-plan.md`](docs/plans/master-plan.md) — version milestones and gates
-- [`docs/plans/v0.1.md`](docs/plans/v0.1.md) — detailed v0.1 plan
+- [`docs/plans/v0.1.md`](docs/plans/v0.1.md) — detailed v0.1 implementation plan
 - [`docs/decisions/001-agent-runtime-strategy.md`](docs/decisions/001-agent-runtime-strategy.md) — accepted Loren-owned core/runtime boundary
-- [`docs/decisions/002-v0.1-technology-stack.md`](docs/decisions/002-v0.1-technology-stack.md) — proposed v0.1 stack and M0 evidence
+- [`docs/decisions/002-v0.1-technology-stack.md`](docs/decisions/002-v0.1-technology-stack.md) — accepted provider-neutral v0.1 stack and M0 evidence
 - [`docs/memory.md`](docs/memory.md) — memory model
 - [`docs/permissions.md`](docs/permissions.md) — permission model
 - [`docs/security.md`](docs/security.md) — security baseline
