@@ -213,9 +213,8 @@ public sealed class OllamaBrainTests
         HttpClient httpClient = new(handler);
         OllamaBrainOptions options = new(
             "test-model",
-            new Uri("https://ollama.example/api/chat"),
-            apiKey);
-        return new OllamaBrain(httpClient, options);
+            new Uri("https://ollama.example/api/chat"));
+        return new OllamaBrain(httpClient, options, apiKey);
     }
 
     private static HttpResponseMessage JsonResponse(string json) => new(HttpStatusCode.OK)
