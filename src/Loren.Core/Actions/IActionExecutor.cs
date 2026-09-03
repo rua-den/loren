@@ -1,8 +1,10 @@
 namespace Loren.Core.Actions;
 
-public interface IActionGateway
+public interface IActionExecutor
 {
+    string ActionName { get; }
+
     Task<ActionResult> ExecuteAsync(
-        ActionExecutionRequest execution,
+        ActionRequest request,
         CancellationToken cancellationToken);
 }

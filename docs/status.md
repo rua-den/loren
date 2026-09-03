@@ -15,8 +15,9 @@ Loren has completed `v0.0 — Architecture / Feasibility` and the first producti
 - **Gate B PASSED** through ADR-002: the v0.1 implementation stack and provider-neutral brain boundary are technically proven.
 - **M0 COMPLETE**: real provider loop, cancellation, MCP, persistence/recovery, and web-host proofs passed.
 - **M1 COMPLETE**: the production engineering foundation is scaffolded, deterministic tests and CI are green, and `Loren.Core` remains provider/framework independent.
+- **M2 Slice 1 COMPLETE**: Loren now has a production read-only ActionGateway path, Loren-owned run/action correlation IDs, terminal audit behavior, and a structured `github.read_repository` executor proven with deterministic integration tests.
 
-Current work is **M2 — Walking Skeleton**, the first owner-testable vertical slice.
+Current work remains **M2 — Walking Skeleton**. The next slice wires a production brain into this read boundary and then exposes the first owner-facing request path.
 
 ## Accepted v0.1 stack
 
@@ -97,11 +98,11 @@ tests/
 └── Loren.Runtime.Tests/
 ```
 
-Tools/GitHub-specific and larger integration/E2E projects remain deferred until a real M2/M3 capability needs them. Project count is intentionally smaller than the conceptual architecture; dependency direction matters more than ceremony.
+Tools/GitHub-specific and larger integration/E2E projects were deferred until a real M2 capability needed them. Project count is intentionally smaller than the conceptual architecture; dependency direction matters more than ceremony.
 
 ### Foundation contracts
 
-`Loren.Core` now defines provider-neutral contracts including:
+`Loren.Core` defines provider-neutral contracts including:
 
 ```text
 IBrain
@@ -145,9 +146,56 @@ web /health smoke test          PASS
 
 Development/setup guidance lives in `docs/development.md`, and `.env.example` contains names only—no real credentials.
 
+## M2 progress — Slice 1 read boundary
+
+The first M2 production slice establishes the security/audit path before adding a live provider or owner UI.
+
+### New Loren-owned contracts
+
+```text
+RunId
+ActionId
+ActionExecutionRequest
+PolicyDecision
+IActionPolicy
+IActionExecutor
+AuditEvent
+IAuditSink
+```
+
+The model still produces only an `ActionRequest`. Loren Runtime creates the trusted `RunId` and `ActionId`; provider output cannot choose the correlation identity used for policy and audit.
+
+### Production read path
+
+```text
+fake/deterministic IBrain
+ -> ActionRequest(github.read_repository)
+ -> AgentLoop assigns RunId + ActionId
+ -> ActionGateway
+ -> ReadOnlyActionPolicy
+ -> GitHubReadRepositoryExecutor
+ -> structured ActionResult
+ -> BrainActionObservation
+ -> final brain response
+```
+
+`github.read_repository` performs only an HTTP `GET` to the public GitHub repository endpoint and returns structured fields such as `full_name`, `default_branch`, archive/private state, issue count, push time, and repository URL. This slice has no GitHub write action and no GitHub credential path.
+
+### Fail-closed and audit invariants
+
+- unregistered actions are denied before execution;
+- actions not declared read-only are denied before execution;
+- policy exceptions fail closed and do not reach the executor;
+- executor exceptions are converted to safe structured failures without leaking exception messages;
+- cancellation propagates but writes a terminal `cancelled` audit event first;
+- successful/denied/failed actions retain the same Loren-owned `RunId`/`ActionId` across audit events;
+- normal action audit sequence is `ActionRequested -> PolicyEvaluated -> ActionCompleted`.
+
+Deterministic runtime and integration tests cover the gateway, deny behavior, policy failure, cancellation, structured GitHub result, and fake brain round trip. The full repository CI chain passes after these changes.
+
 ## Current milestone — M2 Walking Skeleton
 
-M2 builds the first complete user-to-tool vertical slice:
+Target end state:
 
 ```text
 Owner / minimal UI
@@ -161,67 +209,46 @@ Owner / minimal UI
  -> Audit
 ```
 
-Required M2 work:
+Completed inside M2:
 
-- one-owner authentication/session;
-- at least one production `IBrain` implementation plus deterministic fake brain;
-- Action Gateway for reads as well as future writes;
-- GitHub read-only executor returning structured repository state;
-- correlation/run/action IDs;
-- minimal append-oriented audit across the round trip;
-- runtime receives prepared context rather than direct database access;
-- provider and GitHub credentials remain outside brain-visible context.
+- [x] Action Gateway read path;
+- [x] GitHub read-only executor returning structured repository state;
+- [x] Loren-owned correlation/run/action IDs;
+- [x] minimal append-oriented in-memory audit contract/path;
+- [x] deterministic fake-brain integration test.
+
+Still required before M2 exits:
+
+- [ ] production `IBrain` implementation wired to the runtime;
+- [ ] trusted live provider proof through the production M2 path;
+- [ ] one-owner authentication/session;
+- [ ] minimal owner request UI/endpoint;
+- [ ] owner-visible audit for the round trip;
+- [ ] provider/GitHub credential isolation verified through the actual host path.
 
 ## Next execution sequence
 
 ```text
 NOW
-v0.1 / M2 Walking Skeleton
+production Ollama IBrain adapter
     |
-    +-- production brain adapter
-    +-- github.read_repository action
-    +-- Action Gateway read path
-    +-- minimal owner auth/UI
-    +-- correlation + audit
-    +-- deterministic + integration tests
+    v
+wire AgentLoop + ActionGateway + GitHub reader through DI
+    |
+    v
+trusted live provider -> production read boundary proof
+    |
+    v
+one-owner auth/session + minimal owner UI
+    |
+    v
+"Loren, check repo rua-den/loren."
     |
     v
 FIRST OWNER-TESTABLE LOREN PREVIEW
     |
     v
 M3 — Canonical state
-    v
-M4 — Trusted memory
-    v
-M5 — Permission/credential boundary + GitHub writes
-    v
-M6 — Minimal daily-use UI
-    v
-M7 — Export/restore
-    v
-M8 — Security/reliability E2E
-    v
-v0.1.0
-```
-
-## First owner-testable milestone
-
-M2 is now active and remains the first meaningful user test.
-
-Expected flow:
-
-```text
-Owner: "Loren, check repo rua-den/loren."
-
-UI
- -> Loren Runtime
- -> configured IBrain provider
- -> github.read_repository ActionRequest
- -> Loren ActionGateway
- -> GitHub read executor
- -> structured ActionResult
- -> IBrain final response
- -> Audit
 ```
 
 ## Progress-update rule
