@@ -127,22 +127,21 @@ try
         }
 
         using var content = new StringContent(request.ToJsonString(), Encoding.UTF8, "application/json");
-        using HttpResponseMessage response;
+        string responseBody;
         try
         {
-            response = await http.PostAsync(endpoint, content, cancellation.Token);
+            using HttpResponseMessage response = await http.PostAsync(endpoint, content, cancellation.Token);
+            responseBody = await response.Content.ReadAsStringAsync(cancellation.Token);
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException(
+                    $"Ollama provider returned HTTP {(int)response.StatusCode} ({response.StatusCode}). Body: {responseBody}");
+            }
         }
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested && expectCancellation)
         {
             Console.WriteLine("[ollama-spike] PASS: cancellation was observed at the live Ollama provider await.");
             return;
-        }
-
-        string responseBody = await response.Content.ReadAsStringAsync(cancellation.Token);
-        if (!response.IsSuccessStatusCode)
-        {
-            throw new InvalidOperationException(
-                $"Ollama provider returned HTTP {(int)response.StatusCode} ({response.StatusCode}). Body: {responseBody}");
         }
 
         JsonObject root = JsonNode.Parse(responseBody)?.AsObject()
