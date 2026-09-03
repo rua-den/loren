@@ -21,13 +21,14 @@ Loren là một hệ thống trí tuệ cá nhân sống lâu dài, có memory b
 **Phase:** `v0.1 — Trustworthy Core development`  
 **Milestone hiện tại:** `M2 — Walking Skeleton`
 
-Các gate/foundation cần để bắt đầu làm product thật đã hoàn tất:
+Đã hoàn tất tới đây:
 
 - **Gate A / ADR-001:** Loren sở hữu canonical identity/state/policy/action authorization.
 - **Gate B / ADR-002:** stack v0.1 provider-neutral đã được accept và M0 đã hoàn tất.
-- **M1:** production solution, provider-neutral contracts, bounded runtime loop, deterministic tests, CI/static checks, secret/dependency checks và health smoke test đều đã hoàn tất.
+- **M1:** engineering foundation production đã hoàn tất.
+- **M2 Slice 1:** production read-only ActionGateway, Loren-owned correlation IDs, audit path và structured `github.read_repository` executor đã hoàn tất và có deterministic integration tests.
 
-M2 giờ là vertical slice đầu tiên mà owner có thể test Loren theo flow thật.
+M2 vẫn đang ACTIVE. Slice kế tiếp sẽ gắn production brain vào read boundary này, sau đó mới mở request path đầu tiên cho owner.
 
 Chi tiết chuẩn: [`docs/status.md`](docs/status.md).
 
@@ -86,7 +87,7 @@ Ollama chỉ là provider đầu tiên đóng được brain proof, không phả
 
 ## M1 engineering foundation — hoàn tất
 
-Production code hiện bắt đầu với boundaries cố ý gọn:
+Production code bắt đầu với boundaries cố ý gọn:
 
 ```text
 src/
@@ -119,7 +120,7 @@ M1 đã dựng:
 
 ## Công việc hiện tại — M2 Walking Skeleton
 
-M2 là milestone đầu tiên được thiết kế để có cảm giác đang dùng Loren thật:
+Target owner flow:
 
 ```text
 "Loren, check repo rua-den/loren."
@@ -135,7 +136,41 @@ minimal UI
  -> Audit
 ```
 
-M2 sẽ thêm đúng các mảnh production cần cho flow này: one-owner auth/session, production brain adapter + fake brain, read-only GitHub executor, correlation IDs và minimal audit. Chưa mở GitHub write path ở M2.
+### M2 Slice 1 — read boundary đã xong
+
+Production giờ đã có:
+
+```text
+RunId / ActionId do Loren Runtime tạo
+ -> ActionGateway
+ -> ReadOnlyActionPolicy
+ -> GitHubReadRepositoryExecutor
+ -> structured ActionResult
+ -> append-oriented audit
+```
+
+Các invariant quan trọng đã được chứng minh:
+
+- model không được tự chọn trusted run/action correlation IDs;
+- action chưa đăng ký hoặc không read-only bị fail closed trước executor;
+- policy failure không chạm executor;
+- executor error thành safe structured failure;
+- cancellation ghi terminal `cancelled` audit trước khi propagate;
+- `github.read_repository` chỉ HTTP GET public và không có GitHub write/credential path;
+- deterministic integration test chứng minh fake brain -> gateway -> fake GitHub -> structured result -> final answer.
+
+### Slice M2 kế tiếp
+
+```text
+production Ollama IBrain
+ -> DI wiring
+ -> production AgentLoop + ActionGateway + GitHub reader
+ -> trusted live provider proof
+ -> one-owner auth/session
+ -> minimal owner UI
+```
+
+M2 chưa được phép có GitHub write path.
 
 ## Lộ trình version
 
