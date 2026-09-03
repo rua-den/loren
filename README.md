@@ -28,8 +28,9 @@ Completed so far:
 - **M1:** production engineering foundation is complete.
 - **M2 Slice 1:** production read-only ActionGateway, Loren-owned correlation IDs, audit path, and structured `github.read_repository` executor are complete.
 - **M2 Slice 2:** production `OllamaBrain : IBrain` is complete, including provider-neutral action-schema translation, deterministic tool-call/observation tests, cancellation, and provider-secret isolation.
+- **M2 Slice 3 (deterministic):** the actual ASP.NET host now wires OllamaBrain, AgentLoop, ActionGateway, read-only GitHub execution, and audit through DI; the full production-component read path passes deterministic integration tests.
 
-M2 remains active. The next slice wires the production brain, runtime, ActionGateway, audit, and GitHub reader together through the actual host path, then runs the first trusted live production-provider read flow.
+M2 remains active. The next proof is a trusted live Ollama run through this production host composition, followed by one-owner auth/session and the minimal owner UI.
 
 Detailed status: [`docs/status.md`](docs/status.md).
 
@@ -162,7 +163,7 @@ Important invariants already proven:
 
 ### M2 Slice 2 — production Ollama brain complete
 
-Production now also has a real `OllamaBrain : IBrain` behind the same Loren-owned contract.
+Production has a real `OllamaBrain : IBrain` behind the same Loren-owned contract.
 
 ```text
 Loren ActionDefinition
@@ -172,7 +173,7 @@ Loren ActionDefinition
  -> Loren ActionRequest
 ```
 
-The adapter also reconstructs prior `BrainActionObservation` values as assistant tool-call + tool-result messages for the next provider turn.
+The adapter reconstructs prior `BrainActionObservation` values as assistant tool-call + tool-result messages for the next provider turn.
 
 Security/behavior rules proven in deterministic tests:
 
@@ -183,16 +184,36 @@ Security/behavior rules proven in deterministic tests:
 - parallel tool calls fail explicitly until the Loren runtime intentionally supports them;
 - provider JSON types stay outside `Loren.Core`.
 
-### Next M2 slice
+### M2 Slice 3 — production host wiring complete deterministically
+
+The ASP.NET host now composes the production read path:
 
 ```text
-wire OllamaBrain + AgentLoop + ActionGateway + GitHub reader through DI
- -> trusted live provider production read proof
- -> one-owner auth/session
- -> minimal owner UI
+Loren.Web DI
+ -> OllamaBrain
+ -> AgentLoop
+ -> ActionGateway
+ -> ReadOnlyActionPolicy
+ -> GitHubReadRepositoryExecutor
+ -> InMemoryAuditSink
 ```
 
-No GitHub write path is allowed in M2.
+A deterministic integration test runs the complete production-component sequence with fake HTTP endpoints and proves the provider bearer token is present only on the Ollama request and absent from the GitHub request.
+
+The temporary `/internal/dev/run` route is disabled by default. It is mapped only when `LOREN_ENABLE_DEVELOPMENT_RUN_ENDPOINT=true` under the `Development` environment; enabling it outside Development fails startup. CI explicitly verifies the normal host returns `404` for that route.
+
+### Next M2 proof
+
+```text
+trusted live Ollama
+ -> production host composition
+ -> ActionRequest(github.read_repository)
+ -> real public GitHub read
+ -> structured ActionResult
+ -> live Ollama final answer
+```
+
+After that proof, M2 continues with one-owner auth/session and the minimal owner UI. No GitHub write path is allowed in M2.
 
 ## Version path
 
