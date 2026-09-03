@@ -2,81 +2,93 @@
 
 [English](README.md) · **Tiếng Việt**
 
-Loren là một hệ thống trí tuệ cá nhân: một trợ lý sống lâu dài, có trí nhớ bền vững, quyền hạn rõ ràng, khả năng sử dụng công cụ, và về sau có thể chủ động hỗ trợ xuyên suốt đời sống số của chủ sở hữu.
+Loren là một hệ thống trí tuệ cá nhân sống lâu dài, có memory bền vững, permission rõ ràng, khả năng dùng tool và về sau có thể chủ động hỗ trợ xuyên suốt đời sống số của chủ sở hữu.
 
-Loren không được xây để trở thành một giao diện chat khác hay một bản sao agent framework. Project này sở hữu những phần làm cho Loren thực sự là *Loren* — identity, memory, world model cá nhân, permission, project context, action boundary và experience — còn model và hạ tầng thực thi được xem là những thành phần có thể thay thế.
+> **Model chỉ là compute có thể thay thế. Loren sở hữu identity, memory, context, policy, action boundary và lịch sử.**
 
-## Định nghĩa ngắn gọn
+## Nguyên tắc cốt lõi
 
-> **Loren là một hệ thống trí tuệ cá nhân có trạng thái. Model là bộ não suy luận; Loren sở hữu identity, memory, context, policy, action boundary và lịch sử bao quanh bộ não đó.**
-
-## Nguyên tắc sản phẩm
-
-1. **Cá nhân, không generic** — Loren phải ngày càng hữu ích khi hiểu các preference, project, người, thiết bị và quyết định ổn định của chủ sở hữu.
-2. **Memory-first** — state quan trọng phải sống qua conversation, đổi model, restart và đổi hạ tầng.
-3. **Tool-first** — dùng tool/API có thẩm quyền cho dữ liệu và hành động thay vì để model đoán.
-4. **Permission-first** — model có thể yêu cầu hành động; Loren mới là bên authorize và execute qua policy deterministic.
-5. **Model-independent** — model provider là bộ não suy luận có thể thay thế, không phải identity của Loren.
-6. **Auditable** — action, approval, memory mutation quan trọng và background work phải có thể reconstruct.
-7. **Ưu tiên sở hữu local khi hợp lý** — personal state và secret nên nằm dưới quyền kiểm soát của chủ sở hữu khi có thể.
-8. **Tự chủ tăng dần** — Loren bắt đầu theo yêu cầu của user và chỉ tăng background/proactive behavior sau khi trust boundary thấp hơn đã được chứng minh.
+1. **Memory-first** — state bền vững phải sống qua conversation, restart và đổi provider.
+2. **Tool-first** — dữ liệu/action ngoài hệ thống phải đi qua tool có thẩm quyền thay vì để model đoán.
+3. **Permission-first** — model có thể request action; Loren mới authorize và execute.
+4. **Model-independent** — OpenAI, Ollama, Claude, local model và provider tương lai đều chỉ là adapter.
+5. **Auditable** — action quan trọng và state mutation phải reconstruct được.
+6. **Tự chủ tăng dần** — background/proactive behavior chỉ đến sau khi trust boundary thấp hơn đã được chứng minh.
 
 ## Trạng thái hiện tại
 
-**Cập nhật lần cuối: 2026-09-03**  
+**Cập nhật:** 2026-09-03  
 **Phase:** `v0.0 — Architecture / Feasibility`  
-**Gate hiện tại:** `Gate B — v0.1 implementation stack`  
-**Milestone hiện tại:** `M0 — ADR-002 technical validation`  
-**Blocker hiện tại:** OpenAI API đã hết/chưa có credit
+**Gate:** `Gate B — v0.1 implementation stack`  
+**Milestone:** `M0 — ADR-002 technical validation`
 
-Gate A đã hoàn tất: ADR-001 chốt Loren-owned core, còn model/runtime/MCP là adapter có thể thay thế.
+Gate A đã **PASS**. Loren sở hữu canonical state và action/security boundary.
 
-Gate B đã hoàn thành toàn bộ phần implementation không cần secret và giờ đã gọi được tới OpenAI Responses API thật bằng repository secret đã cấu hình.
+Gate B giờ được đóng theo hướng **provider-neutral brain proof**. OpenAI credential/provider path đã được chứng minh, nhưng model chưa chạy vì API trả `429 credit_balance_exhausted`. Billing của một vendor không nên trở thành architecture gate của Loren.
+
+PR #6 thêm native Ollama Cloud brain path và trusted validation sẽ chọn provider có credential:
+
+```text
+có OLLAMA_API_KEY  -> Ollama
+nếu không, có OPENAI_API_KEY -> OpenAI
+không có cái nào   -> fail closed
+```
+
+Evidence M0 hiện tại:
 
 | Phần | Trạng thái |
 | --- | --- |
-| OpenAI brain-loop compile boundary | ✅ PASS |
-| Automation cho live OpenAI proof | ✅ PASS |
-| Trusted live trigger qua connector | ✅ PASS |
-| Repository `OPENAI_API_KEY` | ✅ PASS |
-| Request tới OpenAI provider | ✅ PASS |
-| OpenAI API credit/quota | ❌ BLOCKED — `credit_balance_exhausted` |
-| Live OpenAI Responses round trip | ⏳ OPEN |
-| Live provider cancellation execution | ⏳ OPEN |
+| Loren ActionGateway / bounded loop | ✅ PASS |
+| OpenAI adapter compile + provider reachability | ✅ PASS |
+| OpenAI behavioral proof | ⚠️ bị chặn bởi provider credit |
+| Ollama brain spike compile | ✅ PASS |
+| Ollama live tool round trip | ⏳ OPEN sau khi PR #6 merge |
+| Ollama live cancellation | ⏳ OPEN sau khi PR #6 merge |
 | MCP client + Loren gateway | ✅ PASS |
 | SQLite + EF Core migration/recovery | ✅ PASS |
 | ASP.NET Core + Blazor host | ✅ PASS |
 
-Trusted rerun đã nhận secret thành công (log chỉ hiện `***`) và chạm được OpenAI, nhưng provider trả:
+Chi tiết chuẩn: [`docs/status.md`](docs/status.md).
+
+## Kiến trúc brain
 
 ```text
-HTTP 429
-insufficient_quota: credit_balance_exhausted
+                Loren Core
+                    │
+                  IBrain
+                    │
+        ┌───────────┼───────────┐
+        │           │           │
+     Ollama       OpenAI      future
+        │           │           │
+        └──── ActionRequest ─────┘
+                    │
+             Loren ActionGateway
+                    │
+            Policy / Executor / Audit
 ```
 
-Model chưa chạy, nên ADR-002 vẫn là **Proposed**. Sau khi API có credit, cùng trusted validation này sẽ chạy lại normal flow model → ActionGateway → result → final answer và live cancellation path.
-
-Chi tiết tiến độ chuẩn nằm tại [`docs/status.md`](docs/status.md).
+Đổi provider không được kéo theo migrate identity, memory, permission, project hay audit history của Loren.
 
 ## Mốc đầu tiên mày có thể test Loren như user
 
-Preview đầu tiên cho owner được lên kế hoạch ở **v0.1 M2 — Walking Skeleton**:
+Preview đầu tiên vẫn là **v0.1 M2 — Walking Skeleton**:
 
 ```text
 "Loren, check repo rua-den/loren."
 
 UI
  -> Loren Runtime
- -> Brain
+ -> IBrain
  -> github.read_repository ActionRequest
  -> Action Gateway
  -> GitHub read executor
  -> structured result
- -> Brain final response
+ -> IBrain final response
  -> Audit
 ```
 
-M1 là engineering foundation; M2 là milestone đầu tiên được thiết kế để có cảm giác đang thực sự dùng Loren chứ không chỉ test hạ tầng.
+M1 là engineering foundation. M2 là milestone đầu tiên được thiết kế để có cảm giác đang thực sự dùng Loren.
 
 ## Stack đề xuất cho v0.1
 
@@ -86,10 +98,12 @@ Chờ ADR-002 accept chính thức:
 C# 14 / .NET 10
 ASP.NET Core
 small Loren-owned agent loop
-OpenAI Responses API làm brain đầu tiên
-MCP C# SDK sau Loren adapter
+provider-neutral IBrain
+Ollama và OpenAI adapters
+MCP C# SDK sau Loren adapters
 SQLite + EF Core
 Blazor Web App
+xUnit
 ```
 
 ## Lộ trình version
@@ -109,26 +123,24 @@ Version chỉ được nâng khi vượt exit gate, không dựa vào ngày thá
 
 ## Kỷ luật cập nhật tiến độ
 
-Bất kỳ merge nào làm thay đổi capability, milestone completion, ADR status, dependency version đã validate hoặc next execution target đều phải cập nhật:
+Bất kỳ merge nào làm thay đổi capability, milestone completion, ADR status, provider/dependency đã validate hoặc next execution target đều phải cập nhật:
 
-- [`docs/status.md`](docs/status.md) — trạng thái chi tiết chuẩn;
-- [`README.md`](README.md) — bản tóm tắt tiếng Anh;
-- `README.vi.md` — bản tóm tắt tiếng Việt;
-- ADR/plan tương ứng khi decision hoặc milestone thay đổi.
+- [`docs/status.md`](docs/status.md)
+- [`README.md`](README.md)
+- `README.vi.md`
+- ADR/plan liên quan khi cần
 
-Một milestone chưa được xem là đóng hoàn toàn nếu code/tests và documentation trong repo chưa nói cùng một trạng thái.
+Một milestone chưa đóng nếu code/tests và documentation trong repo chưa nói cùng một trạng thái.
 
 ## Tài liệu
 
-- [`docs/status.md`](docs/status.md) — tiến độ hiện tại và bước tiếp theo
-- [`docs/vision.md`](docs/vision.md) — product vision và target experience
-- [`docs/architecture.md`](docs/architecture.md) — system boundaries đang áp dụng
-- [`docs/plans/master-plan.md`](docs/plans/master-plan.md) — milestones/version gates chuẩn
-- [`docs/plans/v0.1.md`](docs/plans/v0.1.md) — implementation plan chi tiết cho trustworthy core
-- [`docs/roadmap.md`](docs/roadmap.md) — capability roadmap ngắn gọn
-- [`docs/research/agent-landscape.md`](docs/research/agent-landscape.md) — research ecosystem và cơ hội reuse
+- [`docs/status.md`](docs/status.md) — tiến độ hiện tại chuẩn
+- [`docs/vision.md`](docs/vision.md) — product vision
+- [`docs/architecture.md`](docs/architecture.md) — system boundaries
+- [`docs/plans/master-plan.md`](docs/plans/master-plan.md) — milestones/version gates
+- [`docs/plans/v0.1.md`](docs/plans/v0.1.md) — plan chi tiết v0.1
 - [`docs/decisions/001-agent-runtime-strategy.md`](docs/decisions/001-agent-runtime-strategy.md) — Loren-owned core/runtime boundary đã accept
-- [`docs/decisions/002-v0.1-technology-stack.md`](docs/decisions/002-v0.1-technology-stack.md) — stack v0.1 đề xuất và validation evidence
+- [`docs/decisions/002-v0.1-technology-stack.md`](docs/decisions/002-v0.1-technology-stack.md) — stack v0.1 đề xuất và evidence M0
 - [`docs/memory.md`](docs/memory.md) — memory model
 - [`docs/permissions.md`](docs/permissions.md) — permission model
 - [`docs/security.md`](docs/security.md) — security baseline
@@ -136,4 +148,4 @@ Một milestone chưa được xem là đóng hoàn toàn nếu code/tests và d
 
 ## Vai trò của repository
 
-Repository này là source of truth cho product decisions, architecture, delivery plan, implementation, tiến độ hiện tại và release history của Loren.
+Repository này là source of truth cho product decisions, architecture, delivery plan, implementation, progress và release history của Loren.
