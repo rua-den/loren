@@ -25,6 +25,7 @@ public sealed class AgentLoop
         ArgumentNullException.ThrowIfNull(initialContext);
         ArgumentNullException.ThrowIfNull(availableActions);
 
+        RunId runId = RunId.New();
         BrainContext context = initialContext;
         int actionCount = 0;
 
@@ -41,6 +42,7 @@ public sealed class AgentLoop
             {
                 return new AgentRunResult(
                     brainTurn.FinalOutput!,
+                    runId,
                     turn,
                     actionCount);
             }
@@ -55,7 +57,11 @@ public sealed class AgentLoop
                     $"Agent run exceeded the action limit of {_options.MaxActions}.");
             }
 
-            ActionResult result = await _gateway.ExecuteAsync(request, cancellationToken);
+            ActionExecutionRequest execution = new(
+                runId,
+                ActionId.New(),
+                request);
+            ActionResult result = await _gateway.ExecuteAsync(execution, cancellationToken);
             context = context.Append(new BrainActionObservation(request, result));
         }
 
@@ -66,6 +72,7 @@ public sealed class AgentLoop
 
 public sealed record AgentRunResult(
     string FinalOutput,
+    RunId RunId,
     int Turns,
     int ActionCount);
 

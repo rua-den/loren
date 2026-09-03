@@ -24,13 +24,14 @@ public sealed class AgentLoopTests
             CancellationToken.None);
 
         Assert.Equal("done", result.FinalOutput);
+        Assert.NotEqual(Guid.Empty, result.RunId.Value);
         Assert.Equal(1, result.Turns);
         Assert.Equal(0, result.ActionCount);
-        Assert.Empty(gateway.Requests);
+        Assert.Empty(gateway.Executions);
     }
 
     [Fact]
-    public async Task RoutesActionThroughGatewayBeforeNextBrainTurn()
+    public async Task RoutesActionThroughGatewayWithLorenOwnedCorrelationIds()
     {
         ActionRequest action = new(
             "get_project_status",
@@ -47,8 +48,10 @@ public sealed class AgentLoopTests
             Actions,
             CancellationToken.None);
 
+        ActionExecutionRequest execution = Assert.Single(gateway.Executions);
+        Assert.Equal(result.RunId, execution.RunId);
+        Assert.NotEqual(Guid.Empty, execution.ActionId.Value);
         Assert.Equal(1, result.ActionCount);
-        Assert.Single(gateway.Requests);
         Assert.Equal(2, brain.SeenContexts.Count);
         Assert.Contains(brain.SeenContexts[1].Inputs, input => input is BrainActionObservation);
     }
@@ -93,17 +96,17 @@ public sealed class AgentLoopTests
 
     private sealed class RecordingGateway : IActionGateway
     {
-        public List<ActionRequest> Requests { get; } = [];
+        public List<ActionExecutionRequest> Executions { get; } = [];
 
         public Task<ActionResult> ExecuteAsync(
-            ActionRequest request,
+            ActionExecutionRequest execution,
             CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            Requests.Add(request);
+            Executions.Add(execution);
 
             ActionResult result = new(
-                request.Name,
+                execution.Request.Name,
                 true,
                 new Dictionary<string, string> { ["status"] = "ok" });
             return Task.FromResult(result);
