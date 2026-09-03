@@ -3,14 +3,16 @@
 **Last updated:** 2026-09-03  
 **Current version phase:** `v0.0 — Architecture / Feasibility`  
 **Current decision gate:** `Gate B — v0.1 implementation stack`  
-**Gate B status:** OPEN  
+**Gate B status:** `BLOCKED — repository OPENAI_API_KEY secret missing`  
 **Current milestone:** `M0 — ADR-002 technical validation`
 
 This file is the authoritative progress ledger for the repository. The English and Vietnamese READMEs summarize this file.
 
 ## Current status
 
-Loren has completed the architecture ownership decision and all no-secret preparation required to run the final v0.1 stack gate. The remaining evidence is a credential-backed live run against the real OpenAI provider.
+Loren has completed the architecture ownership decision and all no-secret implementation required for Gate B. The trusted live trigger has now been executed against exact `main`; it passed the SHA/security guard and then failed closed because the repository currently has no `OPENAI_API_KEY` Actions secret.
+
+This means the remaining blocker is operational credential configuration, not code or architecture discovered so far.
 
 ### Gate A — Core ownership
 
@@ -20,7 +22,7 @@ Loren owns canonical identity, state, memory, policy, action authorization, and 
 
 ### Gate B — v0.1 implementation stack
 
-**OPEN** via ADR-002.
+**BLOCKED** via ADR-002 pending the credential-backed OpenAI proof.
 
 Proposed v0.1 stack:
 
@@ -40,8 +42,9 @@ Blazor Web App
 | --- | --- | --- |
 | OpenAI brain-loop compile boundary | PASS | OpenAI .NET 2.12.0 compiles on .NET 10; structured function call is intercepted by Loren-owned code; six-turn bound enforced |
 | Live OpenAI proof automation | PASS | Normal round trip + explicit cancellation modes are implemented and fail closed without the repository secret |
-| Trusted live trigger boundary | PASS / awaiting merge | Live secret access is allowed only for `workflow_dispatch` from `main` or the dedicated one-shot branch `spike/adr-002-live-proof-run`; the branch path must point exactly at current `main` before any secret step runs |
-| OpenAI live provider round trip | OPEN | Requires one successful trusted secret-backed run proving real model -> ActionGateway -> structured result -> final model response |
+| Trusted live trigger boundary | PASS | PR #5 merged; one-shot branch `spike/adr-002-live-proof-run` pointed exactly at `main`; run #53 fetched `origin/main`, passed SHA equality, and only then evaluated secret access |
+| Repository `OPENAI_API_KEY` | MISSING / BLOCKER | Run #53 observed an empty `OPENAI_API_KEY` environment and failed at the explicit `Require OpenAI secret for trusted live validation` step |
+| OpenAI live provider round trip | OPEN | Cannot execute until the repository Actions secret exists |
 | Provider cancellation path | READY / OPEN | Async provider call, shared cancellation token, timeout, explicit cancel-after mode, and expected-cancellation assertion are implemented; real provider execution evidence remains open |
 | MCP client/gateway | PASS | `ModelContextProtocol` 2.2.0; pinned `server-everything@2026.8.31`; tool enumeration + allow-listed read-only call passed in CI |
 | SQLite + EF Core | PASS | EF Core 10.0.11 migration -> persist -> export -> wipe -> migrate -> restore -> reload passed in CI |
@@ -82,7 +85,7 @@ Established:
 - async OpenAI Responses path;
 - one cancellation token propagated through provider calls;
 - Ctrl+C and wall-clock timeout bounds;
-- live OpenAI workflow can only receive repository secret through a trusted live-validation path, never through ordinary PR CI.
+- secret-backed provider execution remains outside ordinary PR CI.
 
 ### PR #4 — Final live-proof automation
 
@@ -90,28 +93,57 @@ Merged into `main`.
 
 Established:
 
-- manual validation fails closed if `OPENAI_API_KEY` is missing;
-- ordinary PR/push CI remains secret-free;
-- manual validation runs the normal OpenAI tool round trip when the secret exists;
-- a dedicated cancellation mode arms cancellation immediately before the provider call;
-- cancellation is considered PASS only when explicitly expected and observed through the provider boundary;
-- the full no-secret regression chain still passes: brain compile, MCP, persistence, and web-host smoke test.
+- live validation fails closed if `OPENAI_API_KEY` is missing;
+- normal provider tool round trip is automated;
+- dedicated cancellation mode exercises cancellation at the provider await;
+- ordinary PR/push CI remains secret-free.
 
-### Current branch — connector-safe live trigger
+### PR #5 — Connector-safe trusted live trigger
 
-In validation before merge.
+Merged into `main`.
 
-Adds a second trusted trigger because the GitHub connector does not expose `workflow_dispatch`:
+Established:
 
-- exact branch name: `spike/adr-002-live-proof-run`;
-- the branch must point exactly at current `main`;
-- workflow fetches `origin/main` and compares SHA before any secret-backed step;
-- PR and ordinary spike branch runs remain secret-free;
-- manual `workflow_dispatch` from `main` remains supported.
+- manual `workflow_dispatch` is permitted only from `main`;
+- connector-triggered live validation uses only the exact branch `spike/adr-002-live-proof-run`;
+- before secret access, the workflow fetches `origin/main` and requires the trigger SHA to equal current `main` exactly;
+- ordinary branches cannot access the secret-backed path.
+
+### Live validation run #53
+
+Triggered from `spike/adr-002-live-proof-run` at the exact `main` commit `315d21661aae4d9c8da30617f91a93e8b31d85ff`.
+
+Observed:
+
+```text
+brain spike build                  PASS
+trusted trigger / SHA guard        PASS
+secret detection                   PASS
+OPENAI_API_KEY present?            NO
+fail-closed secret requirement     EXPECTED FAILURE
+live OpenAI round trip             NOT RUN
+live cancellation proof            NOT RUN
+```
+
+The log contains the explicit message:
+
+```text
+OPENAI_API_KEY repository secret is required to close ADR-002 Gate B.
+```
 
 ## Current blocker
 
-The only remaining Gate B blocker is to execute the trusted live workflow with a repository `OPENAI_API_KEY` secret and observe both live proofs pass:
+Configure a GitHub Actions repository secret named exactly:
+
+```text
+OPENAI_API_KEY
+```
+
+Do not place the key in source, README, issues, PR comments, prompts, or committed environment files.
+
+After the secret exists, re-run the trusted validation. The existing run/branch path is sufficient; no production code change is required just to retry the proof.
+
+The rerun must prove:
 
 ```text
 Proof A — normal path
@@ -139,12 +171,11 @@ Until both pass, ADR-002 remains **Proposed** and production v0.1 scaffolding do
 NOW
 v0.0 / Gate B / M0
     |
-    +-- merge trusted live-trigger change after CI/self-review
+    +-- configure GitHub Actions secret: OPENAI_API_KEY
     |
-    +-- create one-shot branch at exact main HEAD
-    |      spike/adr-002-live-proof-run
-    |
-    +-- observe normal + cancellation OpenAI proof
+    +-- rerun trusted live validation
+    |      normal provider round trip
+    |      cancellation proof
     |
     v
 Accept ADR-002
