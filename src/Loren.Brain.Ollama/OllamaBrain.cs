@@ -12,12 +12,17 @@ public sealed class OllamaBrain : IBrain
 {
     private readonly HttpClient _httpClient;
     private readonly OllamaBrainOptions _options;
+    private readonly string? _apiKey;
 
-    public OllamaBrain(HttpClient httpClient, OllamaBrainOptions options)
+    public OllamaBrain(
+        HttpClient httpClient,
+        OllamaBrainOptions options,
+        string? apiKey = null)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _options.Validate();
+        _apiKey = apiKey;
     }
 
     public async Task<BrainTurnResult> ThinkAsync(
@@ -46,9 +51,9 @@ public sealed class OllamaBrain : IBrain
             Content = new StringContent(payload.ToJsonString(), Encoding.UTF8, "application/json"),
         };
         request.Headers.UserAgent.ParseAdd("Loren/0.1");
-        if (!string.IsNullOrWhiteSpace(_options.ApiKey))
+        if (!string.IsNullOrWhiteSpace(_apiKey))
         {
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _options.ApiKey);
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
         }
 
         using HttpResponseMessage response = await _httpClient.SendAsync(
@@ -291,11 +296,19 @@ public sealed class OllamaBrain : IBrain
     };
 }
 
-public sealed record OllamaBrainOptions(
-    string Model,
-    Uri Endpoint,
-    string? ApiKey = null)
+public sealed class OllamaBrainOptions
 {
+    public OllamaBrainOptions(string model, Uri endpoint)
+    {
+        Model = model;
+        Endpoint = endpoint;
+        Validate();
+    }
+
+    public string Model { get; }
+
+    public Uri Endpoint { get; }
+
     internal void Validate()
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(Model);
