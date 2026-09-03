@@ -27,48 +27,36 @@ Loren is not intended to be just another chat UI or an agent-framework clone. Th
 **Phase:** `v0.0 — Architecture / Feasibility`  
 **Current gate:** `Gate B — v0.1 implementation stack`  
 **Current milestone:** `M0 — ADR-002 technical validation`  
-**Current blocker:** `OPENAI_API_KEY` GitHub Actions repository secret is missing
+**Current blocker:** OpenAI API credit balance exhausted
 
 Gate A is complete: ADR-001 establishes a Loren-owned core with models/runtimes/MCP as replaceable adapters.
 
-Gate B has completed all no-secret implementation work. Current M0 evidence:
+Gate B has completed all no-secret implementation work and now reaches the real OpenAI Responses API with the configured repository secret.
 
 | Area | Status |
 | --- | --- |
 | OpenAI brain-loop compile boundary | ✅ PASS |
 | Live OpenAI proof automation | ✅ PASS |
 | Trusted connector-safe live trigger | ✅ PASS |
-| Repository `OPENAI_API_KEY` | ❌ MISSING / BLOCKER |
+| Repository `OPENAI_API_KEY` | ✅ PASS |
+| OpenAI API request reaches provider | ✅ PASS |
+| OpenAI API credit/quota | ❌ BLOCKED — `credit_balance_exhausted` |
 | Live OpenAI Responses round trip | ⏳ OPEN |
 | Live provider cancellation execution | ⏳ OPEN |
 | MCP client + Loren gateway | ✅ PASS |
 | SQLite + EF Core migration/recovery | ✅ PASS |
 | ASP.NET Core + Blazor host | ✅ PASS |
 
-Trusted live validation run #53 executed from the one-shot branch at the exact `main` SHA. The SHA/security guard passed, then the workflow detected an empty `OPENAI_API_KEY` and failed closed exactly as designed. No live provider call was attempted.
-
-After the repository Actions secret named exactly `OPENAI_API_KEY` exists, the trusted validation must prove both:
+The trusted rerun received the secret (masked in logs) and reached OpenAI, but the provider returned:
 
 ```text
-normal path:
-OpenAI brain
-  -> ActionRequest
-  -> Loren ActionGateway
-  -> structured fake result
-  -> OpenAI brain
-  -> final response
-  -> PASS
-
-cancellation path:
-OpenAI provider call
-  -> Loren cancellation token
-  -> provider call cancelled
-  -> PASS
+HTTP 429
+insufficient_quota: credit_balance_exhausted
 ```
 
-ADR-002 remains **Proposed** until both live checks pass. Production v0.1 scaffolding starts only after the gate is accepted.
+No model execution happened yet, so ADR-002 remains **Proposed**. After API credit is available, the same trusted validation will retry the normal model → ActionGateway → result → final-answer flow and the live cancellation path.
 
-For the detailed, authoritative progress ledger, see [`docs/status.md`](docs/status.md).
+For the authoritative progress ledger, see [`docs/status.md`](docs/status.md).
 
 ## First testable Loren preview
 
@@ -88,7 +76,7 @@ UI
  -> Audit
 ```
 
-M1 will establish the engineering foundation; M2 is the first milestone intended to feel like actually using Loren.
+M1 establishes the engineering foundation; M2 is the first milestone intended to feel like actually using Loren.
 
 ## Proposed v0.1 stack
 
@@ -120,8 +108,6 @@ v1.0  stable personal daily driver
 Versions advance by exit gates, not dates or code volume.
 
 ## Progress discipline
-
-Repository progress must stay synchronized with implementation.
 
 Any merge that changes capability, milestone completion, ADR status, validated dependency versions, or the next execution target must update:
 
