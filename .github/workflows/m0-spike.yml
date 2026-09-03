@@ -26,11 +26,17 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Build brain-loop spike
+      - name: Build OpenAI brain-loop spike
         if: ${{ hashFiles('spikes/adr-002/brain-loop/Loren.Spike.Brain.csproj') != '' }}
         run: |
           dotnet restore spikes/adr-002/brain-loop/Loren.Spike.Brain.csproj
           dotnet build spikes/adr-002/brain-loop/Loren.Spike.Brain.csproj --configuration Release --no-restore
+
+      - name: Build Ollama brain-loop spike
+        if: ${{ hashFiles('spikes/adr-002/ollama-brain/Loren.Spike.Ollama.csproj') != '' }}
+        run: |
+          dotnet restore spikes/adr-002/ollama-brain/Loren.Spike.Ollama.csproj
+          dotnet build spikes/adr-002/ollama-brain/Loren.Spike.Ollama.csproj --configuration Release --no-restore
 
       - name: Verify trusted live validation trigger
         id: live-trigger
@@ -58,26 +64,47 @@ jobs:
 
           echo "trusted=$trusted" >> "$GITHUB_OUTPUT"
 
-      - name: Detect OpenAI secret for trusted live validation
+      - name: Select trusted brain provider
         if: ${{ steps.live-trigger.outputs.trusted == 'true' }}
-        id: openai-secret
+        id: brain-provider
         env:
+          OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          if [ -n "$OPENAI_API_KEY" ]; then
-            echo "available=true" >> "$GITHUB_OUTPUT"
+          if [ -n "$OLLAMA_API_KEY" ]; then
+            echo "provider=ollama" >> "$GITHUB_OUTPUT"
+          elif [ -n "$OPENAI_API_KEY" ]; then
+            echo "provider=openai" >> "$GITHUB_OUTPUT"
           else
-            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "provider=none" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Require OpenAI secret for trusted live validation
-        if: ${{ steps.live-trigger.outputs.trusted == 'true' && steps.openai-secret.outputs.available != 'true' }}
+      - name: Require a trusted brain credential
+        if: ${{ steps.live-trigger.outputs.trusted == 'true' && steps.brain-provider.outputs.provider == 'none' }}
         run: |
-          echo "OPENAI_API_KEY repository secret is required to close ADR-002 Gate B."
+          echo "At least one supported brain credential (OLLAMA_API_KEY or OPENAI_API_KEY) is required to close ADR-002 Gate B."
           exit 1
 
+      - name: Run live Ollama brain round trip
+        if: ${{ steps.live-trigger.outputs.trusted == 'true' && steps.brain-provider.outputs.provider == 'ollama' }}
+        env:
+          OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+          LOREN_OLLAMA_MODEL: gpt-oss:120b
+          LOREN_OLLAMA_TIMEOUT_SECONDS: '60'
+        run: dotnet run --project spikes/adr-002/ollama-brain/Loren.Spike.Ollama.csproj --configuration Release --no-build
+
+      - name: Run live Ollama cancellation proof
+        if: ${{ steps.live-trigger.outputs.trusted == 'true' && steps.brain-provider.outputs.provider == 'ollama' }}
+        env:
+          OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+          LOREN_OLLAMA_MODEL: gpt-oss:120b
+          LOREN_OLLAMA_TIMEOUT_SECONDS: '60'
+          LOREN_OLLAMA_CANCEL_AFTER_MS: '100'
+          LOREN_EXPECT_CANCELLATION: 'true'
+        run: dotnet run --project spikes/adr-002/ollama-brain/Loren.Spike.Ollama.csproj --configuration Release --no-build
+
       - name: Run live OpenAI brain round trip
-        if: ${{ steps.live-trigger.outputs.trusted == 'true' && steps.openai-secret.outputs.available == 'true' }}
+        if: ${{ steps.live-trigger.outputs.trusted == 'true' && steps.brain-provider.outputs.provider == 'openai' }}
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           LOREN_OPENAI_MODEL: gpt-5-mini
@@ -85,7 +112,7 @@ jobs:
         run: dotnet run --project spikes/adr-002/brain-loop/Loren.Spike.Brain.csproj --configuration Release --no-build
 
       - name: Run live OpenAI cancellation proof
-        if: ${{ steps.live-trigger.outputs.trusted == 'true' && steps.openai-secret.outputs.available == 'true' }}
+        if: ${{ steps.live-trigger.outputs.trusted == 'true' && steps.brain-provider.outputs.provider == 'openai' }}
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           LOREN_OPENAI_MODEL: gpt-5-mini
