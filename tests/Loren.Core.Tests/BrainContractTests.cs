@@ -1,5 +1,6 @@
 using Loren.Core.Actions;
 using Loren.Core.Brains;
+using Xunit;
 
 namespace Loren.Core.Tests;
 
