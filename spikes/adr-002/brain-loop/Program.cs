@@ -26,6 +26,28 @@ if (timeoutSeconds <= 0)
     throw new InvalidOperationException("LOREN_OPENAI_TIMEOUT_SECONDS must be greater than zero.");
 }
 
+int? cancelAfterMs = null;
+string? cancelAfterRaw = Environment.GetEnvironmentVariable("LOREN_OPENAI_CANCEL_AFTER_MS");
+if (!string.IsNullOrWhiteSpace(cancelAfterRaw))
+{
+    if (!int.TryParse(cancelAfterRaw, out int parsedCancelAfterMs) || parsedCancelAfterMs <= 0)
+    {
+        throw new InvalidOperationException("LOREN_OPENAI_CANCEL_AFTER_MS must be a positive integer when provided.");
+    }
+
+    cancelAfterMs = parsedCancelAfterMs;
+}
+
+bool expectCancellation = bool.TryParse(
+    Environment.GetEnvironmentVariable("LOREN_EXPECT_CANCELLATION"),
+    out bool parsedExpectCancellation) && parsedExpectCancellation;
+
+if (expectCancellation && cancelAfterMs is null)
+{
+    throw new InvalidOperationException(
+        "LOREN_EXPECT_CANCELLATION=true requires LOREN_OPENAI_CANCEL_AFTER_MS.");
+}
+
 using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
 ConsoleCancelEventHandler cancelHandler = (_, eventArgs) =>
 {
@@ -63,9 +85,14 @@ try
     ];
 
     bool observedGatewayAction = false;
+    bool cancellationArmed = false;
 
     Console.WriteLine($"[spike] model={model}");
     Console.WriteLine($"[spike] timeout-seconds={timeoutSeconds}");
+    if (cancelAfterMs is not null)
+    {
+        Console.WriteLine($"[spike] cancel-after-ms={cancelAfterMs}");
+    }
     Console.WriteLine("[spike] starting Loren-controlled async brain/tool loop");
 
     for (int turn = 1; turn <= MaxTurns; turn++)
@@ -78,7 +105,25 @@ try
             Tools = { getProjectStatusTool },
         };
 
-        ResponseResult response = await client.CreateResponseAsync(options, cancellation.Token);
+        if (!cancellationArmed && cancelAfterMs is not null)
+        {
+            // Arm immediately before the provider call so the cancellation proof
+            // exercises the provider boundary rather than failing during setup.
+            cancellation.CancelAfter(TimeSpan.FromMilliseconds(cancelAfterMs.Value));
+            cancellationArmed = true;
+        }
+
+        ResponseResult response;
+        try
+        {
+            response = await client.CreateResponseAsync(options, cancellation.Token);
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested && expectCancellation)
+        {
+            Console.WriteLine("[spike] PASS: cancellation was observed at the live OpenAI provider await.");
+            return;
+        }
+
         inputItems.AddRange(response.OutputItems);
 
         FunctionCallResponseItem? functionCall = response.OutputItems
@@ -105,6 +150,12 @@ try
 
         if (message is not null)
         {
+            if (expectCancellation)
+            {
+                throw new InvalidOperationException(
+                    "Expected provider cancellation, but the brain returned a final response first.");
+            }
+
             if (!observedGatewayAction)
             {
                 throw new InvalidOperationException(
@@ -125,7 +176,10 @@ try
 }
 catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
 {
-    Console.Error.WriteLine("[spike] CANCELLED: cancellation propagated through the OpenAI provider call.");
+    Console.Error.WriteLine(
+        expectCancellation
+            ? "[spike] FAIL: cancellation occurred outside the live provider await."
+            : "[spike] CANCELLED: cancellation propagated through the OpenAI provider call.");
     Environment.ExitCode = 3;
 }
 finally

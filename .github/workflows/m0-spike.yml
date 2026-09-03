@@ -32,7 +32,7 @@ jobs:
           dotnet restore spikes/adr-002/brain-loop/Loren.Spike.Brain.csproj
           dotnet build spikes/adr-002/brain-loop/Loren.Spike.Brain.csproj --configuration Release --no-restore
 
-      - name: Detect optional OpenAI secret
+      - name: Detect OpenAI secret for manual validation
         if: ${{ github.event_name == 'workflow_dispatch' }}
         id: openai-secret
         env:
@@ -44,12 +44,28 @@ jobs:
             echo "available=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Require OpenAI secret for manual validation
+        if: ${{ github.event_name == 'workflow_dispatch' && steps.openai-secret.outputs.available != 'true' }}
+        run: |
+          echo "OPENAI_API_KEY repository secret is required to close ADR-002 Gate B."
+          exit 1
+
       - name: Run live OpenAI brain round trip
         if: ${{ github.event_name == 'workflow_dispatch' && steps.openai-secret.outputs.available == 'true' }}
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           LOREN_OPENAI_MODEL: gpt-5-mini
           LOREN_OPENAI_TIMEOUT_SECONDS: '60'
+        run: dotnet run --project spikes/adr-002/brain-loop/Loren.Spike.Brain.csproj --configuration Release --no-build
+
+      - name: Run live OpenAI cancellation proof
+        if: ${{ github.event_name == 'workflow_dispatch' && steps.openai-secret.outputs.available == 'true' }}
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          LOREN_OPENAI_MODEL: gpt-5-mini
+          LOREN_OPENAI_TIMEOUT_SECONDS: '60'
+          LOREN_OPENAI_CANCEL_AFTER_MS: '250'
+          LOREN_EXPECT_CANCELLATION: 'true'
         run: dotnet run --project spikes/adr-002/brain-loop/Loren.Spike.Brain.csproj --configuration Release --no-build
 
       - name: Run MCP client spike

@@ -10,7 +10,7 @@ This file is the authoritative progress ledger for the repository. The English a
 
 ## Current status
 
-Loren has completed the architecture ownership decision and most of the v0.1 stack validation.
+Loren has completed the architecture ownership decision and all no-secret preparation required to run the final v0.1 stack gate. The remaining evidence is now a single credential-backed manual workflow run against the real OpenAI provider.
 
 ### Gate A — Core ownership
 
@@ -39,8 +39,9 @@ Blazor Web App
 | Proof | Status | Evidence |
 | --- | --- | --- |
 | OpenAI brain-loop compile boundary | PASS | OpenAI .NET 2.12.0 compiles on .NET 10; structured function call is intercepted by Loren-owned code; six-turn bound enforced |
-| OpenAI live provider round trip | OPEN | Requires `OPENAI_API_KEY` outside source control; must prove real model -> ActionGateway -> structured result -> final model response |
-| Provider cancellation path | PARTIAL | Async Responses call and `CancellationToken` propagation compile; live cancellation against provider still needs execution evidence |
+| Live OpenAI proof automation | PASS | Manual `workflow_dispatch` now fails closed without `OPENAI_API_KEY` and, when present, runs both the normal tool round trip and explicit provider cancellation proof |
+| OpenAI live provider round trip | OPEN | Requires one successful manual secret-backed workflow run proving real model -> ActionGateway -> structured result -> final model response |
+| Provider cancellation path | READY / OPEN | Async provider call, shared cancellation token, timeout, explicit cancel-after mode, and expected-cancellation assertion are implemented; real provider execution evidence remains open |
 | MCP client/gateway | PASS | `ModelContextProtocol` 2.2.0; pinned `server-everything@2026.8.31`; tool enumeration + allow-listed read-only call passed in CI |
 | SQLite + EF Core | PASS | EF Core 10.0.11 migration -> persist -> export -> wipe -> migrate -> restore -> reload passed in CI |
 | ASP.NET Core + Blazor host | PASS | Host boot, `/health`, Blazor render, DI fake brain, cancellation/logging boundary, and `/brain` smoke test passed in CI |
@@ -82,11 +83,25 @@ Established:
 - Ctrl+C and wall-clock timeout bounds;
 - live OpenAI workflow can only receive repository secret through manual `workflow_dispatch`, never through PR CI.
 
+### PR #4 — Final live-proof automation
+
+Validated in PR CI.
+
+Established:
+
+- manual validation fails closed if `OPENAI_API_KEY` is missing;
+- ordinary PR/push CI remains secret-free;
+- manual validation runs the normal OpenAI tool round trip when the secret exists;
+- a dedicated cancellation mode arms cancellation immediately before the provider call;
+- cancellation is considered PASS only when explicitly expected and observed through the provider boundary;
+- the full no-secret regression chain still passes: brain compile, MCP, persistence, and web-host smoke test.
+
 ## Current blocker
 
-The only remaining Gate B blocker is the live OpenAI proof:
+The only remaining Gate B blocker is to execute the already-prepared manual workflow with a repository `OPENAI_API_KEY` secret and observe both live proofs pass:
 
 ```text
+Proof A — normal path
 OpenAI model
     -> requests get_project_status
     -> Loren ActionGateway intercepts
@@ -94,11 +109,16 @@ OpenAI model
     -> result returned to OpenAI
     -> final model response
     -> PASS
+
+Proof B — cancellation path
+OpenAI provider call
+    -> Loren cancellation token fires
+    -> provider call terminates through that token
+    -> expected cancellation observed
+    -> PASS
 ```
 
-The live cancellation path must also be exercised and logs checked for secret leakage.
-
-Until this passes, ADR-002 remains **Proposed** and production v0.1 scaffolding does not begin.
+Until both pass, ADR-002 remains **Proposed** and production v0.1 scaffolding does not begin.
 
 ## Next milestones
 
@@ -106,7 +126,7 @@ Until this passes, ADR-002 remains **Proposed** and production v0.1 scaffolding 
 NOW
 v0.0 / Gate B / M0
     |
-    +-- live OpenAI round trip + cancellation evidence
+    +-- run manual OpenAI workflow (normal + cancellation)
     |
     v
 Accept ADR-002
