@@ -30,29 +30,38 @@ Loren is not intended to be just another chat UI or an agent-framework clone. Th
 
 Gate A is complete: ADR-001 establishes a Loren-owned core with models/runtimes/MCP as replaceable adapters.
 
-Gate B is almost complete. Current M0 evidence:
+Gate B is now fully prepared for its final credential-backed proof. Current M0 evidence:
 
 | Area | Status |
 | --- | --- |
 | OpenAI brain-loop compile boundary | ✅ PASS |
+| Live OpenAI proof automation | ✅ PASS |
 | Live OpenAI Responses round trip | ⏳ OPEN |
-| Live provider cancellation evidence | ⏳ OPEN |
+| Live provider cancellation execution | ⏳ OPEN |
 | MCP client + Loren gateway | ✅ PASS |
 | SQLite + EF Core migration/recovery | ✅ PASS |
 | ASP.NET Core + Blazor host | ✅ PASS |
 
-The remaining Gate B blocker is a live OpenAI proof using an API key supplied outside source control:
+The remaining Gate B blocker is one successful manual `workflow_dispatch` with `OPENAI_API_KEY` stored as a GitHub Actions repository secret. That run is configured to fail closed without the secret and to prove both:
 
 ```text
+normal path:
 OpenAI brain
   -> ActionRequest
   -> Loren ActionGateway
   -> structured fake result
   -> OpenAI brain
   -> final response
+  -> PASS
+
+cancellation path:
+OpenAI provider call
+  -> Loren cancellation token
+  -> provider call cancelled
+  -> PASS
 ```
 
-ADR-002 remains **Proposed** until that round trip and live cancellation behavior are verified. Production v0.1 scaffolding starts only after the gate is accepted.
+ADR-002 remains **Proposed** until both live checks pass. Production v0.1 scaffolding starts only after the gate is accepted.
 
 For the detailed, authoritative progress ledger, see [`docs/status.md`](docs/status.md).
 
