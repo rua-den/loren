@@ -5,8 +5,8 @@ namespace Loren.Runtime;
 
 public sealed class ActionGateway : IActionGateway
 {
-    private readonly IReadOnlyDictionary<string, ActionDefinition> _definitions;
-    private readonly IReadOnlyDictionary<string, IActionExecutor> _executors;
+    private readonly Dictionary<string, ActionDefinition> _definitions;
+    private readonly Dictionary<string, IActionExecutor> _executors;
     private readonly IActionPolicy _policy;
     private readonly IAuditSink _audit;
 
