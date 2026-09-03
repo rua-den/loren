@@ -2,20 +2,21 @@
 
 **Last updated:** 2026-09-03  
 **Current version phase:** `v0.1 — Trustworthy Core development`  
-**Current decision gate:** `Gate B — PASSED`  
-**Current milestone:** `M1 — Engineering foundation`
+**Current decision gates:** `Gate A — PASSED`, `Gate B — PASSED`  
+**Current milestone:** `M2 — Walking Skeleton`
 
 This file is the authoritative progress ledger for the repository. `README.md` and `README.vi.md` summarize it.
 
 ## Current status
 
-Loren has completed `v0.0 — Architecture / Feasibility`.
+Loren has completed `v0.0 — Architecture / Feasibility` and the first production milestone of v0.1.
 
 - **Gate A PASSED** through ADR-001: Loren owns canonical identity/state/memory/policy/action authorization/audit.
 - **Gate B PASSED** through ADR-002: the v0.1 implementation stack and provider-neutral brain boundary are technically proven.
 - **M0 COMPLETE**: real provider loop, cancellation, MCP, persistence/recovery, and web-host proofs passed.
+- **M1 COMPLETE**: the production engineering foundation is scaffolded, deterministic tests and CI are green, and `Loren.Core` remains provider/framework independent.
 
-Production implementation may now begin. Current work is **M1 — Engineering foundation**.
+Current work is **M2 — Walking Skeleton**, the first owner-testable vertical slice.
 
 ## Accepted v0.1 stack
 
@@ -30,7 +31,7 @@ provider-neutral IBrain
 MCP C# SDK behind Loren action contracts
 SQLite + EF Core
 Blazor Web App
-xUnit
+xUnit / Microsoft Testing Platform
 ```
 
 The first live provider to close Gate B was **Ollama Cloud**, using native `/api/chat` with `gpt-oss:120b`. This does not make Ollama Loren's identity or permanent provider; it is simply the first real provider that proved the contract.
@@ -76,52 +77,117 @@ Cancellation was armed immediately before the live provider request and observed
 
 The OpenAI adapter compile/function-call boundary and provider reachability are proven. The currently configured OpenAI account/project returned `429 credit_balance_exhausted` before model execution. That provider-specific billing state no longer blocks Loren because `IBrain` is provider-neutral.
 
-## Current milestone — M1 Engineering foundation
+## M1 final evidence — Engineering foundation
 
-M1 now owns production scaffolding. Required deliverables:
+PR #7 established the first production source tree instead of promoting spike code directly.
 
-- production solution/project structure;
-- pin .NET SDK and package versions;
-- nullable/warnings/analyzers/formatting policy;
-- xUnit deterministic tests;
-- CI restore/build/test/static checks;
-- `.env.example` without secrets;
-- local development/setup docs;
-- dependency update/lock strategy;
-- basic secret/dependency scanning;
-- health/startup test;
-- guarantee `Loren.Core` has no Ollama/OpenAI/MCP/EF/Blazor dependency.
+### Production boundaries
 
-M0 spike code remains disposable evidence under `spikes/adr-002/`; production code must not simply promote spike implementation without proper boundaries/tests.
+```text
+src/
+├── Loren.Core/
+├── Loren.Runtime/
+├── Loren.Brain.Ollama/
+├── Loren.Brain.OpenAI/
+├── Loren.Infrastructure/
+└── Loren.Web/
+
+tests/
+├── Loren.Core.Tests/
+└── Loren.Runtime.Tests/
+```
+
+Tools/GitHub-specific and larger integration/E2E projects remain deferred until a real M2/M3 capability needs them. Project count is intentionally smaller than the conceptual architecture; dependency direction matters more than ceremony.
+
+### Foundation contracts
+
+`Loren.Core` now defines provider-neutral contracts including:
+
+```text
+IBrain
+BrainContext
+BrainTurnResult
+ActionDefinition
+ActionRequest
+ActionResult
+IActionGateway
+```
+
+`Loren.Runtime` contains a deterministic bounded `AgentLoop` with hard turn/action limits and cancellation propagation. Tests prove that an action must cross `IActionGateway` before its result is returned to the brain context.
+
+### Toolchain and CI
+
+M1 pins:
+
+```text
+.NET SDK                  10.0.400
+Target framework          net10.0
+C#                        14
+nullable                  enabled
+warnings as errors        enabled
+central package versions  enabled
+xUnit / MTP               enabled for .NET 10
+```
+
+PR #7 CI passes:
+
+```text
+restore                         PASS
+build (0 warnings / 0 errors)   PASS
+deterministic tests             PASS
+format verification             PASS
+basic secret scan               PASS
+dependency vulnerability check  PASS
+web /health smoke test          PASS
+```
+
+`Loren.Core` has no Ollama/OpenAI/MCP/EF Core/ASP.NET Core/Blazor package dependency. Provider adapter, persistence, and UI dependencies remain outside the core boundary.
+
+Development/setup guidance lives in `docs/development.md`, and `.env.example` contains names only—no real credentials.
+
+## Current milestone — M2 Walking Skeleton
+
+M2 builds the first complete user-to-tool vertical slice:
+
+```text
+Owner / minimal UI
+ -> Loren Runtime
+ -> configured IBrain
+ -> github.read_repository ActionRequest
+ -> Loren ActionGateway
+ -> GitHub read executor
+ -> structured ActionResult
+ -> IBrain final response
+ -> Audit
+```
+
+Required M2 work:
+
+- one-owner authentication/session;
+- at least one production `IBrain` implementation plus deterministic fake brain;
+- Action Gateway for reads as well as future writes;
+- GitHub read-only executor returning structured repository state;
+- correlation/run/action IDs;
+- minimal append-oriented audit across the round trip;
+- runtime receives prepared context rather than direct database access;
+- provider and GitHub credentials remain outside brain-visible context.
 
 ## Next execution sequence
 
 ```text
 NOW
-v0.1 / M1
+v0.1 / M2 Walking Skeleton
     |
-    +-- scaffold production solution
-    +-- pin SDK/packages
-    +-- establish dependency direction
-    +-- add deterministic tests + CI
-    +-- setup/development docs
-    |
-    v
-M1 exit gate
+    +-- production brain adapter
+    +-- github.read_repository action
+    +-- Action Gateway read path
+    +-- minimal owner auth/UI
+    +-- correlation + audit
+    +-- deterministic + integration tests
     |
     v
-M2 — Walking Skeleton
-    |   FIRST OWNER-TESTABLE LOREN PREVIEW
+FIRST OWNER-TESTABLE LOREN PREVIEW
     |
-    |   UI
-    |    -> Loren Runtime
-    |    -> IBrain
-    |    -> github.read_repository ActionRequest
-    |    -> Action Gateway
-    |    -> GitHub read executor
-    |    -> structured result
-    |    -> final answer
-    |    -> Audit
     v
 M3 — Canonical state
     v
@@ -140,7 +206,7 @@ v0.1.0
 
 ## First owner-testable milestone
 
-The first meaningful user test remains **M2 — Walking Skeleton**.
+M2 is now active and remains the first meaningful user test.
 
 Expected flow:
 
@@ -157,8 +223,6 @@ UI
  -> IBrain final response
  -> Audit
 ```
-
-M1 will be runnable for engineering validation, but M2 is the first milestone intended to feel like actually using Loren.
 
 ## Progress-update rule
 

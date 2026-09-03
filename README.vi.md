@@ -19,27 +19,15 @@ Loren là một hệ thống trí tuệ cá nhân sống lâu dài, có memory b
 
 **Cập nhật:** 2026-09-03  
 **Phase:** `v0.1 — Trustworthy Core development`  
-**Milestone hiện tại:** `M1 — Engineering foundation`
+**Milestone hiện tại:** `M2 — Walking Skeleton`
 
-Hai architecture gate cần để bắt đầu production đều đã PASS:
+Các gate/foundation cần để bắt đầu làm product thật đã hoàn tất:
 
 - **Gate A / ADR-001:** Loren sở hữu canonical identity/state/policy/action authorization.
 - **Gate B / ADR-002:** stack v0.1 provider-neutral đã được accept và M0 đã hoàn tất.
+- **M1:** production solution, provider-neutral contracts, bounded runtime loop, deterministic tests, CI/static checks, secret/dependency checks và health smoke test đều đã hoàn tất.
 
-Trusted M0 run #70 đã chứng minh complete brain path bằng Ollama Cloud (`gpt-oss:120b`):
-
-```text
-real model
- -> get_project_status ActionRequest
- -> Loren ActionGateway
- -> structured ActionResult
- -> real model final answer
- -> PASS
-```
-
-Cùng run đó đã PASS live provider cancellation, MCP, SQLite/EF recovery và ASP.NET/Blazor regressions. Provider secrets chỉ xuất hiện dưới dạng masked `***`.
-
-Ollama là **provider đầu tiên đóng được brain proof**, không phải identity hay provider vĩnh viễn của Loren. OpenAI vẫn là optional adapter; API account hiện tại đang bị provider credit chặn, nhưng chuyện đó không còn chặn architecture của Loren.
+M2 giờ là vertical slice đầu tiên mà owner có thể test Loren theo flow thật.
 
 Chi tiết chuẩn: [`docs/status.md`](docs/status.md).
 
@@ -56,7 +44,7 @@ provider-neutral IBrain
 MCP C# SDK sau Loren action contracts
 SQLite + EF Core
 Blazor Web App
-xUnit
+xUnit / Microsoft Testing Platform
 ```
 
 ## Kiến trúc brain
@@ -79,47 +67,81 @@ xUnit
 
 Đổi provider không được kéo theo migrate identity, memory, permission, project hay audit history của Loren.
 
-## Công việc hiện tại — M1
+## Proof M0
 
-M1 dựng engineering foundation cho production:
+Trusted M0 run #70 đã chứng minh complete real-brain path bằng Ollama Cloud (`gpt-oss:120b`):
 
-- production .NET solution/project boundaries;
-- pin SDK/packages;
-- deterministic xUnit tests;
-- CI restore/build/test/static checks;
-- nullable/warnings/analyzers/formatting policy;
-- `.env.example` và local setup docs;
-- secret/dependency scanning;
-- startup/health test;
-- `Loren.Core` không phụ thuộc Ollama/OpenAI/MCP/EF/Blazor.
+```text
+real model
+ -> get_project_status ActionRequest
+ -> Loren ActionGateway
+ -> structured ActionResult
+ -> real model final answer
+ -> PASS
+```
 
-Thư mục `spikes/` tiếp tục là technical evidence, không phải production architecture.
+Cùng run đó đã PASS live provider cancellation, MCP, SQLite/EF recovery và ASP.NET/Blazor regressions. Provider secrets chỉ xuất hiện dưới dạng masked `***`.
 
-## Mốc đầu tiên mày có thể test Loren như user
+Ollama chỉ là provider đầu tiên đóng được brain proof, không phải identity/provider vĩnh viễn của Loren. OpenAI vẫn là optional adapter.
 
-Preview đầu tiên vẫn là **v0.1 M2 — Walking Skeleton**:
+## M1 engineering foundation — hoàn tất
+
+Production code hiện bắt đầu với boundaries cố ý gọn:
+
+```text
+src/
+├── Loren.Core/
+├── Loren.Runtime/
+├── Loren.Brain.Ollama/
+├── Loren.Brain.OpenAI/
+├── Loren.Infrastructure/
+└── Loren.Web/
+
+tests/
+├── Loren.Core.Tests/
+└── Loren.Runtime.Tests/
+```
+
+M1 đã dựng:
+
+- .NET SDK `10.0.400`, `net10.0`, C# 14;
+- central package versions;
+- nullable + warnings-as-errors + formatting policy;
+- provider-neutral `IBrain` và action contracts trong `Loren.Core`;
+- bounded/cancellable `AgentLoop` trong `Loren.Runtime`;
+- deterministic xUnit/Microsoft Testing Platform tests;
+- CI restore/build/test/format;
+- basic secret scan và dependency vulnerability check;
+- `/health` startup smoke test;
+- `.env.example` và [`docs/development.md`](docs/development.md).
+
+`Loren.Core` không phụ thuộc provider/MCP/EF Core/ASP.NET Core/Blazor package. Thư mục `spikes/` vẫn chỉ là technical evidence, không phải production architecture.
+
+## Công việc hiện tại — M2 Walking Skeleton
+
+M2 là milestone đầu tiên được thiết kế để có cảm giác đang dùng Loren thật:
 
 ```text
 "Loren, check repo rua-den/loren."
 
-UI
+minimal UI
  -> Loren Runtime
  -> configured IBrain
  -> github.read_repository ActionRequest
- -> Action Gateway
+ -> Loren ActionGateway
  -> GitHub read executor
- -> structured result
+ -> structured ActionResult
  -> IBrain final response
  -> Audit
 ```
 
-M1 là engineering foundation. M2 là milestone đầu tiên được thiết kế để có cảm giác đang thực sự dùng Loren.
+M2 sẽ thêm đúng các mảnh production cần cho flow này: one-owner auth/session, production brain adapter + fake brain, read-only GitHub executor, correlation IDs và minimal audit. Chưa mở GitHub write path ở M2.
 
 ## Lộ trình version
 
 ```text
 v0.0  architecture / feasibility        ✓ hoàn tất
-v0.1  trustworthy core                 <- đang development
+v0.1  trustworthy core                 <- đang development / M2
 v0.2  useful project assistant
 v0.3  personal operations
 v0.4  voice + device presence
@@ -144,6 +166,7 @@ Một milestone chưa đóng nếu code/tests và documentation trong repo chưa
 ## Tài liệu
 
 - [`docs/status.md`](docs/status.md) — tiến độ hiện tại chuẩn
+- [`docs/development.md`](docs/development.md) — hướng dẫn build/test/config/dependency
 - [`docs/vision.md`](docs/vision.md) — product vision
 - [`docs/architecture.md`](docs/architecture.md) — system boundaries
 - [`docs/plans/master-plan.md`](docs/plans/master-plan.md) — milestones/version gates

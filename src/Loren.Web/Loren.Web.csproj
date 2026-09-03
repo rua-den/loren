@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <ItemGroup>
+    <ProjectReference Include="../Loren.Core/Loren.Core.csproj" />
+    <ProjectReference Include="../Loren.Runtime/Loren.Runtime.csproj" />
+  </ItemGroup>
+</Project>

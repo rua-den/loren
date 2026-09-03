@@ -1,0 +1,10 @@
+<Solution>
+  <Project Path="src/Loren.Core/Loren.Core.csproj" />
+  <Project Path="src/Loren.Runtime/Loren.Runtime.csproj" />
+  <Project Path="src/Loren.Brain.Ollama/Loren.Brain.Ollama.csproj" />
+  <Project Path="src/Loren.Brain.OpenAI/Loren.Brain.OpenAI.csproj" />
+  <Project Path="src/Loren.Infrastructure/Loren.Infrastructure.csproj" />
+  <Project Path="src/Loren.Web/Loren.Web.csproj" />
+  <Project Path="tests/Loren.Core.Tests/Loren.Core.Tests.csproj" />
+  <Project Path="tests/Loren.Runtime.Tests/Loren.Runtime.Tests.csproj" />
+</Solution>
