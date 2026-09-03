@@ -1,6 +1,6 @@
 # Loren Architecture
 
-**Status:** Active baseline. Core ownership is accepted in ADR-001; concrete v0.1 technology stack is proposed in ADR-002.
+**Status:** Active baseline. Core ownership is accepted in ADR-001; the v0.1 provider-neutral technology stack is accepted in ADR-002.
 
 ## Architectural objective
 
@@ -8,7 +8,7 @@ Loren owns stable personal state, context, policy, and action authorization whil
 
 The key distinction is:
 
-> **The model is the reasoning brain. Loren is the stateful system that gives the brain identity, memory, context, tools, and boundaries.**
+> **The model is the reasoning brain. Loren is the stateful system that gives that brain identity, memory, context, tools, and boundaries.**
 
 ## Top-level architecture
 
@@ -35,8 +35,8 @@ The key distinction is:
                       |     | IBrain |
                       |     +---+----+
                       |         |
-                      |   OpenAI / future
-                      |   cloud/local brains
+                      |   Ollama / OpenAI /
+                      |   future cloud/local
                       |
                       v
                 ActionRequest
@@ -119,7 +119,7 @@ Append-oriented records of important runs, action requests, policy decisions, ap
 
 ## Boundary 2 — Brain
 
-A brain is a replaceable reasoning provider.
+A brain is a replaceable reasoning provider behind Loren's `IBrain` boundary.
 
 Conceptual contract:
 
@@ -142,7 +142,7 @@ A brain may **not**:
 - directly mutate Loren canonical state outside controlled services;
 - define Loren's durable identity.
 
-v0.1 proposes OpenAI Responses API as the first `IBrain` implementation. Future implementations may use other cloud or local models.
+v0.1 supports provider adapters rather than one privileged provider. The first real M0 behavior proof passed with native Ollama Cloud (`gpt-oss:120b`), while the OpenAI adapter remains optional. Future adapters may use other cloud or local models without changing Loren-owned state or action contracts.
 
 ## Boundary 3 — Loren runtime
 
@@ -151,7 +151,7 @@ The runtime is deliberately small. It coordinates a turn/task but does not own L
 v0.1 responsibilities:
 
 - build the brain context;
-- call `IBrain`;
+- call configured `IBrain`;
 - receive final output or structured action requests;
 - route action requests to the Action Gateway;
 - append structured action results back to the brain context;
@@ -255,6 +255,8 @@ external system
 
 Write-capable secrets should be readable only by the narrow executor boundary that needs them.
 
+Provider credentials are also adapter configuration, not canonical Loren memory. M0 demonstrated that provider keys can stay masked/outside action payloads while live tool calling still works.
+
 ## Boundary 7 — Events and proactivity
 
 v0.1 is user-driven. Later versions may ingest events such as:
@@ -337,17 +339,19 @@ A model/provider/runtime failure must not destroy canonical Loren state. Export/
 ## Current decisions
 
 - **ADR-001 — Accepted:** Loren-owned core with replaceable brain/runtime/tool adapters.
-- **ADR-002 — Proposed:** .NET 10 / ASP.NET Core / thin Loren agent loop / OpenAI Responses brain / MCP C# adapter / SQLite+EF Core / Blazor for v0.1.
+- **ADR-002 — Accepted:** .NET 10 / ASP.NET Core / thin Loren agent loop / provider-neutral `IBrain` / MCP C# adapter / SQLite+EF Core / Blazor / xUnit for v0.1.
+- **M0 brain proof:** Ollama Cloud native `/api/chat`, `gpt-oss:120b`, live ActionGateway round trip and cancellation passed.
 
 ## Remaining major decisions
 
 Resolve them only when they are about to become expensive to reverse:
 
 - exact credential store/auth method for GitHub writes;
+- canonical schema/deletion/export rules before memory/write workflows stabilize;
 - long-term canonical storage if SQLite stops being sufficient;
 - background scheduler/event model before private proactive work;
 - trusted-device model before mobile/voice;
 - standing-permission model before proactive autonomy;
-- additional/local brain routing when real usage justifies it.
+- additional provider routing when real usage justifies it.
 
 See `docs/plans/master-plan.md` for the version gates that control these decisions.
