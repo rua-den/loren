@@ -27,46 +27,34 @@ Loren không được xây để trở thành một giao diện chat khác hay m
 **Phase:** `v0.0 — Architecture / Feasibility`  
 **Gate hiện tại:** `Gate B — v0.1 implementation stack`  
 **Milestone hiện tại:** `M0 — ADR-002 technical validation`  
-**Blocker hiện tại:** thiếu GitHub Actions repository secret `OPENAI_API_KEY`
+**Blocker hiện tại:** OpenAI API đã hết/chưa có credit
 
 Gate A đã hoàn tất: ADR-001 chốt Loren-owned core, còn model/runtime/MCP là adapter có thể thay thế.
 
-Gate B đã hoàn thành toàn bộ phần implementation không cần secret. Evidence M0 hiện tại:
+Gate B đã hoàn thành toàn bộ phần implementation không cần secret và giờ đã gọi được tới OpenAI Responses API thật bằng repository secret đã cấu hình.
 
 | Phần | Trạng thái |
 | --- | --- |
 | OpenAI brain-loop compile boundary | ✅ PASS |
 | Automation cho live OpenAI proof | ✅ PASS |
-| Trusted live trigger dùng được qua connector | ✅ PASS |
-| Repository `OPENAI_API_KEY` | ❌ MISSING / BLOCKER |
+| Trusted live trigger qua connector | ✅ PASS |
+| Repository `OPENAI_API_KEY` | ✅ PASS |
+| Request tới OpenAI provider | ✅ PASS |
+| OpenAI API credit/quota | ❌ BLOCKED — `credit_balance_exhausted` |
 | Live OpenAI Responses round trip | ⏳ OPEN |
 | Live provider cancellation execution | ⏳ OPEN |
 | MCP client + Loren gateway | ✅ PASS |
 | SQLite + EF Core migration/recovery | ✅ PASS |
 | ASP.NET Core + Blazor host | ✅ PASS |
 
-Trusted live validation run #53 đã chạy từ one-shot branch tại đúng SHA của `main`. SHA/security guard pass, sau đó workflow phát hiện `OPENAI_API_KEY` rỗng và fail-closed đúng thiết kế. Không có live provider call nào được thực hiện.
-
-Sau khi repository Actions secret tên chính xác `OPENAI_API_KEY` tồn tại, trusted validation phải chứng minh cả hai path:
+Trusted rerun đã nhận secret thành công (log chỉ hiện `***`) và chạm được OpenAI, nhưng provider trả:
 
 ```text
-normal path:
-OpenAI brain
-  -> ActionRequest
-  -> Loren ActionGateway
-  -> structured fake result
-  -> OpenAI brain
-  -> final response
-  -> PASS
-
-cancellation path:
-OpenAI provider call
-  -> Loren cancellation token
-  -> provider call bị cancel
-  -> PASS
+HTTP 429
+insufficient_quota: credit_balance_exhausted
 ```
 
-ADR-002 vẫn là **Proposed** cho tới khi cả hai live check pass. Chỉ sau đó mới bắt đầu scaffold production cho v0.1.
+Model chưa chạy, nên ADR-002 vẫn là **Proposed**. Sau khi API có credit, cùng trusted validation này sẽ chạy lại normal flow model → ActionGateway → result → final answer và live cancellation path.
 
 Chi tiết tiến độ chuẩn nằm tại [`docs/status.md`](docs/status.md).
 
@@ -120,8 +108,6 @@ v1.0  stable personal daily driver
 Version chỉ được nâng khi vượt exit gate, không dựa vào ngày tháng hay số lượng code.
 
 ## Kỷ luật cập nhật tiến độ
-
-Tiến độ trong repo phải luôn đồng bộ với implementation.
 
 Bất kỳ merge nào làm thay đổi capability, milestone completion, ADR status, dependency version đã validate hoặc next execution target đều phải cập nhật:
 
