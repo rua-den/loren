@@ -68,10 +68,48 @@ public sealed class ActionGateway : IActionGateway
                 reason);
         }
 
-        PolicyDecision decision = await _policy.EvaluateAsync(
-            definition,
-            request,
-            cancellationToken);
+        PolicyDecision decision;
+        try
+        {
+            decision = await _policy.EvaluateAsync(
+                definition,
+                request,
+                cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            await AppendCancellationAuditAsync(
+                execution,
+                AuditEventKind.PolicyEvaluated,
+                "Policy evaluation was cancelled.");
+            await AppendCancellationAuditAsync(
+                execution,
+                AuditEventKind.ActionCompleted,
+                "Action was cancelled before execution.");
+            throw;
+        }
+        catch (Exception exception)
+        {
+            string reason = $"Policy evaluation failed with {exception.GetType().Name}.";
+            await AppendAuditAsync(
+                execution,
+                AuditEventKind.PolicyEvaluated,
+                "error",
+                reason,
+                cancellationToken);
+            await AppendAuditAsync(
+                execution,
+                AuditEventKind.ActionCompleted,
+                "failed",
+                reason,
+                cancellationToken);
+
+            return new ActionResult(
+                request.Name,
+                false,
+                new Dictionary<string, string> { ["policy"] = "error" },
+                reason);
+        }
 
         await AppendAuditAsync(
             execution,
@@ -123,6 +161,10 @@ public sealed class ActionGateway : IActionGateway
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
+            await AppendCancellationAuditAsync(
+                execution,
+                AuditEventKind.ActionCompleted,
+                "Action execution was cancelled.");
             throw;
         }
         catch (Exception exception)
@@ -143,6 +185,17 @@ public sealed class ActionGateway : IActionGateway
 
         return result;
     }
+
+    private Task AppendCancellationAuditAsync(
+        ActionExecutionRequest execution,
+        AuditEventKind kind,
+        string detail) =>
+        AppendAuditAsync(
+            execution,
+            kind,
+            "cancelled",
+            detail,
+            CancellationToken.None);
 
     private Task AppendAuditAsync(
         ActionExecutionRequest execution,
