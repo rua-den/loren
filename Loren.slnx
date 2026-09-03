@@ -8,5 +8,6 @@
   <Project Path="src/Loren.Web/Loren.Web.csproj" />
   <Project Path="tests/Loren.Core.Tests/Loren.Core.Tests.csproj" />
   <Project Path="tests/Loren.Runtime.Tests/Loren.Runtime.Tests.csproj" />
+  <Project Path="tests/Loren.Brain.Ollama.Tests/Loren.Brain.Ollama.Tests.csproj" />
   <Project Path="tests/Loren.IntegrationTests/Loren.IntegrationTests.csproj" />
 </Solution>

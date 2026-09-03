@@ -26,9 +26,10 @@ Loren là một hệ thống trí tuệ cá nhân sống lâu dài, có memory b
 - **Gate A / ADR-001:** Loren sở hữu canonical identity/state/policy/action authorization.
 - **Gate B / ADR-002:** stack v0.1 provider-neutral đã được accept và M0 đã hoàn tất.
 - **M1:** engineering foundation production đã hoàn tất.
-- **M2 Slice 1:** production read-only ActionGateway, Loren-owned correlation IDs, audit path và structured `github.read_repository` executor đã hoàn tất và có deterministic integration tests.
+- **M2 Slice 1:** production read-only ActionGateway, Loren-owned correlation IDs, audit path và structured `github.read_repository` executor đã hoàn tất.
+- **M2 Slice 2:** production `OllamaBrain : IBrain` đã hoàn tất, gồm provider-neutral action-schema translation, deterministic tool-call/observation tests, cancellation và provider-secret isolation.
 
-M2 vẫn đang ACTIVE. Slice kế tiếp sẽ gắn production brain vào read boundary này, sau đó mới mở request path đầu tiên cho owner.
+M2 vẫn đang ACTIVE. Slice kế tiếp sẽ wire production brain, runtime, ActionGateway, audit và GitHub reader qua host path thật, sau đó chạy trusted live production-provider read flow đầu tiên.
 
 Chi tiết chuẩn: [`docs/status.md`](docs/status.md).
 
@@ -138,7 +139,7 @@ minimal UI
 
 ### M2 Slice 1 — read boundary đã xong
 
-Production giờ đã có:
+Production có:
 
 ```text
 RunId / ActionId do Loren Runtime tạo
@@ -159,13 +160,34 @@ Các invariant quan trọng đã được chứng minh:
 - `github.read_repository` chỉ HTTP GET public và không có GitHub write/credential path;
 - deterministic integration test chứng minh fake brain -> gateway -> fake GitHub -> structured result -> final answer.
 
+### M2 Slice 2 — production Ollama brain đã xong
+
+Production giờ có `OllamaBrain : IBrain` thật nằm sau cùng Loren-owned contract.
+
+```text
+Loren ActionDefinition
+ -> provider-neutral typed parameters
+ -> Ollama function-tool JSON
+ -> provider tool_call
+ -> Loren ActionRequest
+```
+
+Adapter cũng reconstruct `BrainActionObservation` cũ thành assistant tool-call + tool-result messages cho provider turn kế tiếp.
+
+Các security/behavior rule đã được deterministic test:
+
+- `OLLAMA_API_KEY` không nằm trong serializable options hay request JSON;
+- key chỉ được giữ private trong adapter và gửi qua `Authorization: Bearer ...`;
+- raw provider error body không bị copy vào exception message;
+- cancellation propagate tại provider await;
+- parallel tool calls fail explicit cho tới khi Loren runtime chủ động support;
+- provider JSON types không lọt vào `Loren.Core`.
+
 ### Slice M2 kế tiếp
 
 ```text
-production Ollama IBrain
- -> DI wiring
- -> production AgentLoop + ActionGateway + GitHub reader
- -> trusted live provider proof
+wire OllamaBrain + AgentLoop + ActionGateway + GitHub reader qua DI
+ -> trusted live provider production read proof
  -> one-owner auth/session
  -> minimal owner UI
 ```
