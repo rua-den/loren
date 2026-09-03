@@ -1,10 +1,10 @@
 # Loren Master Delivery Plan
 
-**Status:** Active planning baseline
+**Status:** Active planning baseline  
+**Current phase:** `v0.1 — Trustworthy Core development`  
+**Current milestone:** `M1 — Engineering foundation`
 
-This document is the top-level delivery plan for Loren. Detailed implementation plans may exist per version, but no version should expand scope without passing the previous version's exit gate.
-
-The roadmap is **capability-driven, not date-driven**. A version number represents a proven increase in trust and usefulness, not the amount of code written.
+This document is the top-level delivery plan for Loren. The roadmap is **capability-driven, not date-driven**. Versions advance only when their trust/usefulness exit gates pass.
 
 ---
 
@@ -17,7 +17,7 @@ Loren should become a persistent personal intelligence system that:
 - reasons through replaceable brain providers;
 - acts only through explicit Loren-owned policy and credential boundaries;
 - can explain and audit consequential behavior;
-- gradually becomes more proactive only after the lower-level trust model is proven.
+- gradually becomes more proactive only after lower-level trust boundaries are proven.
 
 The long-term product is **not** a model wrapper and **not** a generic agent framework.
 
@@ -25,7 +25,7 @@ The long-term product is **not** a model wrapper and **not** a generic agent fra
 
 # 2. Architectural invariants across all versions
 
-These are not optional roadmap items. Breaking one requires an explicit superseding ADR.
+Breaking one requires an explicit superseding ADR.
 
 ## Loren owns
 
@@ -65,11 +65,9 @@ notification channels
 
 # 3. Versioning model
 
-Loren uses pre-1.0 versions as **capability maturity steps**.
-
 ```text
-v0.0   architecture / feasibility
-v0.1   trustworthy core
+v0.0   architecture / feasibility        ✓ complete
+v0.1   trustworthy core                 <- current development
 v0.2   useful project assistant
 v0.3   personal operations
 v0.4   voice + device presence
@@ -79,8 +77,6 @@ v1.0   stable personal daily driver
 ```
 
 Patch releases (`v0.x.y`) may add narrow capabilities or hardening without changing the main trust boundary of the minor version.
-
-No version is promoted because "most tasks are done". Promotion happens only after its **exit gate** passes.
 
 ---
 
@@ -92,25 +88,38 @@ No version is promoted because "most tasks are done". Promotion happens only aft
 
 Loren owns canonical identity/state/policy/action authorization; models, runtimes, MCP, and external frameworks are adapters.
 
-This gate must remain true for every later version.
+## Gate B — v0.1 implementation stack [PASSED]
 
-## Gate B — v0.1 implementation stack [OPEN]
+**Decision:** ADR-002 — Accepted on 2026-09-03.
 
-**Decision:** ADR-002.
-
-Default candidate:
+Accepted baseline:
 
 ```text
-C# 14 / .NET 10
+C# 14 / .NET 10 LTS
 ASP.NET Core
-small Loren-owned agent loop
-OpenAI Responses API as first brain
-MCP C# SDK behind adapter
+small Loren-owned bounded agent loop
+provider-neutral IBrain
+  ├─ Ollama adapter
+  ├─ OpenAI adapter
+  └─ future cloud/local providers
+MCP C# SDK behind Loren action contracts
 SQLite + EF Core
 Blazor Web App
+xUnit
 ```
 
-Pass after Milestone 0 proves the provider loop, MCP adapter, persistence path, and web host without violating ADR-001.
+M0 passed a trusted real-provider regression using native Ollama Cloud `/api/chat` with `gpt-oss:120b`:
+
+```text
+real model
+ -> ActionRequest(get_project_status)
+ -> Loren ActionGateway
+ -> structured ActionResult
+ -> real model final response
+ -> PASS
+```
+
+The same trusted run passed provider cancellation, MCP, SQLite/EF recovery, and ASP.NET/Blazor host checks. Secrets remained masked. OpenAI remains an optional adapter; provider-specific billing/quota does not define Loren's architecture gate.
 
 ## Gate C — Canonical storage and memory schema [before v0.1 write workflows stabilize]
 
@@ -157,7 +166,7 @@ Must settle:
 - trusted-device enrollment/revocation;
 - session/device identity;
 - voice privacy/data retention;
-- which actions can never rely on weak voice-only confirmation;
+- actions that can never rely on weak voice-only confirmation;
 - remote-access transport/authentication.
 
 ## Gate G — Proactive autonomy [before v0.5]
@@ -188,35 +197,34 @@ Must settle and document:
 
 # 5. Version milestones
 
-## v0.0 — Architecture and feasibility
+## v0.0 — Architecture and feasibility [COMPLETE]
 
 ### Goal
 
-Prove that Loren has a coherent ownership boundary and an implementable v0.1 stack.
+Prove Loren has a coherent ownership boundary and an implementable v0.1 stack.
 
-### Milestones
+### Completed milestones
 
 - M0.1 product vision and architecture baseline;
 - M0.2 agent/runtime landscape research;
 - M0.3 ADR-001 accepted: Loren-owned core/runtime boundary;
-- M0.4 ADR-002 technical validation;
-- M0.5 v0.1 plan and repository engineering rules finalized.
+- M0.4 ADR-002 provider-neutral technical validation;
+- M0.5 v0.1 plan and repository engineering/progress rules finalized.
 
-### Exit gate
+### Exit evidence
 
-v0.0 is complete when:
+- Gate A passed;
+- Gate B passed;
+- provider-neutral brain/tool round trip proven in a disposable spike;
+- live provider cancellation proven;
+- MCP/persistence/host feasibility proven;
+- no blocking architecture question remains for production scaffolding.
 
-- Gate A is passed;
-- Gate B is passed;
-- a clean engineering stack can be scaffolded;
-- one brain/tool round trip has been proven in a disposable spike;
-- no unresolved architecture question blocks the v0.1 walking skeleton.
-
-**Version transition:** `v0.0 -> v0.1 development` only after ADR-002 becomes Accepted.
+**Transition completed:** `v0.0 -> v0.1 development` on 2026-09-03.
 
 ---
 
-## v0.1 — Trustworthy Core
+## v0.1 — Trustworthy Core [ACTIVE]
 
 Detailed plan: `docs/plans/v0.1.md`
 
@@ -235,7 +243,7 @@ Create the smallest Loren that remembers project context, reads real GitHub stat
 
 ### Milestones
 
-- M1 engineering foundation;
+- **M1 engineering foundation — ACTIVE**;
 - M2 walking skeleton: owner -> brain -> Action Gateway -> GitHub read -> audit;
 - M3 canonical project/repository state;
 - M4 trusted durable memory + correction/retrieval;
@@ -274,7 +282,7 @@ Do not tag v0.1 until:
 
 ### Goal
 
-Turn the trustworthy v0.1 core into something useful for daily project planning/research, without yet expanding deeply into private personal systems.
+Turn the trustworthy v0.1 core into something useful for daily project planning/research without yet expanding deeply into private personal systems.
 
 ### Candidate capabilities
 
@@ -286,7 +294,7 @@ Turn the trustworthy v0.1 core into something useful for daily project planning/
 - reusable project operating procedures;
 - improved memory retrieval and conflict resolution;
 - cost/token/run visibility;
-- optional second brain provider spike to prove provider abstraction if useful.
+- additional provider/local-model validation only when real use justifies it.
 
 ### Milestones
 
@@ -463,8 +471,6 @@ Each new high-risk capability gets its own ADR/gate rather than silently enterin
 
 ## v1.0 — Stable Personal Daily Driver
 
-### Meaning of v1.0
-
 v1.0 does **not** mean Loren has every Jarvis feature. It means the core product can be trusted as the owner's long-lived assistant and can evolve without casually losing state or bypassing security boundaries.
 
 ### Minimum v1.0 properties
@@ -497,7 +503,8 @@ For every milestone:
 5. add audit/observability with the capability, not months later;
 6. update ADRs when a previously open architectural choice becomes expensive to reverse;
 7. do not add adjacent features merely because a framework makes them easy;
-8. finish with tests/build/lint and document any known gaps.
+8. finish with tests/build/lint and document any known gaps;
+9. synchronize `docs/status.md`, README EN/VI, and relevant plans/ADRs with implementation progress.
 
 A milestone is complete only when its acceptance criteria pass on the main integration path.
 
@@ -522,21 +529,25 @@ Fix the boundary first, then continue.
 
 # 8. Current next action
 
-The project is currently at **v0.0 / Gate B**.
-
-Next execution sequence:
+The project is currently at **v0.1 / M1 — Engineering foundation**.
 
 ```text
-ADR-002 Milestone 0 spike
+scaffold production .NET solution
+        |
+pin SDK/packages + dependency direction
+        |
+add deterministic tests + CI/static checks
+        |
+setup/dev docs + secret/dependency scanning
         |
         v
-accept/revise ADR-002
+M1 exit gate
         |
         v
-scaffold .NET solution
+M2 walking skeleton
         |
         v
-begin v0.1 M1 -> M2 walking skeleton
+FIRST OWNER-TESTABLE LOREN PREVIEW
 ```
 
 Do not implement v0.2 capabilities before the v0.1 exit gate is satisfied.
