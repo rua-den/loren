@@ -113,7 +113,17 @@ try
             cancellationArmed = true;
         }
 
-        ResponseResult response = await client.CreateResponseAsync(options, cancellation.Token);
+        ResponseResult response;
+        try
+        {
+            response = await client.CreateResponseAsync(options, cancellation.Token);
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested && expectCancellation)
+        {
+            Console.WriteLine("[spike] PASS: cancellation was observed at the live OpenAI provider await.");
+            return;
+        }
+
         inputItems.AddRange(response.OutputItems);
 
         FunctionCallResponseItem? functionCall = response.OutputItems
@@ -166,13 +176,10 @@ try
 }
 catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
 {
-    if (expectCancellation)
-    {
-        Console.WriteLine("[spike] PASS: cancellation propagated through the live OpenAI provider call.");
-        return;
-    }
-
-    Console.Error.WriteLine("[spike] CANCELLED: cancellation propagated through the OpenAI provider call.");
+    Console.Error.WriteLine(
+        expectCancellation
+            ? "[spike] FAIL: cancellation occurred outside the live provider await."
+            : "[spike] CANCELLED: cancellation propagated through the OpenAI provider call.");
     Environment.ExitCode = 3;
 }
 finally
