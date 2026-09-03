@@ -1,0 +1,110 @@
+name: M2 Trusted Live Read Proof
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - proof/m2-live-read
+
+permissions:
+  contents: read
+
+jobs:
+  live-read-proof:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify trusted exact-main trigger
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+              echo "Manual M2 live proof must run from main."
+              exit 1
+            fi
+          elif [[ "$GITHUB_EVENT_NAME" == "push" && "$GITHUB_REF" == "refs/heads/proof/m2-live-read" ]]; then
+            git fetch origin main --depth=1
+            main_sha="$(git rev-parse origin/main)"
+            if [[ "$GITHUB_SHA" != "$main_sha" ]]; then
+              echo "Proof branch must point exactly at current main."
+              echo "proof=$GITHUB_SHA main=$main_sha"
+              exit 1
+            fi
+          else
+            echo "Untrusted trigger for M2 live proof."
+            exit 1
+          fi
+
+      - name: Require Ollama credential
+        env:
+          OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$OLLAMA_API_KEY" ]]; then
+            echo "OLLAMA_API_KEY is required for the trusted M2 live proof."
+            exit 1
+          fi
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.400'
+
+      - name: Restore
+        run: dotnet restore Loren.slnx
+
+      - name: Build production host
+        run: dotnet build Loren.slnx --configuration Release --no-restore
+
+      - name: Run trusted production read path
+        env:
+          ASPNETCORE_ENVIRONMENT: Development
+          LOREN_ENABLE_DEVELOPMENT_RUN_ENDPOINT: 'true'
+          LOREN_OLLAMA_MODEL: gpt-oss:120b
+          OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          dotnet run --project src/Loren.Web/Loren.Web.csproj \
+            --configuration Release --no-build --urls http://127.0.0.1:5092 \
+            > /tmp/loren-m2-live.log 2>&1 &
+          pid=$!
+          trap 'cat /tmp/loren-m2-live.log || true; kill "$pid" 2>/dev/null || true' EXIT
+
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:5092/health | grep -q '"status":"ok"'; then
+              break
+            fi
+            sleep 1
+          done
+
+          curl -fsS \
+            -H 'Content-Type: application/json' \
+            -d '{"message":"You MUST use github.read_repository to check rua-den/loren. Report the repository name and its default branch from the tool result."}' \
+            http://127.0.0.1:5092/internal/dev/run \
+            > /tmp/loren-m2-live-response.json
+
+          jq -e '.runId | strings | length > 0' /tmp/loren-m2-live-response.json >/dev/null
+          jq -e '.turns >= 2' /tmp/loren-m2-live-response.json >/dev/null
+          jq -e '.actionCount == 1' /tmp/loren-m2-live-response.json >/dev/null
+          jq -e '.finalOutput | strings | length > 0' /tmp/loren-m2-live-response.json >/dev/null
+          jq -e '.audit | length == 3' /tmp/loren-m2-live-response.json >/dev/null
+          jq -e '.audit[0].kind == "ActionRequested"' /tmp/loren-m2-live-response.json >/dev/null
+          jq -e '.audit[1].kind == "PolicyEvaluated"' /tmp/loren-m2-live-response.json >/dev/null
+          jq -e '.audit[2].kind == "ActionCompleted"' /tmp/loren-m2-live-response.json >/dev/null
+          jq -e '.audit[2].actionName == "github.read_repository"' /tmp/loren-m2-live-response.json >/dev/null
+          jq -e '.audit[2].outcome == "succeeded"' /tmp/loren-m2-live-response.json >/dev/null
+
+          if grep -Fq "$OLLAMA_API_KEY" /tmp/loren-m2-live-response.json; then
+            echo "Provider credential leaked into the owner-visible response."
+            exit 1
+          fi
+
+          jq '{runId, turns, actionCount, finalOutput, audit}' /tmp/loren-m2-live-response.json
