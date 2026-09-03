@@ -105,8 +105,10 @@ public sealed class ProductionReadPathTests
             }
 
             JsonElement messages = root.GetProperty("messages");
-            Assert.Equal("tool", messages[^1].GetProperty("role").GetString());
-            string toolResult = Assert.IsType<string>(messages[^1].GetProperty("content").GetString());
+            int lastMessageIndex = messages.GetArrayLength() - 1;
+            Assert.Equal("tool", messages[lastMessageIndex].GetProperty("role").GetString());
+            string toolResult = Assert.IsType<string>(
+                messages[lastMessageIndex].GetProperty("content").GetString());
             Assert.Contains("rua-den/loren", toolResult, StringComparison.Ordinal);
             Assert.Contains("main", toolResult, StringComparison.Ordinal);
 
