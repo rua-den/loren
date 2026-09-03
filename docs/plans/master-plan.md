@@ -2,7 +2,7 @@
 
 **Status:** Active planning baseline  
 **Current phase:** `v0.1 — Trustworthy Core development`  
-**Current milestone:** `M1 — Engineering foundation`
+**Current milestone:** `M2 — Walking Skeleton`
 
 This document is the top-level delivery plan for Loren. The roadmap is **capability-driven, not date-driven**. Versions advance only when their trust/usefulness exit gates pass.
 
@@ -67,7 +67,7 @@ notification channels
 
 ```text
 v0.0   architecture / feasibility        ✓ complete
-v0.1   trustworthy core                 <- current development
+v0.1   trustworthy core                 <- current development / M2
 v0.2   useful project assistant
 v0.3   personal operations
 v0.4   voice + device presence
@@ -243,14 +243,20 @@ Create the smallest Loren that remembers project context, reads real GitHub stat
 
 ### Milestones
 
-- **M1 engineering foundation — ACTIVE**;
-- M2 walking skeleton: owner -> brain -> Action Gateway -> GitHub read -> audit;
+- **M1 engineering foundation — COMPLETE**;
+- **M2 walking skeleton: owner -> brain -> Action Gateway -> GitHub read -> audit — ACTIVE**;
 - M3 canonical project/repository state;
 - M4 trusted durable memory + correction/retrieval;
 - M5 action/credential boundary + narrow GitHub writes;
 - M6 minimal daily-use UI;
 - M7 export/restore and recovery proof;
 - M8 adversarial security/reliability E2E.
+
+### M1 completion evidence
+
+M1 established the first production scaffold with .NET SDK `10.0.400`, provider-neutral Core contracts, a bounded Runtime loop, deterministic xUnit/Microsoft Testing Platform tests, central dependency versions, development documentation, and CI gates for restore/build/test/format/secret/dependency/health checks.
+
+`Loren.Core` remains free of provider, MCP, EF Core, ASP.NET Core, and Blazor package dependencies. Production project count is deliberately smaller than the conceptual target and will expand only when real vertical slices justify new boundaries.
 
 ### Exit gate
 
@@ -529,22 +535,24 @@ Fix the boundary first, then continue.
 
 # 8. Current next action
 
-The project is currently at **v0.1 / M1 — Engineering foundation**.
+The project is currently at **v0.1 / M2 — Walking Skeleton**.
 
 ```text
-scaffold production .NET solution
+production IBrain adapter + fake brain
         |
-pin SDK/packages + dependency direction
+github.read_repository action/executor
         |
-add deterministic tests + CI/static checks
+Loren ActionGateway read path
         |
-setup/dev docs + secret/dependency scanning
+correlation IDs + minimal audit
+        |
+one-owner auth + minimal UI
         |
         v
-M1 exit gate
+M2 acceptance flow
         |
         v
-M2 walking skeleton
+"Loren, check repo rua-den/loren."
         |
         v
 FIRST OWNER-TESTABLE LOREN PREVIEW
