@@ -45,7 +45,7 @@ jobs:
           fi
 
       - name: Dependency vulnerability scan
-        run: dotnet list Loren.slnx package --vulnerable --include-transitive
+        run: dotnet package list --project Loren.slnx --vulnerable --include-transitive
 
       - name: Web health smoke test
         shell: bash
