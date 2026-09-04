@@ -146,7 +146,7 @@ public sealed class ActionGatewayTests
     {
         public Task<PolicyDecision> EvaluateAsync(
             ActionDefinition definition,
-            ActionRequest request,
+            ActionExecutionRequest execution,
             CancellationToken cancellationToken) =>
             throw new InvalidOperationException("policy detail must not escape");
     }
