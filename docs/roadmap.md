@@ -7,11 +7,12 @@ Loren advances by **proven capability and trust**, not by calendar dates.
 ## Current status
 
 **Current stage:** `v0.1 — Trustworthy Core development`  
-**Passed:** `Gate A — Core ownership`, `Gate B — v0.1 implementation stack`, `Gate C — canonical state/memory lifecycle`  
+**Passed:** `Gate A — Core ownership`, `Gate B — v0.1 implementation stack`, `Gate C — canonical state/memory lifecycle`, `Gate D — action/approval/credential boundary`  
 **Completed milestone:** `M4 — Trusted Durable Memory`  
-**Next:** `Gate D — Action/Credential Policy before M5 writes`
+**Current milestone:** `M5 — Action/Credential Boundary + Narrow GitHub Writes`  
+**Now:** `M5 Slice 1 — typed policy context + one-time approval + global read-only`
 
-M2 proved the first owner-testable authenticated model-to-tool path. M3 made Project/Repository identity provider-independent and restart-safe. M4 then made durable memory provider-independent, restart-safe, correctable, forgettable, bounded before brain use, and resistant to model/external-content poisoning.
+M2 proved the first authenticated owner-to-real-tool path. M3 made Project/Repository identity provider-independent and restart-safe. M4 made durable memory restart-safe, correctable, forgettable, bounded before brain use, and resistant to model/external-content poisoning. Gate D/ADR-004 now freezes the first write-capable security contract before M5 executors exist.
 
 M4 path:
 
@@ -24,6 +25,7 @@ OWNER_EXPLICIT durable memory
 -> bounded prepared memory context
 -> owner forget / full correction-chain purge
 -> adversarial poisoning boundary
+-> Windows local + CI integration hardening
 ```
 
 M4 evidence:
@@ -32,9 +34,27 @@ M4 evidence:
 - PR #19 — correction/supersession;
 - PR #20 — authority-aware prepared context;
 - PR #21 — forget/delete without resurrection;
-- PR #22 — provenance and poisoning/trust-boundary acceptance.
+- PR #22 — provenance and poisoning/trust-boundary acceptance;
+- PR #23 — Windows-safe SQLite temp integration tests + permanent Windows CI.
 
-Implementation CI #140 / run `33866182751` passed the Slice 5 build/test/format/secret/dependency/web-auth gates. PR #22 requires one final exact-head pass before merge.
+PR #23 post-merge main CI #163 / run `33894104116` passed the Ubuntu full gate and Windows integration job; owner local Windows full integration suite also passed.
+
+Gate D locks:
+
+```text
+brain requests write
+-> canonical target resolution
+-> deterministic policy
+-> exact owner approval artifact
+-> one-time atomic consume / replay rejection
+-> fail-closed global read-only
+-> write-specific credential resolver
+-> executor
+-> independent post-write verification
+-> correlated redacted audit
+```
+
+Every first-version real GitHub mutation requires explicit owner approval. Authentication alone is not approval. Write secrets never enter model/memory/audit/result surfaces. Global read-only defaults safe. Credential revocation overrides approval. External/model content cannot grant permission or mark verification successful.
 
 ---
 
@@ -71,8 +91,8 @@ M1 Engineering Foundation              ✓ complete
 M2 Walking Skeleton                    ✓ complete
 M3 Canonical Project/Repository State  ✓ complete
 M4 Trusted Durable Memory              ✓ complete
-Gate D Action/Credential Policy        <- next
-M5 Action/Credential Boundary + Writes
+Gate D Action/Credential Policy        ✓ passed / ADR-004
+M5 Action/Credential Boundary + Writes <- current
 M6 Minimal Daily-use UI
 M7 Export/Restore + Recovery
 M8 Security/Reliability E2E
@@ -85,17 +105,28 @@ Core capabilities across v0.1:
 - bounded Loren-owned agent loop;
 - canonical Project/Repository state;
 - trusted durable memory with provenance, correction and forgetting;
-- ActionGateway + approvals;
+- ActionGateway + exact one-time approvals;
 - credential-isolated GitHub read/narrow writes;
+- fail-closed global read-only control;
+- post-write verification;
 - audit trail;
 - export/wipe/restore proof;
 - adversarial security/reliability tests.
 
-### Gate D before M5
+### M5 implementation order
 
-Gate D must define approval binding/non-replay, write-action contracts, credential storage/resolution and read/write separation, redaction/rotation/revocation, global read-only/kill behavior, post-write verification, and audit expectations.
+```text
+Slice 1 typed policy + approval + read-only
+Slice 2 credential resolver + redaction
+Slice 3 create non-default branch + verify
+Slice 4 controlled file/commit path + verify
+Slice 5 open pull request + verify
+Slice 6 replay/revocation/injection/audit E2E
+```
 
-No real GitHub write path may be enabled until Gate D passes.
+No real GitHub mutation is enabled until the policy/approval/read-only/credential foundations are tested.
+
+Allowed v0.1 writes are limited to non-default branch creation, controlled file/commit changes on a non-default branch, and opening a pull request. Direct default-branch writes, merge, force-push/history rewrite, deletion/admin/security changes, secret-management actions, and production deployment remain forbidden.
 
 Detailed plan: [`docs/plans/v0.1.md`](plans/v0.1.md)
 
