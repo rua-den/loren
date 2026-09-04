@@ -4,7 +4,7 @@
 
 Loren là một hệ thống trí tuệ cá nhân sống lâu dài, có memory bền vững, permission rõ ràng, khả năng dùng tool và về sau có thể chủ động hỗ trợ xuyên suốt đời sống số của chủ sở hữu.
 
-> **Model chỉ là compute có thể thay thế. Loren sở hữu identity, memory, context, policy, action boundary và lịch sử.**
+> **Model chỉ là compute có thể thay thế. Loren sở hữu identity, memory, context, policy, approval, action boundary và lịch sử.**
 
 ## Nguyên tắc cốt lõi
 
@@ -20,13 +20,16 @@ Loren là một hệ thống trí tuệ cá nhân sống lâu dài, có memory b
 **Cập nhật:** 2026-09-04  
 **Phase:** `v0.1 — Trustworthy Core development`  
 **Milestone đã hoàn tất:** `M4 — Trusted Durable Memory`  
-**Decision gate tiếp theo:** `Gate D — Action/Credential Policy trước M5 writes`
+**Decision gates đã pass:** `Gate A`, `Gate B`, `Gate C`, `Gate D / ADR-004`  
+**Milestone hiện tại:** `M5 — Action/Credential Boundary + Narrow GitHub Writes`  
+**Đang làm:** `M5 Slice 1 — typed write policy + one-time approval + global read-only`
 
 Đã hoàn tất:
 
 - Gate A / ADR-001 — Loren-owned core/runtime boundary.
 - Gate B / ADR-002 — stack v0.1 provider-neutral.
 - Gate C / ADR-003 — canonical state + memory lifecycle.
+- Gate D / ADR-004 — action approval + credential boundary.
 - M0 — technical feasibility.
 - M1 — engineering foundation.
 - M2 — Walking Skeleton.
@@ -35,80 +38,149 @@ Loren là một hệ thống trí tuệ cá nhân sống lâu dài, có memory b
 
 Chi tiết chuẩn: [`docs/status.md`](docs/status.md).
 
-## Memory path M4 [COMPLETE]
+## M4 đã chứng minh gì
 
 ```text
 owner durable fact
- -> MemoryRecord / MemoryRecordId
- -> Project / Repository scope + provenance
+ -> canonical MemoryRecord + provenance
  -> SQLite
  -> restart-safe retrieval
 
 owner correction
  -> append OWNER_CORRECTION
  -> supersede claim cũ atomically
- -> history cũ vẫn reconstruct được
+ -> history vẫn reconstruct được
 
 project request
  -> current memories
- -> source/provenance + lifecycle filtering
- -> deterministic ordering
- -> hard content/provenance bounds
+ -> authority/provenance/lifecycle filtering
+ -> deterministic hard bounds
  -> prepared Loren memory data
  -> BrainContext
 
 owner forget
- -> current memory
  -> purge toàn bộ correction chain trong transaction
  -> restart
  -> fact đã quên vẫn không quay lại
+
+adversarial content
+ -> MODEL_INFERENCE / EXTERNAL_CONTENT không thể tự thành owner truth
+ -> provenance vẫn chỉ là data, không phải action authorization
 ```
 
-### Slice 1 — OWNER_EXPLICIT persistence
+M4 được merge qua PR #18–#22. PR #23 sau đó fix lỗi SQLite temp-file cleanup riêng trên Windows bằng cách tắt pooling **chỉ cho temp integration database** và thêm permanent `windows-latest` integration CI job.
 
-PR #18 merge tại `78adc287f7ae3744352b7019e3b8a838a5de499e`. Final CI #117 / run `33860985267` và post-merge main CI #118 / run `33861089270` pass.
+Baseline mới nhất đã verify:
 
-### Slice 2 — correction + supersession
+- main commit sau Windows hardening: `1cdd849126310745652d87f1d100c34aed624079`;
+- PR CI #162 / `33893832128`: Ubuntu full gate + Windows integration — PASS;
+- post-merge main CI #163 / `33894104116`: Ubuntu full gate + Windows integration — PASS;
+- owner chạy local toàn bộ Windows integration suite — PASS.
 
-PR #19 merge tại `201b83eff0c6c3143856e348b4c9f029cc14a8b1`. Implementation CI #119 / run `33861345949` và final CI #123 / run `33861630472` pass.
+## Gate D / ADR-004 [PASSED]
 
-Correction là explicit append + supersede. Content cũ được giữ nguyên; sai authority/scope, stale target, duplicate replacement ID hoặc partial failure đều fail closed.
+Gate D khóa trust boundary đầu tiên cho write trước khi bất kỳ real write executor nào tồn tại.
 
-### Slice 3 — authority-aware prepared memory
+### Mọi GitHub write thật ở phiên bản đầu đều cần owner approval rõ ràng
 
-PR #20 merge tại `732b85db3a799638bcd73558f98232b276f3cb5e`. Implementation CI #127 / run `33864695658` và final exact-head CI #131 / run `33864946328` pass.
+Authentication chỉ chứng minh owner identity; **không phải write approval**.
 
-Prepared memory:
+Approval là artifact do Loren sở hữu, bind vào exact normalized intent:
 
-- chỉ include `OWNER_CORRECTION`, `OWNER_EXPLICIT`, `OWNER_APPROVED_INFERENCE`, `VERIFIED_TOOL` khi source semantics hợp lệ;
-- mặc định exclude `MODEL_INFERENCE` và `EXTERNAL_CONTENT` khỏi trusted model context;
-- exclude superseded records;
-- giữ canonical IDs, scope, provenance và timestamps;
-- deterministic ordering + hard record/content bounds trước khi model chạy;
-- được ghi rõ là data, không bao giờ là action authorization hay policy override.
+```text
+ApprovalId
+owner/session binding
+action identity
+ProjectId + RepositoryId
+normalized target/resource
+security-relevant parameter digest
+approved timestamp
+expiry/task boundary
+one-time consumption state
+optional prerequisite digest
+```
 
-### Slice 4 — owner forget/delete
+Nếu thay đổi repo, branch, path, content digest, PR base/head hoặc action intent quan trọng thì phải approval mới.
 
-PR #21 merge tại `87b5a39ccae7c931de9668fed5283a4742be73f7`. Implementation CI #133 / run `33865419023` và final exact-head CI #137 / run `33865716479` pass.
+Approval được consume atomically đúng một lần. Approval đã consume, expired, mismatch, unknown, revoked hoặc replay đều fail closed.
 
-Với `A -> B -> C(current)`, `ForgetAsync(C)` validate correction history tuyến tính cùng scope rồi physical purge A, B, C trong một SQLite transaction. Restart acceptance chứng minh fact đã quên không resurrect còn unrelated memories vẫn tồn tại. Memory forgetting không cascade sang audit retention.
+### Canonical target trước authorization
 
-### Slice 5 — poisoning / trust boundary
+Chuỗi repo do model đưa ra không tạo authority. Write policy phải resolve request về canonical Project/Repository của Loren và normalized security-relevant target parameters trước khi authorize.
 
-PR #22 đóng trust gate cuối của M4.
+### Global read-only mặc định an toàn
 
-Hardening và adversarial acceptance chứng minh:
+Trước khi có write executor, Loren phải có host-controlled global read-only posture.
 
-- record vào trusted prepared context phải có provenance;
-- provenance/source reference có bound riêng độc lập content;
-- toàn bộ serialized memory payload — content, provenance, IDs, scope, timestamps — là inert data, không phải instruction, permission, policy hay action authorization;
-- `MODEL_INFERENCE` / `EXTERNAL_CONTENT` giả provenance giống owner vẫn bị loại;
-- `OWNER_APPROVED_INFERENCE` / `VERIFIED_TOOL` không có provenance hợp lệ vẫn bị loại;
-- `VERIFIED_TOOL` không tự đại diện current external state và không grant owner permission;
-- owner correction vẫn là current owner truth trong scope;
-- execution bình thường qua `LorenRunService` chỉ đọc prepared memory, không âm thầm gọi Add/Correct/Forget.
+```text
+write-enable thiếu/sai -> read-only
+read-only -> không gọi write executor
+read-only -> không resolve write credential
+read action vẫn dùng được
+```
 
-Implementation CI #140 / run `33866182751` đã pass restore, zero-warning build, toàn bộ tests, format, secret scan, dependency scan và web/auth smoke.
+Model không được toggle trạng thái này qua ordinary action.
+
+### Credential nằm sau executor boundary
+
+Write credential value không bao giờ đi vào:
+
+- `BrainContext`;
+- model-visible action parameters;
+- canonical state;
+- durable memory;
+- audit payload;
+- owner-visible result.
+
+Chỉ opaque credential purpose/reference được đi qua application boundary. Credential thiếu/revoked thì fail closed. Credential revocation thắng approval đã cấp trước đó. Read/write credential purpose luôn được tách logic.
+
+### External write chỉ thành công sau verification
+
+API trả success chưa đủ.
+
+```text
+create branch -> fetch ref -> confirm exact SHA
+file/commit write -> fetch commit/ref/file state -> confirm expected identity
+open PR -> fetch PR -> confirm repo/base/head/state/PR identity
+```
+
+Verification mơ hồ thì không được báo success.
+
+### v0.1 write allowlist
+
+Chỉ được bật sau khi M5 foundations xanh:
+
+```text
+create non-default branch
+create/update file qua controlled commit path trên non-default branch
+create commit/update ref chỉ khi path đó cần
+open pull request
+```
+
+Vẫn cấm:
+
+```text
+write trực tiếp default branch
+merge pull request
+force push / rewrite history
+delete repository/branch/data
+repository admin/security changes
+secret-management actions
+production deployment
+```
+
+## M5 implementation sequence
+
+```text
+Slice 1  typed action policy context + one-time approval + global read-only
+Slice 2  write credential resolver + redaction/revocation
+Slice 3  create non-default GitHub branch + verify exact ref/SHA
+Slice 4  controlled file/commit path + verify
+Slice 5  open pull request + verify
+Slice 6  replay/revocation/injection/audit E2E
+```
+
+Slice 1 **không bật GitHub mutation thật**. Không mutation nào được bật trước khi policy/approval/read-only/credential foundations đã có test xanh.
 
 ## Durable-memory source classes
 
@@ -152,24 +224,21 @@ dotnet run --project src/Loren.Web/Loren.Web.csproj
 
 Không commit secret thật.
 
-## Tiếp theo — Gate D / M5
+## Test
 
-Trước khi bật bất kỳ GitHub write capability thật nào, Gate D phải lock:
+```powershell
+dotnet restore Loren.slnx
+dotnet build Loren.slnx --configuration Release --no-restore
+dotnet test Loren.slnx --configuration Release --no-build --no-restore
+```
 
-- write action contracts và policy dimensions;
-- approval binding chính xác + non-replay rules;
-- credential storage/resolution và tách read/write credential;
-- secret redaction, rotation, revocation;
-- global read-only / kill behavior;
-- post-write verification và audit expectations.
-
-Chỉ sau Gate D thì M5 mới được implement narrow v0.1 write set: create branch, create/update file hoặc equivalent commit path, create commit và open pull request. Merge-main, force-push, repository deletion/admin changes và production deploy vẫn ngoài write scope này.
+Windows giờ là first-class integration-test CI platform bên cạnh Ubuntu full gate.
 
 ## Lộ trình version
 
 ```text
 v0.0  architecture / feasibility        ✓ hoàn tất
-v0.1  trustworthy core                 <- hiện tại / Gate D trước M5
+v0.1  trustworthy core                 <- hiện tại / M5
 v0.2  useful project assistant
 v0.3  personal operations
 v0.4  voice + device presence
@@ -183,9 +252,12 @@ v1.0  stable personal daily driver
 - [`docs/status.md`](docs/status.md) — tiến độ chuẩn hiện tại
 - [`docs/development.md`](docs/development.md) — build/test/configuration
 - [`docs/architecture.md`](docs/architecture.md) — system boundaries
+- [`docs/permissions.md`](docs/permissions.md) — permission/approval baseline hiện hành
+- [`docs/security.md`](docs/security.md) — security baseline hiện hành
 - [`docs/plans/master-plan.md`](docs/plans/master-plan.md) — milestones/version gates
 - [`docs/plans/v0.1.md`](docs/plans/v0.1.md) — plan implementation chi tiết v0.1
 - [`docs/decisions/003-canonical-state-and-memory-lifecycle.md`](docs/decisions/003-canonical-state-and-memory-lifecycle.md)
+- [`docs/decisions/004-action-approval-and-credential-boundary.md`](docs/decisions/004-action-approval-and-credential-boundary.md)
 - [`docs/memory.md`](docs/memory.md)
 
 Repository này là source of truth cho product decisions, architecture, delivery plan, implementation, progress và release history của Loren.
