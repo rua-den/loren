@@ -30,64 +30,61 @@ Loren là một hệ thống trí tuệ cá nhân sống lâu dài, có memory b
 - **M1:** engineering foundation hoàn tất.
 - **M2:** Walking Skeleton hoàn tất.
 - **M3:** Canonical Project/Repository State hoàn tất.
-- **M4 Slice 1:** canonical OWNER_EXPLICIT memory persistence hoàn tất.
+- **M4 Slice 1:** OWNER_EXPLICIT durable persistence hoàn tất.
+- **M4 Slice 2:** owner correction + supersession hoàn tất.
 
 Chi tiết chuẩn: [`docs/status.md`](docs/status.md).
 
-## M4 Slice 1 — durable owner-explicit memory [COMPLETE]
-
-PR #18 merge tại `78adc287f7ae3744352b7019e3b8a838a5de499e`.
-
-Validation:
-
-- implementation CI #113 / run `33860641367` — PASS;
-- final exact-head CI #117 / run `33860985267` — PASS;
-- post-merge main CI #118 / run `33861089270` — PASS.
-
-Slice 1 đã tạo boundary:
+## Memory path M4 hiện tại
 
 ```text
 OWNER_EXPLICIT durable fact
- -> Loren-owned MemoryRecordId / MemoryRecord
+ -> canonical MemoryRecord / MemoryRecordId
  -> Project / Repository scope + provenance
- -> EF-neutral IMemoryStore
- -> SQLite / EF Core migration
- -> restart
- -> cùng memory ID + authority + scope
-```
+ -> SQLite / EF Core
+ -> restart-safe retrieval
 
-Canonical store dùng migration `202609040002_AddMemoryRecords`. Repository-scoped memory fail closed nếu Repository không thuộc Project được đưa vào. Cố ý không có generic content-update API.
-
-## M4 Slice 2 — owner correction + supersession
-
-PR #19 hiện implement correction semantics rõ ràng:
-
-```text
-old current memory
- -> CorrectAsync(oldId, OWNER_CORRECTION)
- -> append correction mới
+owner correction
+ -> OWNER_CORRECTION replacement
  -> old.SupersededById = new.Id
- -> một SQLite transaction
- -> current query chỉ trả record mới
- -> history old -> new vẫn reconstruct được
+ -> một transaction
+ -> current retrieval chỉ trả correction
+
+current Project request
+ -> current memory retrieval
+ -> authority-aware filtering + hard bounds
+ -> prepared Loren memory package
+ -> BrainContext
 ```
 
-Correction boundary bắt buộc:
+### Slice 1 [COMPLETE]
 
-- source authority là `OWNER_CORRECTION`;
-- `MemoryRecordId` mới;
-- target tồn tại và vẫn current;
-- Project/Repository scope giữ nguyên;
-- lifecycle timestamp không lùi;
-- correction ID chưa tồn tại.
+PR #18 merge tại `78adc287f7ae3744352b7019e3b8a838a5de499e` sau final CI #117 / run `33860985267`; post-merge main CI #118 / run `33861089270` cũng pass.
 
-Content cũ không bị rewrite. Correction dùng model-source, đổi scope hoặc target stale đều fail mà không để lại partial insert.
+### Slice 2 [COMPLETE]
 
-Real SQLite tests chứng minh correction chain sống qua restart và default current retrieval loại record đã superseded. Implementation CI #119 / run `33861345949` đã **PASS** restore, zero-warning build, tests, format, secret scan, dependency scan và web/auth smoke.
+PR #19 merge tại `201b83eff0c6c3143856e348b4c9f029cc14a8b1`. Implementation CI #119 / run `33861345949` và final exact-head CI #123 / run `33861630472` đều pass.
 
-PR #19 chưa complete cho tới khi final exact-head CI trên head đã sync docs pass và PR được merge.
+Correction là explicit append + supersede. Content cũ được giữ nguyên; stale target, đổi scope hoặc source không phải owner correction đều fail closed; không có generic destructive memory-update API.
 
-## Gate C / durable-memory authority classes
+### Slice 3 [IMPLEMENTED / PR #20 FINAL GATE]
+
+PR #20 thêm application-owned prepared memory context:
+
+- `OWNER_CORRECTION`, `OWNER_EXPLICIT`, `OWNER_APPROVED_INFERENCE`, `VERIFIED_TOOL` có thể vào default prepared model context;
+- `MODEL_INFERENCE` và `EXTERNAL_CONTENT` bị loại mặc định;
+- superseded record bị loại trước khi prepare;
+- authority ordering deterministic;
+- số record và tổng content characters có hard bound trước khi model chạy;
+- MemoryRecordId, scope, provenance/source reference và timestamps vẫn inspect được;
+- memory payload được ghi rõ là data, không phải action authorization hay policy override;
+- verified-tool fact không tự được coi là current external state.
+
+Real SQLite + fake-brain tests chứng minh correction tới brain còn superseded record và poison markers thì không. Implementation CI #127 / run `33864695658` tại `179a203d6c3d11ff85eb8529d4107ae2edc7f720` đã **PASS** restore, zero-warning build, toàn bộ tests, format, secret scan, dependency scan và web/auth smoke.
+
+PR #20 vẫn cần final exact-head CI trên head đã sync docs trước khi merge.
+
+## Durable-memory source classes
 
 ```text
 OWNER_EXPLICIT
@@ -98,7 +95,7 @@ MODEL_INFERENCE
 EXTERNAL_CONTENT
 ```
 
-ADR-003 cũng lock append/supersede correction, memory deletion tách khỏi audit retention và logical export `format_version = 1` độc lập EF migrations.
+ADR-003 lock append/supersede correction, memory deletion tách khỏi audit retention và logical export `format_version = 1` độc lập EF migrations.
 
 ## Canonical storage
 
@@ -134,9 +131,8 @@ Không commit secret thật. Nếu expose host ra ngoài localhost phải dùng 
 ## Tiếp theo
 
 ```text
-PR #19 final exact-head CI
- -> merge M4 Slice 2
- -> M4 Slice 3 authority-aware prepared memory context
+PR #20 final exact-head CI
+ -> merge M4 Slice 3
  -> M4 Slice 4 forget/delete
  -> M4 Slice 5 poisoning/trust acceptance
  -> M4 exit gate
