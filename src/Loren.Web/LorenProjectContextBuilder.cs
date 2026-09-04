@@ -13,10 +13,19 @@ public sealed class LorenProjectContextBuilder
     };
 
     private readonly IProjectCatalog _projectCatalog;
+    private readonly LorenMemoryContextBuilder? _memoryContextBuilder;
 
     public LorenProjectContextBuilder(IProjectCatalog projectCatalog)
+        : this(projectCatalog, null)
+    {
+    }
+
+    public LorenProjectContextBuilder(
+        IProjectCatalog projectCatalog,
+        LorenMemoryContextBuilder? memoryContextBuilder)
     {
         _projectCatalog = projectCatalog ?? throw new ArgumentNullException(nameof(projectCatalog));
+        _memoryContextBuilder = memoryContextBuilder;
     }
 
     public async Task<PreparedLorenContext> BuildAsync(
@@ -41,14 +50,30 @@ public sealed class LorenProjectContextBuilder
         }
 
         LorenProjectContext projectContext = ToProjectContext(snapshot);
-        string systemContext = BuildSystemContext(projectContext);
-        BrainContext brainContext = new(
-            [
-                new BrainMessage(BrainRole.System, systemContext),
-                new BrainMessage(BrainRole.User, message),
-            ]);
+        string projectSystemContext = BuildSystemContext(projectContext);
+        PreparedMemoryContext? memoryContext = _memoryContextBuilder is null
+            ? null
+            : await _memoryContextBuilder.BuildAsync(
+                snapshot.Project.Id,
+                cancellationToken);
 
-        return new PreparedLorenContext(brainContext, projectContext);
+        List<BrainInput> inputs =
+        [
+            new BrainMessage(BrainRole.System, projectSystemContext),
+        ];
+
+        if (memoryContext?.SystemContext is string memorySystemContext)
+        {
+            inputs.Add(new BrainMessage(BrainRole.System, memorySystemContext));
+        }
+
+        inputs.Add(new BrainMessage(BrainRole.User, message));
+        BrainContext brainContext = new(inputs);
+
+        return new PreparedLorenContext(
+            brainContext,
+            projectContext,
+            memoryContext);
     }
 
     private static LorenProjectContext ToProjectContext(ProjectSnapshot snapshot) => new(
@@ -79,7 +104,8 @@ public sealed class LorenProjectContextBuilder
 
 public sealed record PreparedLorenContext(
     BrainContext BrainContext,
-    LorenProjectContext? Project);
+    LorenProjectContext? Project,
+    PreparedMemoryContext? Memory = null);
 
 public sealed record LorenProjectContext(
     string ProjectId,
