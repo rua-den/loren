@@ -16,7 +16,7 @@ public sealed class CanonicalProjectCatalogUpdateTests
             $"loren-m3-update-{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDirectory);
         string databasePath = Path.Combine(tempDirectory, "loren.db");
-        string connectionString = $"Data Source={databasePath}";
+        string connectionString = $"Data Source={databasePath};Pooling=False";
         DateTimeOffset createdAt = new(2026, 9, 4, 5, 30, 0, TimeSpan.Zero);
         DateTimeOffset updatedAt = createdAt.AddMinutes(5);
         ProjectId projectId = ProjectId.New();

@@ -17,7 +17,7 @@ public sealed class CanonicalProjectCatalogTests
             $"loren-m3-{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDirectory);
         string databasePath = Path.Combine(tempDirectory, "loren.db");
-        string connectionString = $"Data Source={databasePath}";
+        string connectionString = $"Data Source={databasePath};Pooling=False";
 
         ProjectId projectId = ProjectId.New();
         RepositoryId repositoryId = RepositoryId.New();
@@ -105,7 +105,7 @@ public sealed class CanonicalProjectCatalogTests
             $"loren-m3-{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDirectory);
         string databasePath = Path.Combine(tempDirectory, "loren.db");
-        string connectionString = $"Data Source={databasePath}";
+        string connectionString = $"Data Source={databasePath};Pooling=False";
         DateTimeOffset now = new(2026, 9, 4, 5, 30, 0, TimeSpan.Zero);
 
         try

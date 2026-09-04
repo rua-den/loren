@@ -20,7 +20,7 @@ public sealed class PreparedMemoryContextTests
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         string tempDirectory = CreateTempDirectory("loren-m4-prepared-memory");
-        string connectionString = $"Data Source={Path.Combine(tempDirectory, "loren.db")}";
+        string connectionString = $"Data Source={Path.Combine(tempDirectory, "loren.db")};Pooling=False";
         DateTimeOffset now = new(2026, 9, 4, 10, 15, 0, TimeSpan.Zero);
         ProjectId projectId = ProjectId.New();
         RepositoryId repositoryId = RepositoryId.New();

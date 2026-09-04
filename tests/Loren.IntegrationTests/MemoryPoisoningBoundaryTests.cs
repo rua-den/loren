@@ -20,7 +20,7 @@ public sealed class MemoryPoisoningBoundaryTests
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         string tempDirectory = CreateTempDirectory();
-        string connectionString = $"Data Source={Path.Combine(tempDirectory, "loren.db")}";
+        string connectionString = $"Data Source={Path.Combine(tempDirectory, "loren.db")};Pooling=False";
         DateTimeOffset now = new(2026, 9, 4, 12, 0, 0, TimeSpan.Zero);
         ProjectId projectId = ProjectId.New();
         RepositoryId repositoryId = RepositoryId.New();
@@ -137,7 +137,7 @@ public sealed class MemoryPoisoningBoundaryTests
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         string tempDirectory = CreateTempDirectory();
-        string connectionString = $"Data Source={Path.Combine(tempDirectory, "loren.db")}";
+        string connectionString = $"Data Source={Path.Combine(tempDirectory, "loren.db")};Pooling=False";
         DateTimeOffset now = new(2026, 9, 4, 12, 10, 0, TimeSpan.Zero);
         ProjectId projectId = ProjectId.New();
         RepositoryId repositoryId = RepositoryId.New();
@@ -257,7 +257,7 @@ public sealed class MemoryPoisoningBoundaryTests
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         string tempDirectory = CreateTempDirectory();
-        string connectionString = $"Data Source={Path.Combine(tempDirectory, "loren.db")}";
+        string connectionString = $"Data Source={Path.Combine(tempDirectory, "loren.db")};Pooling=False";
         DateTimeOffset now = new(2026, 9, 4, 12, 30, 0, TimeSpan.Zero);
         ProjectId projectId = ProjectId.New();
         RepositoryId repositoryId = RepositoryId.New();
@@ -314,7 +314,7 @@ public sealed class MemoryPoisoningBoundaryTests
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         string tempDirectory = CreateTempDirectory();
-        string connectionString = $"Data Source={Path.Combine(tempDirectory, "loren.db")}";
+        string connectionString = $"Data Source={Path.Combine(tempDirectory, "loren.db")};Pooling=False";
         DateTimeOffset now = new(2026, 9, 4, 12, 40, 0, TimeSpan.Zero);
         ProjectId projectId = ProjectId.New();
         RepositoryId repositoryId = RepositoryId.New();

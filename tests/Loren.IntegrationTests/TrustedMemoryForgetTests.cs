@@ -15,7 +15,7 @@ public sealed class TrustedMemoryForgetTests
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         string tempDirectory = CreateTempDirectory();
-        string connectionString = $"Data Source={Path.Combine(tempDirectory, "loren.db")}";
+        string connectionString = $"Data Source={Path.Combine(tempDirectory, "loren.db")};Pooling=False";
         DateTimeOffset now = new(2026, 9, 4, 11, 0, 0, TimeSpan.Zero);
         ProjectId projectId = ProjectId.New();
         RepositoryId repositoryId = RepositoryId.New();
@@ -126,7 +126,7 @@ public sealed class TrustedMemoryForgetTests
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         string tempDirectory = CreateTempDirectory();
-        string connectionString = $"Data Source={Path.Combine(tempDirectory, "loren.db")}";
+        string connectionString = $"Data Source={Path.Combine(tempDirectory, "loren.db")};Pooling=False";
         DateTimeOffset now = new(2026, 9, 4, 11, 10, 0, TimeSpan.Zero);
         ProjectId projectId = ProjectId.New();
         RepositoryId repositoryId = RepositoryId.New();
@@ -189,7 +189,7 @@ public sealed class TrustedMemoryForgetTests
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         string tempDirectory = CreateTempDirectory();
-        string connectionString = $"Data Source={Path.Combine(tempDirectory, "loren.db")}";
+        string connectionString = $"Data Source={Path.Combine(tempDirectory, "loren.db")};Pooling=False";
 
         try
         {

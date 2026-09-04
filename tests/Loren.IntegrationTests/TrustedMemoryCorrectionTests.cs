@@ -14,7 +14,7 @@ public sealed class TrustedMemoryCorrectionTests
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         string tempDirectory = CreateTempDirectory("loren-m4-correction");
-        string connectionString = $"Data Source={Path.Combine(tempDirectory, "loren.db")}";
+        string connectionString = $"Data Source={Path.Combine(tempDirectory, "loren.db")};Pooling=False";
         DateTimeOffset originalTime = new(2026, 9, 4, 10, 5, 0, TimeSpan.Zero);
         DateTimeOffset correctionTime = originalTime.AddMinutes(5);
         ProjectId projectId = ProjectId.New();
@@ -119,7 +119,7 @@ public sealed class TrustedMemoryCorrectionTests
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         string tempDirectory = CreateTempDirectory("loren-m4-correction-authority");
-        string connectionString = $"Data Source={Path.Combine(tempDirectory, "loren.db")}";
+        string connectionString = $"Data Source={Path.Combine(tempDirectory, "loren.db")};Pooling=False";
         DateTimeOffset now = new(2026, 9, 4, 10, 5, 0, TimeSpan.Zero);
         ProjectId projectId = ProjectId.New();
         RepositoryId repositoryId = RepositoryId.New();
@@ -168,7 +168,7 @@ public sealed class TrustedMemoryCorrectionTests
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         string tempDirectory = CreateTempDirectory("loren-m4-correction-scope");
-        string connectionString = $"Data Source={Path.Combine(tempDirectory, "loren.db")}";
+        string connectionString = $"Data Source={Path.Combine(tempDirectory, "loren.db")};Pooling=False";
         DateTimeOffset now = new(2026, 9, 4, 10, 5, 0, TimeSpan.Zero);
         ProjectId projectId = ProjectId.New();
         RepositoryId repositoryId = RepositoryId.New();
@@ -217,7 +217,7 @@ public sealed class TrustedMemoryCorrectionTests
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         string tempDirectory = CreateTempDirectory("loren-m4-correction-current");
-        string connectionString = $"Data Source={Path.Combine(tempDirectory, "loren.db")}";
+        string connectionString = $"Data Source={Path.Combine(tempDirectory, "loren.db")};Pooling=False";
         DateTimeOffset now = new(2026, 9, 4, 10, 5, 0, TimeSpan.Zero);
         ProjectId projectId = ProjectId.New();
         RepositoryId repositoryId = RepositoryId.New();
