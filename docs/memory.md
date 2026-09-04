@@ -1,203 +1,157 @@
 # Loren Memory Model
 
-**Status:** Proposed.
+**Status:** Active v0.1 baseline — Gate C / ADR-003 accepted.
 
-Loren's memory must provide continuity without turning every conversation into an unstructured transcript dump.
+Loren's memory provides continuity without turning every conversation into an unstructured transcript dump. The storage/lifecycle rules that M4 must obey are locked in [`ADR-003`](decisions/003-canonical-state-and-memory-lifecycle.md).
 
 ## Memory classes
 
-### 1. Working memory
+### Working memory
 
-Short-lived context needed to complete the current conversation or task.
+Short-lived context needed to finish the current conversation/task: current references, task plan, temporary constraints, intermediate results, unresolved questions. It may expire aggressively and does not automatically become durable state.
 
-Examples:
+### Long-term semantic memory
 
-- what "that file" refers to;
-- current task plan;
-- intermediate tool results;
-- unresolved questions;
-- temporary constraints.
+Durable facts, preferences, policies, and stable relationships. It should be scoped to stable Loren entities such as Project/Repository where possible.
 
-Working memory may expire aggressively and should not automatically become durable memory.
+### Episodic memory
 
-### 2. Long-term semantic memory
+Significant events over time: failures/fixes, rejected recommendations, one-time exceptions, surprising automation outcomes. Episodes support questions such as "what happened last time?" without pretending every event is current truth.
 
-Durable facts, preferences, policies, and stable relationships.
+### Procedural memory
 
-Examples:
+Reusable operating knowledge: release procedure, required checks, owner-defined workflows. Mature procedures may later be promoted into explicit skills/policies rather than remaining vague prose.
 
-- preferred communication style;
-- project aliases;
-- deployment preferences;
-- known devices;
-- recurring collaborators;
-- stable technical decisions.
+## Durable source/trust classes
 
-Semantic memory should be normalized when possible and linked to world-model entities.
+M4 must implement at least:
 
-### 3. Episodic memory
+```text
+OWNER_EXPLICIT
+OWNER_CORRECTION
+VERIFIED_TOOL
+OWNER_APPROVED_INFERENCE
+MODEL_INFERENCE
+EXTERNAL_CONTENT
+```
 
-Records of significant events and experiences over time.
+These are contextual authority classes, not one universal confidence number.
 
-Examples:
+- `OWNER_EXPLICIT` — owner-stated durable truth within a scope.
+- `OWNER_CORRECTION` — owner correction; highest authority for the corrected owner-truth subject/scope.
+- `VERIFIED_TOOL` — authoritative for the external fact at verification time, but cannot create owner preference/policy/approval.
+- `OWNER_APPROVED_INFERENCE` — inferred state explicitly approved by the owner; retains inference + approval provenance.
+- `MODEL_INFERENCE` — low-authority hypothesis/candidate, never silent owner truth.
+- `EXTERNAL_CONTENT` — untrusted retrieved content; cannot promote itself into trusted personal memory or policy.
 
-- a deployment failed and how it was fixed;
-- a project migrated storage backends;
-- the owner rejected a recommendation;
-- a permission exception was granted once;
-- an automation produced an unexpected result.
-
-Episodes are useful for questions like "what happened last time?" and for improving future behavior.
-
-### 4. Procedural memory
-
-Reusable operating knowledge learned or explicitly defined for the owner.
-
-Examples:
-
-- how this project should be released;
-- how the owner prefers repositories to be initialized;
-- which checks must run before production deployment;
-- how to prepare a recurring weekly report.
-
-Procedures should eventually be promotable into skills or explicit policies rather than remaining vague prose.
+Every durable record needs source class, creation time, subject/scope, and source reference where applicable.
 
 ## Write policy
 
-Loren should not save everything.
+Loren does not save everything. Candidate memory is evaluated for future usefulness, expected stability, sensitivity, duplication, source authority, and whether the owner explicitly asked to remember it.
 
-A candidate memory should be evaluated for:
-
-- future usefulness;
-- expected stability;
-- confidence;
-- sensitivity;
-- duplication;
-- source authority;
-- whether the owner explicitly requested remembering it.
-
-Low-confidence inferences should not silently become permanent facts.
-
-## Proposed memory lifecycle
+Low-authority model/external content does not silently become durable owner truth.
 
 ```text
 Observation
    |
    v
-Candidate memory
+Candidate
    |
-   +--> discard (temporary/noisy)
+   +--> discard / working memory
    |
-   +--> working memory
-   |
-   +--> durable memory
-            |
-            +--> semantic entity/fact
-            +--> episodic record
-            +--> procedural rule
+   +--> durable record with provenance + authority
 ```
+
+## Correction and supersession
+
+Corrections are append/supersede rather than silent destructive rewrites.
+
+```text
+MemoryRecord A (current)
+    |
+owner correction
+    v
+MemoryRecord B (current)
+A -> superseded_by B
+```
+
+Current-truth retrieval ignores superseded records by default, while retained history remains reconstructable. Model inference or external content cannot supersede owner-authoritative state without an explicit promotion/correction path.
+
+Exact M4 column names are not locked; the semantic behavior is.
+
+## Forgetting / deletion
+
+Memory deletion and audit retention are different operations.
+
+A memory forget/delete must remove the record from future context/retrieval and may physically purge the memory payload according to policy. It must not silently cascade-delete unrelated audit history.
+
+Audit is append-oriented evidence and is removed/redacted only through an explicit audit-retention/privacy operation. Audit payloads should minimize sensitive content so retained history does not become a secret archive.
 
 ## Retrieval
 
-Retrieval should combine multiple signals rather than relying on embeddings alone:
+Retrieval should combine explicit entity references, lexical/semantic match, recency, scope, importance, and source authority. Embeddings may help later but are not the authority model.
 
-- explicit entity references;
-- recent conversation/task context;
-- lexical search;
-- semantic similarity;
-- time relevance;
-- project/person scope;
-- importance;
-- source authority.
+The brain receives a small ranked context package with provenance rather than direct database access or a giant memory dump.
 
-The output to the model should be a small, ranked context package with provenance, not a giant memory dump.
+## Personal world model boundary
 
-## Personal world model
-
-Durable memory should be linkable to stable entities.
-
-Initial entity candidates:
+M3 deliberately implemented only the identity needed now:
 
 ```text
-Owner
-Person
 Project
 Repository
-Device
-Place
-Service
-Environment
-Decision
-Preference
-Task
-Event
-Procedure
 ```
 
-Each entity should have a stable internal ID and may have aliases. Human-readable names are not reliable identifiers.
+Project aliases are canonical configured referents, not ordinary inferred memory. Repository locators identify where to fetch current external state; they do not make cached external facts current.
 
-Example:
-
-```yaml
-entity: Project
-id: project_wedding_online
-name: wedding-online
-aliases:
-  - wedding project
-  - web dam cuoi
-relations:
-  repository: github:rua-den/wedding-online
-```
-
-The exact storage schema is intentionally deferred.
+Do not add broad `Person`, `Task`, `Decision`, `Preference`, `Device`, or generic graph schemas until a real workflow requires them.
 
 ## Provenance
 
-Every durable fact should ideally know:
+Durable memory should answer:
 
-- where it came from;
-- when it was learned;
-- confidence or authority;
-- when it was last verified;
-- whether it was explicitly stated by the owner or inferred.
+- where did this come from?
+- when was it learned/verified?
+- who/what had authority to assert it?
+- what subject/scope does it apply to?
+- has it been superseded?
+- was an inference owner-approved or merely model-generated?
 
-This allows Loren to distinguish:
+This supports clear distinctions such as:
 
-> "You told me this preference."
+> "You told me this."
 
-from:
+versus:
 
-> "I inferred this from three previous actions."
-
-## Correction and forgetting
-
-The owner must be able to:
-
-- inspect important memories;
-- correct them;
-- delete them;
-- mark them temporary;
-- prevent specific categories from being stored.
-
-Corrections should preserve audit history while ensuring the superseded value is not treated as current truth.
+> "I inferred this and have not treated it as owner truth."
 
 ## Sensitive memory
 
-Secrets, raw credentials, session tokens, private keys, and recovery codes should not be ordinary memory objects.
+Secrets, raw credentials, session tokens, private keys, recovery codes, and session cookies are never ordinary memory objects.
 
-Memory may store a reference such as:
+Memory may eventually hold opaque references such as:
 
 ```text
 credential_ref: secret/github/personal-token
 ```
 
-but secret material belongs in a dedicated secret store.
+but secret material belongs in a dedicated secret store/executor boundary.
 
-## Open questions
+## Export direction
 
-- relational database plus vector index, or one unified store?
-- how aggressively should Loren summarize old episodes?
-- how are conflicting memories resolved?
-- when should inferred preferences require owner confirmation?
-- should memory mutations be git-versioned, database-versioned, or both?
-- which subset should remain directly human-editable as Markdown/YAML?
+Portable state export is a Loren-owned logical versioned format, not the raw SQLite layout. `format_version = 1` is the first planned contract; schema migration IDs and export format versions are separate.
+
+Export preserves canonical IDs and excludes raw secrets. Exact physical packaging remains an M7 implementation decision as long as the ADR-003 logical manifest/version contract is preserved.
+
+## Deliberately unresolved for M4 implementation
+
+These choices are still reversible and should be driven by actual retrieval behavior:
+
+- whether/when a vector index is worth adding;
+- ranking formula and memory context budget;
+- episode summarization/compaction strategy;
+- whether some memory categories need owner-confirmation UX by default;
+- exact SQLite table/column/index design for `MemoryRecord`.
+
+None of those unresolved choices may weaken the trust/source, correction, deletion, or canonical-ID rules accepted at Gate C.
