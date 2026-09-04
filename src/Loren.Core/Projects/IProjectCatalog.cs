@@ -11,6 +11,6 @@ public interface IProjectCatalog
         CancellationToken cancellationToken = default);
 
     Task<ProjectSnapshot?> FindByAliasAsync(
-        string alias,
+        string projectAlias,
         CancellationToken cancellationToken = default);
 }
