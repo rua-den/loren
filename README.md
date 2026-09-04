@@ -4,7 +4,7 @@
 
 Loren is a long-lived personal intelligence system with persistent memory, explicit permissions, tool use, and eventually proactive behavior across the owner's digital life.
 
-> **The model is replaceable compute. Loren owns identity, memory, context, policy, action boundaries, and history.**
+> **The model is replaceable compute. Loren owns identity, memory, context, policy, approvals, action boundaries, and history.**
 
 ## Core principles
 
@@ -20,13 +20,16 @@ Loren is a long-lived personal intelligence system with persistent memory, expli
 **Last updated:** 2026-09-04  
 **Phase:** `v0.1 — Trustworthy Core development`  
 **Completed milestone:** `M4 — Trusted Durable Memory`  
-**Next decision gate:** `Gate D — Action/Credential Policy before M5 writes`
+**Passed decision gates:** `Gate A`, `Gate B`, `Gate C`, `Gate D / ADR-004`  
+**Current milestone:** `M5 — Action/Credential Boundary + Narrow GitHub Writes`  
+**Now:** `M5 Slice 1 — typed write policy + one-time approval + global read-only`
 
 Completed:
 
 - Gate A / ADR-001 — Loren-owned core/runtime boundary.
 - Gate B / ADR-002 — provider-neutral v0.1 stack.
 - Gate C / ADR-003 — canonical state + memory lifecycle.
+- Gate D / ADR-004 — action approval + credential boundary.
 - M0 — technical feasibility.
 - M1 — engineering foundation.
 - M2 — Walking Skeleton.
@@ -35,80 +38,149 @@ Completed:
 
 Detailed status: [`docs/status.md`](docs/status.md).
 
-## M4 memory path [COMPLETE]
+## What M4 proved
 
 ```text
 owner durable fact
- -> MemoryRecord / MemoryRecordId
- -> Project / Repository scope + provenance
+ -> canonical MemoryRecord + provenance
  -> SQLite
  -> restart-safe retrieval
 
 owner correction
  -> append OWNER_CORRECTION
  -> supersede old claim atomically
- -> old history remains reconstructable
+ -> history stays reconstructable
 
 project request
  -> current memories
- -> source/provenance + lifecycle filtering
- -> deterministic ordering
- -> hard content/provenance bounds
+ -> authority/provenance/lifecycle filtering
+ -> deterministic hard bounds
  -> prepared Loren memory data
  -> BrainContext
 
 owner forget
- -> current memory
  -> purge full correction chain transactionally
  -> restart
  -> forgotten claim stays absent
+
+adversarial content
+ -> MODEL_INFERENCE / EXTERNAL_CONTENT cannot silently become owner truth
+ -> provenance remains data, never action authorization
 ```
 
-### Slice 1 — OWNER_EXPLICIT persistence
+M4 merged through PRs #18–#22. PR #23 then fixed Windows-specific SQLite temp-file cleanup by disabling pooling only for temporary integration databases and added a permanent `windows-latest` integration job.
 
-PR #18 merged at `78adc287f7ae3744352b7019e3b8a838a5de499e`. Final CI #117 / run `33860985267` and post-merge main CI #118 / run `33861089270` passed.
+Latest verified baseline:
 
-### Slice 2 — correction + supersession
+- main commit after Windows hardening: `1cdd849126310745652d87f1d100c34aed624079`;
+- PR CI #162 / `33893832128`: Ubuntu full gate + Windows integration — PASS;
+- post-merge main CI #163 / `33894104116`: Ubuntu full gate + Windows integration — PASS;
+- owner local Windows full integration suite — PASS.
 
-PR #19 merged at `201b83eff0c6c3143856e348b4c9f029cc14a8b1`. Implementation CI #119 / run `33861345949` and final CI #123 / run `33861630472` passed.
+## Gate D / ADR-004 [PASSED]
 
-Correction is explicit append + supersede. Old content is preserved; invalid authority/scope, stale targets, duplicate replacement IDs, and partial failure all fail closed.
+Gate D freezes the first write-capable trust boundary before any real write executor exists.
 
-### Slice 3 — authority-aware prepared memory
+### Every first-version real GitHub write requires explicit owner approval
 
-PR #20 merged at `732b85db3a799638bcd73558f98232b276f3cb5e`. Implementation CI #127 / run `33864695658` and final exact-head CI #131 / run `33864946328` passed.
+Authentication proves owner identity; it is **not** write approval.
 
-Prepared memory:
+Approval is a Loren-owned artifact bound to exact normalized intent:
 
-- includes `OWNER_CORRECTION`, `OWNER_EXPLICIT`, `OWNER_APPROVED_INFERENCE`, and `VERIFIED_TOOL` only when the source semantics are valid;
-- excludes `MODEL_INFERENCE` and `EXTERNAL_CONTENT` from default trusted model context;
-- excludes superseded records;
-- retains canonical IDs, scope, provenance, and timestamps;
-- applies deterministic ordering and hard record/content bounds before model execution;
-- is explicitly data, never action authorization or policy override.
+```text
+ApprovalId
+owner/session binding
+action identity
+ProjectId + RepositoryId
+normalized target/resource
+security-relevant parameter digest
+approved timestamp
+expiry/task boundary
+one-time consumption state
+optional prerequisite digest
+```
 
-### Slice 4 — owner forget/delete
+Material changes to repository, branch, path, content digest, PR base/head, or action intent require a new approval.
 
-PR #21 merged at `87b5a39ccae7c931de9668fed5283a4742be73f7`. Implementation CI #133 / run `33865419023` and final exact-head CI #137 / run `33865716479` passed.
+Approval is atomically consumed once. Consumed, expired, mismatched, unknown, revoked, or replayed approval fails closed.
 
-For `A -> B -> C(current)`, `ForgetAsync(C)` validates a same-scope linear correction history and physically purges A, B, C inside one SQLite transaction. Restart acceptance proves forgotten claims do not resurrect while unrelated memories survive. Memory forgetting does not cascade into audit retention.
+### Canonical target before authorization
 
-### Slice 5 — poisoning / trust boundary
+A model-provided repository string is not authority. Write policy must resolve the request to canonical Loren-owned Project/Repository identity and normalized security-relevant target parameters before authorization.
 
-PR #22 closes the M4 trust gate.
+### Global read-only defaults safe
 
-Hardening and adversarial acceptance prove:
+Before any write executor ships Loren must have a host-controlled global read-only posture.
 
-- trusted prepared-context records require provenance;
-- provenance/source references are bounded independently from memory content;
-- the entire serialized memory payload — content, provenance, IDs, scope and timestamps — is inert data, never instructions, permission, policy or action authorization;
-- spoofed `MODEL_INFERENCE` / `EXTERNAL_CONTENT` stay excluded even with owner-looking provenance;
-- unproven `OWNER_APPROVED_INFERENCE` / `VERIFIED_TOOL` records stay excluded;
-- `VERIFIED_TOOL` does not automatically represent current external state or grant owner permission;
-- owner correction remains current owner truth in scope;
-- normal `LorenRunService` execution reads prepared memory without silently calling Add/Correct/Forget mutations.
+```text
+write-enable missing/invalid -> read-only
+read-only -> no write executor
+read-only -> no write credential resolution
+read actions remain available
+```
 
-Implementation CI #140 / run `33866182751` passed restore, zero-warning build, all tests, format, secret scan, dependency scan, and web/auth smoke.
+The model cannot toggle this through an ordinary action.
+
+### Credentials stay behind the executor boundary
+
+Write credential values never enter:
+
+- `BrainContext`;
+- model-visible action parameters;
+- canonical state;
+- durable memory;
+- audit payloads;
+- owner-visible results.
+
+Only an opaque credential purpose/reference crosses application boundaries. Missing/revoked credentials fail closed. Credential revocation overrides prior approval. Read/write credential purposes remain logically separated.
+
+### External write success requires verification
+
+A successful API response alone is not enough.
+
+```text
+create branch -> fetch ref -> confirm exact SHA
+file/commit write -> fetch commit/ref/file state -> confirm expected identity
+open PR -> fetch PR -> confirm repo/base/head/state/PR identity
+```
+
+Ambiguous verification is not reported as success.
+
+### v0.1 write allowlist
+
+Allowed only after M5 foundations are green:
+
+```text
+create non-default branch
+create/update file via controlled commit path on a non-default branch
+create commit/update ref only as required by that path
+open pull request
+```
+
+Still forbidden:
+
+```text
+direct default-branch write
+merge pull request
+force push / history rewrite
+delete repository/branch/data
+repository admin/security changes
+secret-management actions
+production deployment
+```
+
+## M5 implementation sequence
+
+```text
+Slice 1  typed action policy context + one-time approval + global read-only
+Slice 2  write credential resolver + redaction/revocation
+Slice 3  create non-default GitHub branch + verify exact ref/SHA
+Slice 4  controlled file/commit path + verify
+Slice 5  open pull request + verify
+Slice 6  replay/revocation/injection/audit E2E
+```
+
+No real GitHub mutation is enabled in Slice 1. No mutation should be enabled before the policy/approval/read-only/credential foundations are tested.
 
 ## Durable-memory source classes
 
@@ -121,7 +193,7 @@ MODEL_INFERENCE
 EXTERNAL_CONTENT
 ```
 
-ADR-003 keeps authority contextual rather than collapsing it into one confidence score.
+ADR-003 keeps authority contextual instead of collapsing it into one confidence score.
 
 ## Canonical storage
 
@@ -152,24 +224,21 @@ dotnet run --project src/Loren.Web/Loren.Web.csproj
 
 Do not commit real secrets.
 
-## Next — Gate D / M5
+## Test
 
-Before any real GitHub write capability is enabled, Gate D must lock:
+```bash
+dotnet restore Loren.slnx
+dotnet build Loren.slnx --configuration Release --no-restore
+dotnet test Loren.slnx --configuration Release --no-build --no-restore
+```
 
-- write action contracts and policy dimensions;
-- exact approval binding and non-replay rules;
-- credential storage/resolution and read/write separation;
-- secret redaction, rotation, and revocation;
-- global read-only / kill behavior;
-- post-write verification and audit expectations.
-
-Only after Gate D may M5 implement the narrow v0.1 write set: create branch, create/update file or equivalent commit path, create commit, and open pull request. Merge-main, force-push, repository deletion/admin changes, and production deploy remain outside that write scope.
+Windows is now a first-class integration-test CI platform in addition to the Ubuntu full gate.
 
 ## Version path
 
 ```text
 v0.0  architecture / feasibility        ✓ complete
-v0.1  trustworthy core                 <- current / Gate D before M5
+v0.1  trustworthy core                 <- current / M5
 v0.2  useful project assistant
 v0.3  personal operations
 v0.4  voice + device presence
@@ -183,9 +252,12 @@ v1.0  stable personal daily driver
 - [`docs/status.md`](docs/status.md) — authoritative current progress
 - [`docs/development.md`](docs/development.md) — build/test/configuration guidance
 - [`docs/architecture.md`](docs/architecture.md) — active system boundaries
+- [`docs/permissions.md`](docs/permissions.md) — active permission/approval baseline
+- [`docs/security.md`](docs/security.md) — active security baseline
 - [`docs/plans/master-plan.md`](docs/plans/master-plan.md) — version milestones and gates
 - [`docs/plans/v0.1.md`](docs/plans/v0.1.md) — detailed v0.1 implementation plan
 - [`docs/decisions/003-canonical-state-and-memory-lifecycle.md`](docs/decisions/003-canonical-state-and-memory-lifecycle.md)
+- [`docs/decisions/004-action-approval-and-credential-boundary.md`](docs/decisions/004-action-approval-and-credential-boundary.md)
 - [`docs/memory.md`](docs/memory.md)
 
 This repository is the source of truth for Loren's product decisions, architecture, delivery plans, implementation, progress, and release history.
