@@ -2,7 +2,7 @@
 
 **Status:** Active planning baseline  
 **Current phase:** `v0.1 — Trustworthy Core development`  
-**Current milestone:** `M3 — Canonical Project/Repository State`
+**Current milestone:** `M4 — Trusted Durable Memory`
 
 This is Loren's top-level delivery plan. The roadmap is **capability-driven, not date-driven**. Versions advance only when their trust/usefulness exit gates pass.
 
@@ -67,7 +67,7 @@ notification channels
 
 ```text
 v0.0   architecture / feasibility        ✓ complete
-v0.1   trustworthy core                 <- current development / M3
+v0.1   trustworthy core                 <- current development / M4
 v0.2   useful project assistant
 v0.3   personal operations
 v0.4   voice + device presence
@@ -99,41 +99,51 @@ C# 14 / .NET 10 LTS
 ASP.NET Core
 small Loren-owned bounded agent loop
 provider-neutral IBrain
-  ├─ Ollama adapter
-  ├─ OpenAI adapter
-  └─ future cloud/local providers
 MCP C# SDK behind Loren action contracts
 SQLite + EF Core
 Blazor Web App
 xUnit
 ```
 
-M0 proved provider/tool/MCP/persistence/host feasibility. M1 rebuilt production code behind Loren-owned interfaces. M2 then proved the real authenticated production read path end to end.
+M0 proved provider/tool/MCP/persistence/host feasibility. M1 rebuilt production code behind Loren-owned interfaces. M2 proved the real authenticated production read path end to end.
 
-## Gate C — Canonical storage and memory schema [ACTIVE PREPARATION]
+## Gate C — Canonical storage and memory lifecycle [PASSED]
 
-Must settle before broad memory/write workflows stabilize:
+**Decision:** ADR-003 — Accepted on 2026-09-04.
 
-- canonical database schema/migration policy;
-- stable Loren ID rules;
+M3 made the Project/Repository boundary concrete and Gate C locked:
+
+- opaque Loren-owned GUID identity rules;
+- SQLite + explicit EF Core migration policy;
+- Project/Repository canonical schema boundary;
 - durable-memory source/trust classes;
-- correction/supersession semantics;
-- export/restore versioning;
-- retention/deletion behavior for memory versus audit.
+- append/supersede correction semantics;
+- memory deletion versus audit retention separation;
+- logical portable export versioning independent of EF schema migration IDs.
 
-M3 is responsible for making the Project/Repository storage boundary concrete enough to close this gate before M4 expands memory.
+The accepted memory source classes are:
 
-A dedicated ADR is required if storage becomes materially more complex than the accepted SQLite/EF Core baseline.
+```text
+OWNER_EXPLICIT
+OWNER_CORRECTION
+VERIFIED_TOOL
+OWNER_APPROVED_INFERENCE
+MODEL_INFERENCE
+EXTERNAL_CONTENT
+```
+
+Portable export begins with a logical `format_version = 1` contract; raw SQLite copies may be backups but are not the portable canonical format.
+
+Gate C authorizes M4 Trusted Memory. It does **not** authorize external writes.
 
 ## Gate D — Action/credential policy [before first real external write]
 
 Must settle:
 
-- action contract;
-- policy dimensions;
+- action contract and policy dimensions;
 - approval binding/replay rules;
 - credential storage/resolution;
-- secret redaction;
+- secret redaction and rotation/revocation;
 - global read-only/kill behavior.
 
 No write-capable integration may ship before this gate passes.
@@ -160,15 +170,7 @@ Must settle export/restore compatibility, upgrade/migration path, stable core in
 
 ## v0.0 — Architecture and feasibility [COMPLETE]
 
-Completed:
-
-- M0.1 product vision and architecture baseline;
-- M0.2 agent/runtime landscape research;
-- M0.3 ADR-001 accepted;
-- M0.4 ADR-002 provider-neutral technical validation;
-- M0.5 v0.1 plan and repository engineering/progress rules finalized.
-
-**Transition completed:** `v0.0 -> v0.1 development` on 2026-09-03.
+Completed ADR-001/ADR-002 feasibility and architecture work. **Transition completed:** `v0.0 -> v0.1 development` on 2026-09-03.
 
 ---
 
@@ -192,9 +194,9 @@ Create the smallest Loren that remembers project context, reads real GitHub stat
 ### Milestones
 
 - **M1 engineering foundation — COMPLETE**;
-- **M2 walking skeleton: owner -> brain -> Action Gateway -> GitHub read -> audit — COMPLETE**;
-- **M3 canonical project/repository state — ACTIVE**;
-- M4 trusted durable memory + correction/retrieval;
+- **M2 walking skeleton — COMPLETE**;
+- **M3 canonical project/repository state — COMPLETE**;
+- **M4 trusted durable memory + correction/retrieval — ACTIVE**;
 - M5 action/credential boundary + narrow GitHub writes;
 - M6 minimal daily-use UI;
 - M7 export/restore and recovery proof;
@@ -202,74 +204,81 @@ Create the smallest Loren that remembers project context, reads real GitHub stat
 
 ### M1 completion evidence
 
-M1 established the production scaffold with .NET SDK `10.0.400`, provider-neutral Core contracts, bounded Runtime loop, deterministic tests, central dependency versions, development documentation, and CI gates for restore/build/test/format/secret/dependency/health checks.
+M1 established the production scaffold with .NET SDK `10.0.400`, provider-neutral Core contracts, bounded Runtime loop, deterministic tests, central dependency versions, development documentation, and CI gates.
 
 ### M2 completion evidence
 
-M2 completed on 2026-09-04.
-
-Main implementation commit:
+M2 completed on 2026-09-04. Main implementation commit `94ce6d1e74f2dfdf0584b8dbf8a4edbbb3774f7d` plus trusted workflow run `33840149005` proved:
 
 ```text
-94ce6d1e74f2dfdf0584b8dbf8a4edbbb3774f7d
-```
-
-Main CI run `33840135772` passed restore/build/test/format/secret/dependency/auth smoke checks.
-
-Trusted exact-main workflow run `33840149005` proved:
-
-```text
-unauthenticated /api/run -> 401
-owner login -> authenticated cookie session
-authenticated /api/run
- -> real Ollama gpt-oss:120b
- -> ActionRequest(github.read_repository)
- -> Loren ActionGateway / ReadOnlyActionPolicy
- -> real GitHub GET rua-den/loren
- -> structured ActionResult
+owner auth
+ -> real Ollama
+ -> github.read_repository ActionRequest
+ -> Loren ActionGateway / read-only policy
+ -> real GitHub GET
+ -> structured result
  -> Ollama final answer
- -> correlated owner-visible audit
+ -> owner-visible correlated audit
 ```
 
-Observed result:
+Credential isolation and the production-only owner surface were also verified.
 
-```text
-runId:       5bb9cc341387430c82759d58309da85a
-turns:       2
-actionCount: 1
-final:       rua-den/loren / main
-```
+### M3 completion evidence
 
-Audit passed `ActionRequested -> PolicyEvaluated -> ActionCompleted`, ending in `succeeded`. Owner/provider credentials were absent from the owner-visible response and the temporary development run route remained unavailable in Production.
+M3 completed on 2026-09-04 in three slices.
 
-This closes the M2 architecture gate: the first owner-testable Loren preview is proven on the normal production owner path.
+**Slice 1 — canonical identity + persistence**
 
-### M3 active target
+- PR #15 merged at `00fbba08587ba8275c121fd7f9532a785f55314d`;
+- exact-head CI run `33842440251` / #99 passed;
+- Loren-owned `ProjectId`/`RepositoryId`, Project/Repository models, normalized aliases, `IProjectCatalog`, SQLite/EF persistence, initial migration, collision/update/restart tests.
 
-Build only the minimum provider-independent world model required by v0.1:
+**Slice 2 — deterministic alias resolution + prepared context**
 
-```text
-Owner
-Project
-Repository
-MemoryRecord
-PermissionRule
-AuditEvent
-```
+- PR #16 merged at `56fd988d3b74c754604355e3c97a5d3656675bbb`;
+- final PR exact-head CI run `33843405386` / #108 passed;
+- post-merge main CI run `33843524467` / #109 passed;
+- explicit aliases resolve before model execution;
+- unknown aliases fail before the brain runs;
+- host prepares a small EF-neutral Project/Repository `BrainContext`;
+- runtime/brain never receive `DbContext`;
+- current external facts still require authorized tools.
 
-M3 starts with the canonical Project/Repository identity and persistence pieces only.
-
-Acceptance target:
+Acceptance:
 
 ```text
 "wedding project"
 "web đám cưới"
 "wedding-online"
- -> same Loren Project
- -> Repository rua-den/wedding-online
+ -> same Loren ProjectId
+ -> Repository locator rua-den/wedding-online
 ```
 
-The mapping must survive Loren restart and provider-session deletion.
+The mapping survives SQLite context restart and is independent of provider session identity.
+
+**Slice 3 — Gate C**
+
+ADR-003 locks canonical IDs, migrations, memory source authority, correction/supersession, deletion/audit separation, and export versioning. With ADR-003 merged and source-of-truth docs synchronized, Gate C and M3 are complete.
+
+### M4 active target
+
+Implement durable memory under ADR-003 without creating a transcript dump or letting external/model content silently become owner truth.
+
+Initial M4 vertical flow:
+
+```text
+Owner: "Nhớ wedding-online là web đám cưới của tao."
+ -> OWNER_EXPLICIT MemoryRecord
+ -> canonical Project scope
+ -> persist + provenance
+ -> restart
+Owner: "Web đám cưới repo nào?"
+ -> trusted retrieval
+ -> small prepared context
+ -> correct canonical repository answer
+```
+
+Correction must create a new `OWNER_CORRECTION` record that supersedes prior current truth. External-content poisoning tests must prove retrieved text cannot promote itself into trusted memory/policy.
 
 ### v0.1 exit gate
 
@@ -301,18 +310,7 @@ Do not tag v0.1 until:
 
 Goal: make the trusted v0.1 core useful for richer daily project work.
 
-Candidate milestones/capabilities:
-
-- safe public web retrieval with provenance and SSRF/private-network controls;
-- research -> sourced conclusion -> explicit trusted-memory promotion;
-- persistent reminders/light scheduler;
-- project decisions/procedures;
-- richer GitHub project health summaries;
-- improved memory retrieval/conflict handling;
-- cost/token/run visibility;
-- optional additional provider/local-model validation when useful.
-
-Exit requires sourced research and persistent reminders to remain inspectable, bounded, cancellable, and unable to self-grant trusted permissions/memory.
+Candidate capabilities include safe public web retrieval/provenance, explicit research-to-memory promotion, persistent reminders, project decisions/procedures, richer GitHub project health, improved memory retrieval/conflict handling, and run cost visibility.
 
 **Checkpoint before private background operations:** Gate E.
 
@@ -320,17 +318,7 @@ Exit requires sourced research and persistent reminders to remain inspectable, b
 
 ## v0.3 — Personal Operations
 
-Candidate milestones/capabilities:
-
-- personal-data classification and connector credential scopes;
-- Calendar;
-- Gmail read/search/draft before tightly gated send;
-- server/VPS read health then constrained actions;
-- filesystem integration;
-- cross-tool context minimization/redaction;
-- daily brief / personal ops UX.
-
-Private data handling, connector failure, and consequential writes must remain within the same permission/audit boundaries established earlier.
+Candidate capabilities include Calendar, Gmail, server/VPS health and constrained actions, filesystem integrations, cross-tool context, daily brief, and stronger data/credential scopes.
 
 **Checkpoint before v0.4:** Gate F.
 
@@ -338,17 +326,7 @@ Private data handling, connector failure, and consequential writes must remain w
 
 ## v0.4 — Voice and Device Presence
 
-Candidate milestones/capabilities:
-
-- trusted-device/session model;
-- mobile/PWA interface;
-- push-to-talk;
-- speech-to-text and TTS;
-- notification actions;
-- device revocation/lost-device testing;
-- optional desktop/device node.
-
-Voice must never create a second memory/policy path or become sufficient authorization for high-risk actions.
+Candidate capabilities include trusted devices, mobile/PWA, push-to-talk, STT/TTS, notification actions, revocation/lost-device testing, and optional device nodes.
 
 **Checkpoint before v0.5:** Gate G.
 
@@ -356,35 +334,19 @@ Voice must never create a second memory/policy path or become sufficient authori
 
 ## v0.5 — Proactive Loren
 
-Candidate milestones/capabilities:
-
-- normalized event ingestion;
-- proactive evaluator with no write authority by default;
-- notification prioritization/rate limiting;
-- tiny allowlisted standing permissions;
-- bounded recurring/background tasks;
-- active-task visibility and global pause/kill switch;
-- adversarial event/prompt-injection suite.
-
-Background work must remain owned, visible, bounded, cancellable, and unable to recursively create unbounded work.
+Candidate capabilities include normalized events, proactive evaluation without default write authority, notification prioritization, tiny allowlisted standing permissions, bounded recurring work, active-task visibility, global pause, and adversarial event/prompt-injection tests.
 
 ---
 
 ## v0.6+ — Daily-use hardening
 
-Do not pre-design deeply. Let actual use determine priorities: memory consolidation, more providers/local models, Home Assistant, computer use, more integrations, offline/private execution, cost/performance, UX, and packaging/deployment simplification.
-
-Each new high-risk capability gets its own ADR/gate rather than silently entering the core.
+Do not pre-design deeply. Let actual use determine priorities: memory consolidation, more providers/local models, Home Assistant, computer use, more integrations, offline/private execution, performance/cost, UX, and packaging/deployment simplification.
 
 ---
 
 ## v1.0 — Stable Personal Daily Driver
 
-v1.0 means Loren's core can be trusted as the owner's long-lived assistant and can evolve without casually losing state or bypassing security boundaries.
-
-Minimum properties include stable daily-use workflows, tested backup/export/restore/migration, upgrade continuity, stable brain/action/skill interfaces, secret rotation/revocation, reliable controls for trusted devices/background work, reconstructable audit, integration-failure isolation, replaceable model/provider, and documented privacy/security defaults.
-
-Gate H must pass before release.
+v1.0 means Loren's core can be trusted as the owner's long-lived assistant and can evolve without casually losing state or bypassing security boundaries. Gate H must pass before release.
 
 ---
 
@@ -408,16 +370,7 @@ A milestone is complete only when its acceptance criteria pass on the main integ
 
 # 7. Stop-the-line conditions
 
-Do not continue to the next milestone/version if any of these is true:
-
-- model/runtime can bypass the Action Gateway;
-- privileged credential appears in model-visible content/logs;
-- canonical state requires a provider/runtime session to survive;
-- external content can create trusted owner policy without promotion;
-- destructive/external writes cannot be post-verified or reconstructed;
-- recovery/export is known broken;
-- a new abstraction exists only for hypothetical future framework support;
-- tests rely exclusively on live model behavior and cannot exercise deterministic core logic.
+Do not continue if model/runtime can bypass ActionGateway, privileged credentials leak, canonical state depends on provider sessions, external content can self-promote to trusted policy/memory, recovery is known broken, or deterministic core logic cannot be tested without live model behavior.
 
 Fix the boundary first, then continue.
 
@@ -425,26 +378,24 @@ Fix the boundary first, then continue.
 
 # 8. Current next action
 
-The project is currently at **v0.1 / M3 — Canonical Project/Repository State**.
+The project is now at **v0.1 / M4 — Trusted Durable Memory**.
 
 ```text
-stable Loren canonical IDs
+ADR-003 source/trust semantics
         |
-Project + Repository domain model
+MemoryRecord canonical model + migration
         |
-SQLite / EF Core persistence + migration
+owner-explicit save with Project scope + provenance
         |
-project aliases + deterministic resolver
+restart-safe trusted retrieval
         |
-restart/provider-session independence tests
+owner correction -> append/supersede
         |
-runtime prepared-context integration
+external-content poisoning rejection
         |
-M3 acceptance flow
+prepared memory context
         |
-Gate C checkpoint
-        |
-M4 Trusted Memory
+M4 exit gate
 ```
 
-Do not implement v0.2 capabilities before the v0.1 exit gate is satisfied.
+Gate D remains mandatory before any GitHub write capability. Do not implement v0.2 capabilities before the v0.1 exit gate is satisfied.
