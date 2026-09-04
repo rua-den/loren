@@ -4,7 +4,7 @@
 **Current version phase:** `v0.1 — Trustworthy Core development`  
 **Current decision gates:** `Gate A — PASSED`, `Gate B — PASSED`, `Gate C — PASSED`  
 **Current milestone:** `M4 — Trusted Durable Memory`  
-**Current execution target:** `M4 Slice 1 — canonical MemoryRecord + owner-explicit persistence`
+**Current execution target:** `M4 Slice 1 — final exact-head gate for owner-explicit persistence`
 
 This file is the authoritative progress ledger for the repository. `README.md` and `README.vi.md` summarize it.
 
@@ -41,25 +41,9 @@ Owner/provider credentials were absent from the response and `/internal/dev/run`
 
 ## Slice 1 — Canonical identity + persistence [COMPLETE]
 
-PR #15 merged at:
+PR #15 merged at `00fbba08587ba8275c121fd7f9532a785f55314d`. Exact-head CI run `33842440251` / #99 — **PASS**.
 
-```text
-00fbba08587ba8275c121fd7f9532a785f55314d
-```
-
-Exact-head CI run `33842440251` / #99 — **PASS**.
-
-Delivered:
-
-- Loren-owned `ProjectId` and `RepositoryId`;
-- `Project`, `Repository`, `RepositoryLocator`, aliases, `ProjectSnapshot`;
-- provider/EF-neutral `IProjectCatalog` in `Loren.Core`;
-- SQLite + EF Core `10.0.11` persistence in `Loren.Infrastructure`;
-- production schema + initial migration `202609040001_InitialCanonicalState`;
-- real SQLite restart tests;
-- normalized alias collision fails closed;
-- repeated update behavior covered;
-- external GitHub locator stored as integration metadata rather than Loren primary identity.
+Delivered Loren-owned `ProjectId`/`RepositoryId`, canonical Project/Repository records and aliases, provider-neutral `IProjectCatalog`, SQLite + EF Core persistence, migration `202609040001_InitialCanonicalState`, restart acceptance, collision fail-closed behavior, and external GitHub locator metadata independent from Loren primary identity.
 
 Acceptance:
 
@@ -73,56 +57,21 @@ Acceptance:
 
 ## Slice 2 — Deterministic alias resolution + prepared context [COMPLETE]
 
-PR #16 merged at:
-
-```text
-56fd988d3b74c754604355e3c97a5d3656675bbb
-```
+PR #16 merged at `56fd988d3b74c754604355e3c97a5d3656675bbb`.
 
 Evidence:
 
-- implementation CI run `33843033700` / #102 — **PASS**;
-- final PR exact-head CI run `33843405386` / #108 — **PASS**;
-- post-merge main CI run `33843524467` / #109 — **PASS**.
+- implementation CI `33843033700` / #102 — **PASS**;
+- final PR exact-head CI `33843405386` / #108 — **PASS**;
+- post-merge main CI `33843524467` / #109 — **PASS**.
 
-Delivered:
-
-```text
-owner request + optional projectAlias
- -> IProjectCatalog
- -> ProjectSnapshot
- -> small prepared BrainContext
- -> AgentLoop / IBrain
-```
-
-Properties:
-
-- canonical DB migrates at host startup;
-- `/api/run` accepts optional `projectAlias`;
-- exact configured alias resolves before model execution;
-- unknown alias fails with `404` before the brain runs;
-- runtime/brain never receive EF `DbContext`;
-- prepared context contains Loren-owned Project/Repository identity and external locator metadata;
-- prepared context explicitly says configured identity is not live external state;
-- current GitHub facts still require authorized tools;
-- owner console can submit an alias and inspect resolved canonical metadata;
-- real-SQLite restart tests and deterministic fake-brain tests prove the path.
-
-Current product limitation remains: a fresh DB contains no Project records and owner-facing Project CRUD/configuration UI is not implemented yet.
+Delivered exact configured-alias resolution before model execution, fail-closed unknown alias behavior, startup canonical migration, prepared EF-neutral Project/Repository `BrainContext`, and owner-console project context visibility. Current external facts still require authorized tools.
 
 ## Slice 3 — Gate C [COMPLETE]
 
 Decision: [`ADR-003 — Canonical State and Memory Lifecycle`](decisions/003-canonical-state-and-memory-lifecycle.md).
 
-Gate C locks:
-
-- opaque Loren-owned GUID IDs;
-- explicit EF Core migration policy;
-- Project/Repository canonical schema boundary;
-- durable-memory source/trust classes;
-- append/supersede correction semantics;
-- memory deletion versus audit retention separation;
-- logical portable export versioning independent from EF schema versioning.
+Gate C locks opaque Loren GUID IDs, explicit EF migrations, Project/Repository boundaries, memory source/trust classes, append/supersede correction, memory-vs-audit deletion separation, and logical export `format_version = 1` independent from EF migration IDs.
 
 Required memory source classes:
 
@@ -135,7 +84,7 @@ MODEL_INFERENCE
 EXTERNAL_CONTENT
 ```
 
-First portable export direction uses logical `format_version = 1`; raw SQLite copies may be backups but are not the portable contract.
+Gate C PR #17 exact-head CI `33860095412` / #110 passed and merged at `69223e8c4923510bb26fa50f77a3c44c1683b172`.
 
 **Gate C PASSED. M3 COMPLETE.**
 
@@ -147,55 +96,84 @@ First portable export direction uses logical `format_version = 1`; raw SQLite co
 
 Give Loren durable memory with provenance/authority, correction, deletion semantics, restart survival, and safe prepared retrieval — without turning transcripts, model guesses, or hostile external content into owner truth.
 
-## First vertical slice
+## M4 Slice 1 — Canonical MemoryRecord + OWNER_EXPLICIT persistence [IMPLEMENTED / PR #18]
+
+Current PR: `#18 — feat: add M4 owner-explicit memory persistence`.
+
+Implemented candidate:
 
 ```text
-Owner: "Nhớ wedding-online là web đám cưới của tao."
+OWNER_EXPLICIT durable fact
         |
         v
-OWNER_EXPLICIT MemoryRecord
+MemoryRecord + MemoryRecordId
         |
-Project scope + provenance
+Project / Repository scope + provenance
         |
-SQLite persistence
+        v
+IMemoryStore
+        |
+SQLite / EF Core migration
         |
 restart
         |
-trusted retrieval
-        |
-small prepared memory context
+        v
+same canonical memory + authority + scope
 ```
 
-Initial implementation target:
+Delivered:
 
-- Loren-owned `MemoryRecordId`;
-- `MemoryRecord` canonical model;
-- source class enum/type from ADR-003;
-- Project/Repository scope references where applicable;
-- content + timestamps + provenance/source reference;
-- current/superseded lifecycle representation;
-- EF migration + persistence/query boundary outside `Loren.Core`;
-- owner-explicit save/restart/retrieve acceptance test.
+- Loren-owned `MemoryRecordId` with lowercase GUID `N` text representation;
+- canonical `MemoryRecord` in `Loren.Core`;
+- all six ADR-003 `MemorySourceClass` values;
+- Project/Repository scope references;
+- content, source reference/provenance, timestamps, and `SupersededById` lifecycle field;
+- domain guards for invalid repository-only scope, self-supersession, and invalid timestamps;
+- deliberately narrow EF-neutral `IMemoryStore`: `AddAsync`, `GetAsync`, `ListCurrentForProjectAsync`;
+- no generic content-update method, preserving append/supersede direction for corrections;
+- `MemoryRecords` canonical SQLite schema with Project, Repository, and self-supersession foreign keys;
+- migration `202609040002_AddMemoryRecords`;
+- `SqliteMemoryStore` with exact source-class storage values;
+- fail-closed validation that a repository-scoped memory's Repository belongs to its Project;
+- production DI registration for `IMemoryStore`;
+- domain tests and real SQLite restart acceptance.
 
-## Required M4 follow-up behavior
+Acceptance proves an `OWNER_EXPLICIT` record with Project/Repository scope and `owner:authenticated` provenance survives context/process-style restart with the same `MemoryRecordId`, content, source authority, scope, timestamps, and current lifecycle state.
 
-### Correction
+CI history:
+
+- CI #112 / run `33860545089`: build passed; one integration test exposed SQLite's inability to translate `ORDER BY DateTimeOffset`;
+- fix `15bbecd078bbf04f012464673cd856353b6ea84c`: SQL filters first, then deterministic ordering occurs after materialization;
+- implementation CI #113 / run `33860641367`: **PASS** for restore, zero-warning build, all tests, format, secret scan, dependency scan, and web/auth smoke.
+
+Slice 1 is **not closed yet**. This branch is synchronizing documentation; the final PR head must pass exact-head CI again before merge.
+
+### Deliberately deferred from Slice 1
+
+- correction/supersession mutation flow;
+- authority-ranked prepared memory context for runtime;
+- memory write endpoint/UI;
+- forget/delete behavior;
+- automatic model-driven memory promotion.
+
+## M4 Slice 2 — Owner correction + supersession [NEXT AFTER MERGE]
 
 ```text
-old OWNER_EXPLICIT record
- -> owner correction
- -> new OWNER_CORRECTION record
- -> old record superseded
- -> current-truth query returns correction
+old OWNER_EXPLICIT record (current)
+ -> explicit owner correction
+ -> new OWNER_CORRECTION record (current)
+ -> old record points to superseded_by new record
+ -> default current query excludes old record
+ -> retained history remains reconstructable
 ```
 
-### Poisoning resistance
+Correction must be an explicit append + lifecycle mutation, not a generic destructive content update. Model/external content must not supersede owner-authoritative state.
 
-`MODEL_INFERENCE` and `EXTERNAL_CONTENT` cannot silently become current owner-authoritative memory or policy.
+## M4 follow-up
 
-### Retrieval
-
-The brain receives a small provenance-bearing memory package; it does not receive raw database access.
+- Slice 3: authority-aware retrieval + bounded prepared memory context;
+- Slice 4: owner forget/delete semantics separated from audit retention;
+- Slice 5: poisoning/trust-boundary acceptance for model inference and external content.
 
 ## M4 non-goals
 
@@ -204,15 +182,13 @@ Do not add GitHub writes, broad vector infrastructure, generic graph entities, s
 ## Next execution sequence
 
 ```text
-NOW
-MemoryRecord + source authority model
- -> SQLite migration/persistence
- -> OWNER_EXPLICIT save + Project scope
- -> restart-safe retrieval
- -> correction/supersession
- -> poisoning tests
- -> prepared memory context
- -> M4 exit gate
+PR #18 final exact-head CI
+ -> merge M4 Slice 1
+ -> M4 Slice 2 correction/supersession
+ -> M4 Slice 3 authority-aware prepared context
+ -> M4 Slice 4 forget/delete
+ -> M4 Slice 5 poisoning/trust acceptance
+ -> M4 COMPLETE
 ```
 
 ## Progress-update rule
