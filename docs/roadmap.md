@@ -10,9 +10,9 @@ Loren advances by **proven capability and trust**, not by calendar dates.
 **Passed:** `Gate A — Core ownership`, `Gate B — v0.1 implementation stack`, `Gate C — canonical state/memory lifecycle`, `Gate D — action/approval/credential boundary`  
 **Completed milestone:** `M4 — Trusted Durable Memory`  
 **Current milestone:** `M5 — Action/Credential Boundary + Narrow GitHub Writes`  
-**Now:** `M5 Slice 1 — typed policy context + one-time approval + global read-only`
+**Now:** `M5 Slice 2 — write credential resolver + secret redaction/revocation after Slice 1 merges`
 
-M2 proved the first authenticated owner-to-real-tool path. M3 made Project/Repository identity provider-independent and restart-safe. M4 made durable memory restart-safe, correctable, forgettable, bounded before brain use, and resistant to model/external-content poisoning. Gate D/ADR-004 now freezes the first write-capable security contract before M5 executors exist.
+M2 proved the first authenticated owner-to-real-tool path. M3 made Project/Repository identity provider-independent and restart-safe. M4 made durable memory restart-safe, correctable, forgettable, bounded before brain use, and resistant to model/external-content poisoning. Gate D/ADR-004 froze the first write-capable security contract. M5 Slice 1 now implements the deterministic policy/approval/read-only foundation without enabling any real GitHub mutation.
 
 M4 path:
 
@@ -37,9 +37,14 @@ M4 evidence:
 - PR #22 — provenance and poisoning/trust-boundary acceptance;
 - PR #23 — Windows-safe SQLite temp integration tests + permanent Windows CI.
 
-PR #23 post-merge main CI #163 / run `33894104116` passed the Ubuntu full gate and Windows integration job; owner local Windows full integration suite also passed.
+PR #23 post-merge main CI #163 / `33894104116` passed Ubuntu full gates and Windows integration; the owner local Windows integration suite also passed.
 
-Gate D locks:
+Gate D evidence:
+
+- PR #24 merged at `b8649cb563e30af845a0b383103797632bed79a4`;
+- exact-head CI #164 / `33896004193` — Ubuntu full gate + Windows integration **PASS**.
+
+Gate D write path contract:
 
 ```text
 brain requests write
@@ -54,7 +59,25 @@ brain requests write
 -> correlated redacted audit
 ```
 
-Every first-version real GitHub mutation requires explicit owner approval. Authentication alone is not approval. Write secrets never enter model/memory/audit/result surfaces. Global read-only defaults safe. Credential revocation overrides approval. External/model content cannot grant permission or mark verification successful.
+### M5 Slice 1 implemented in PR #25
+
+```text
+typed ActionAccessClass
+-> trusted ActionAuthorizationContext
+-> exact SHA-256 ActionIntentFingerprint
+-> Loren-owned ApprovalId / ActionApproval
+-> persistent IActionApprovalStore
+-> GateDActionPolicy
+-> gateway-enforced approval for every non-read action
+-> atomic one-time consume
+-> replay / expiry / revoke / mismatch rejection
+-> host-controlled LOREN_ENABLE_WRITES read-only default
+-> migration-drift regression coverage
+```
+
+Implementation head `15a2b2c4c853324a546a55d13da22d94d4ac5765` passed CI #172 / `33898878125` across zero-warning Ubuntu build, all tests, format/security/web gates, and Windows integration.
+
+Slice 1 deliberately registers no GitHub mutation executor. Approval is consumed before the first consequential executor attempt; independent retry after failure/ambiguity needs fresh approval.
 
 ---
 
@@ -116,17 +139,17 @@ Core capabilities across v0.1:
 ### M5 implementation order
 
 ```text
-Slice 1 typed policy + approval + read-only
-Slice 2 credential resolver + redaction
+Slice 1 typed policy + approval + read-only        ✓ implemented / PR #25 merge gate
+Slice 2 credential resolver + redaction            <- next
 Slice 3 create non-default branch + verify
 Slice 4 controlled file/commit path + verify
 Slice 5 open pull request + verify
 Slice 6 replay/revocation/injection/audit E2E
 ```
 
-No real GitHub mutation is enabled until the policy/approval/read-only/credential foundations are tested.
+No real GitHub mutation is enabled until the policy/approval/read-only/credential foundations are green on `main`.
 
-Allowed v0.1 writes are limited to non-default branch creation, controlled file/commit changes on a non-default branch, and opening a pull request. Direct default-branch writes, merge, force-push/history rewrite, deletion/admin/security changes, secret-management actions, and production deployment remain forbidden.
+Allowed v0.1 writes remain limited to non-default branch creation, controlled file/commit changes on a non-default branch, and opening a pull request. Direct default-branch writes, merge, force-push/history rewrite, deletion/admin/security changes, secret-management actions, and production deployment remain forbidden.
 
 Detailed plan: [`docs/plans/v0.1.md`](plans/v0.1.md)
 
@@ -134,7 +157,7 @@ Detailed plan: [`docs/plans/v0.1.md`](plans/v0.1.md)
 
 ## v0.2 — Useful Project Assistant
 
-Goal: make the trusted core useful for richer daily project work.
+Goal: make the trusted v0.1 core useful for richer daily project work.
 
 Candidate capabilities:
 
