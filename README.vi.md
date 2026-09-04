@@ -119,10 +119,12 @@ PR #25 implement policy/approval/read-only foundation của Gate D nhưng **cố
 
 - typed `ActionAccessClass`: `READ`, `REVERSIBLE_WRITE`, `EXTERNAL_WRITE`, `PRIVILEGED_WRITE`;
 - trusted `ActionAuthorizationContext` mang canonical Project/Repository target ở ngoài model-visible action arguments;
+- model-visible action arguments và trusted normalized target được defensive-copy thành immutable snapshot, chặn TOCTOU kiểu approval fingerprint thấy A nhưng executor lại thấy B;
 - deterministic SHA-256 action-intent fingerprint bind action/access/canonical target/owner/normalized target/model arguments;
 - Loren-owned `ApprovalId`, `ActionApproval`, provider-neutral `IActionApprovalStore`;
-- `GateDActionPolicy` và invariant trong ActionGateway bắt mọi non-read action phải có approval ngay cả khi một permissive policy lỡ trả `Allow`;
-- exact one-time approval consume trước executor;
+- `GateDActionPolicy` và invariant trong ActionGateway bắt mọi non-read action phải có approval ngay cả khi permissive policy lỡ trả `Allow`;
+- kiểm tra executor đã register **trước khi consume approval**, tránh burn approval chỉ vì host misconfiguration;
+- exact one-time approval consume ngay trước executor;
 - approval missing, expired, revoked, mismatch, unknown hoặc replay đều fail closed;
 - text `approvalId` do model nhét vào argument không có authority;
 - SQLite `ActionApprovals` qua migration `202609040003_AddActionApprovals`;
@@ -138,7 +140,10 @@ LOREN_ENABLE_WRITES=true -> eligible write mới có thể đi tới approval ev
 Slice 1 vẫn không có GitHub mutation executor
 ```
 
-Implementation head `15a2b2c4c853324a546a55d13da22d94d4ac5765` pass CI #172 / `33898878125`: zero-warning Ubuntu build, toàn bộ tests, format, secret scan, dependency scan, web/auth smoke và Windows integration đều xanh.
+Validation:
+
+- base implementation head `15a2b2c4c853324a546a55d13da22d94d4ac5765`, CI #172 / `33898878125` — Ubuntu full gate + Windows integration **PASS**;
+- self-review hardening head `5ed9049eeedf3210f1df13a0c8735b67d7e4766e`, CI #186 / `33900018499` — immutable approved-intent snapshot + không burn approval khi thiếu executor; Ubuntu full gate + Windows integration **PASS**.
 
 Một rule chủ ý: approval được consume **trước** first consequential executor attempt. Nếu attempt fail/mơ hồ và muốn retry độc lập thì phải approval mới; một approval không biến thành replay token.
 
