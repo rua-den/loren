@@ -22,7 +22,10 @@ public sealed class CanonicalStateMigrationDriftTests
         using CanonicalStateDbContext context = new(options);
         IMigrationsModelDiffer differ = context.GetService<IMigrationsModelDiffer>();
         IDesignTimeModel designTimeModel = context.GetService<IDesignTimeModel>();
-        IModel snapshotModel = new CanonicalStateDbContextModelSnapshot().Model;
+        IModelRuntimeInitializer runtimeInitializer = context.GetService<IModelRuntimeInitializer>();
+        IModel snapshotModel = runtimeInitializer.Initialize(
+            new CanonicalStateDbContextModelSnapshot().Model,
+            designTime: true);
 
         IReadOnlyList<MigrationOperation> differences = differ.GetDifferences(
             snapshotModel.GetRelationalModel(),
