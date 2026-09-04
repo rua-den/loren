@@ -43,20 +43,20 @@ public sealed class SqliteProjectCatalog : IProjectCatalog
             projectRow.UpdatedAt = snapshot.Project.UpdatedAt;
 
             await _dbContext.ProjectAliases
-                .Where(alias => alias.ProjectId == snapshot.Project.Id.Value)
+                .Where(projectAlias => projectAlias.ProjectId == snapshot.Project.Id.Value)
                 .ExecuteDeleteAsync(cancellationToken);
 
             await _dbContext.Repositories
                 .Where(repository => repository.ProjectId == snapshot.Project.Id.Value)
                 .ExecuteDeleteAsync(cancellationToken);
 
-            foreach (string alias in snapshot.Project.Aliases)
+            foreach (string projectAlias in snapshot.Project.Aliases)
             {
                 _dbContext.ProjectAliases.Add(
                     new ProjectAliasRow
                     {
-                        Alias = alias,
-                        NormalizedAlias = ProjectAlias.Normalize(alias),
+                        Alias = projectAlias,
+                        NormalizedAlias = ProjectAlias.Normalize(projectAlias),
                         ProjectId = snapshot.Project.Id.Value,
                     });
             }
@@ -105,10 +105,10 @@ public sealed class SqliteProjectCatalog : IProjectCatalog
     }
 
     public async Task<ProjectSnapshot?> FindByAliasAsync(
-        string alias,
+        string projectAlias,
         CancellationToken cancellationToken = default)
     {
-        string normalizedAlias = ProjectAlias.Normalize(alias);
+        string normalizedAlias = ProjectAlias.Normalize(projectAlias);
 
         Guid? projectId = await _dbContext.ProjectAliases
             .AsNoTracking()
@@ -126,7 +126,7 @@ public sealed class SqliteProjectCatalog : IProjectCatalog
         Project project = new(
             new ProjectId(row.Id),
             row.Name,
-            row.Aliases.Select(alias => alias.Alias),
+            row.Aliases.Select(projectAlias => projectAlias.Alias),
             row.CreatedAt,
             row.UpdatedAt);
 
