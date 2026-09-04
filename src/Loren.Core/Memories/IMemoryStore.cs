@@ -8,6 +8,11 @@ public interface IMemoryStore
         MemoryRecord record,
         CancellationToken cancellationToken = default);
 
+    Task CorrectAsync(
+        MemoryRecordId currentMemoryRecordId,
+        MemoryRecord correction,
+        CancellationToken cancellationToken = default);
+
     Task<MemoryRecord?> GetAsync(
         MemoryRecordId memoryRecordId,
         CancellationToken cancellationToken = default);
