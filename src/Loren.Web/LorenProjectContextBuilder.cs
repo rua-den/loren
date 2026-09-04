@@ -7,6 +7,11 @@ namespace Loren.Web;
 
 public sealed class LorenProjectContextBuilder
 {
+    private static readonly JsonSerializerOptions ContextJsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+    };
+
     private readonly IProjectCatalog _projectCatalog;
 
     public LorenProjectContextBuilder(IProjectCatalog projectCatalog)
@@ -62,12 +67,7 @@ public sealed class LorenProjectContextBuilder
 
     private static string BuildSystemContext(LorenProjectContext projectContext)
     {
-        string payload = JsonSerializer.Serialize(
-            projectContext,
-            new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
-            });
+        string payload = JsonSerializer.Serialize(projectContext, ContextJsonOptions);
 
         return $"""
             Loren canonical project context follows. This is trusted configured identity/context, not live external state.
