@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.Security.Cryptography;
 using System.Text;
 using Loren.Core.Projects;
@@ -33,22 +34,23 @@ public sealed record ActionAuthorizationContext
 
     public IReadOnlyDictionary<string, string> NormalizedTarget { get; }
 
-    private static Dictionary<string, string> Normalize(
+    private static FrozenDictionary<string, string> Normalize(
         IReadOnlyDictionary<string, string>? values)
     {
-        if (values is null || values.Count == 0)
-        {
-            return new Dictionary<string, string>(StringComparer.Ordinal);
-        }
-
         Dictionary<string, string> normalized = new(StringComparer.Ordinal);
-        foreach ((string key, string value) in values)
+        if (values is not null)
         {
-            ArgumentException.ThrowIfNullOrWhiteSpace(key);
-            normalized.Add(key.Trim(), value?.Trim() ?? string.Empty);
+            foreach ((string key, string value) in values)
+            {
+                ArgumentException.ThrowIfNullOrWhiteSpace(key);
+                normalized.Add(key.Trim(), value?.Trim() ?? string.Empty);
+            }
         }
 
-        return normalized;
+        return normalized.ToFrozenDictionary(
+            pair => pair.Key,
+            pair => pair.Value,
+            StringComparer.Ordinal);
     }
 }
 
