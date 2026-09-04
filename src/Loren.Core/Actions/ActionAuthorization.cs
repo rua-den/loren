@@ -33,7 +33,7 @@ public sealed record ActionAuthorizationContext
 
     public IReadOnlyDictionary<string, string> NormalizedTarget { get; }
 
-    private static IReadOnlyDictionary<string, string> Normalize(
+    private static Dictionary<string, string> Normalize(
         IReadOnlyDictionary<string, string>? values)
     {
         if (values is null || values.Count == 0)
