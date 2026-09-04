@@ -8,17 +8,31 @@ Loren advances by **proven capability and trust**, not by calendar dates.
 
 **Current stage:** `v0.1 — Trustworthy Core development`  
 **Passed:** `Gate A — Core ownership`, `Gate B — v0.1 implementation stack`  
-**Current milestone:** `M2 — Walking Skeleton`
+**Current milestone:** `M3 — Canonical Project/Repository State`
 
-M2 has a proven real Ollama -> Loren -> GitHub read -> final-answer backend path and now has the one-owner authentication, protected request console, and owner-visible audit implementation. The remaining M2 exit proof is the exact-main trusted live run through that authenticated production owner path.
+M2 is complete. Trusted exact-main run `33840149005` proved the normal production path:
+
+```text
+owner auth/session
+-> protected /api/run
+-> real Ollama
+-> Loren ActionGateway
+-> real GitHub read
+-> final answer
+-> correlated owner-visible audit
+```
+
+The first owner-testable Loren preview is therefore proven. Development now moves from a stateless read skeleton to provider-independent canonical Project/Repository identity.
 
 Next step:
 
 ```text
-owner preview CI + merge
--> trusted exact-main owner-authenticated live read proof
--> M2 COMPLETE
--> M3 Canonical State
+canonical Loren IDs
+-> Project / Repository schema
+-> SQLite + EF Core persistence
+-> alias resolution + restart tests
+-> runtime context integration
+-> Gate C checkpoint
 ```
 
 ---
@@ -66,8 +80,8 @@ Milestones:
 
 ```text
 M1 Engineering Foundation             ✓ complete
-M2 Walking Skeleton                   <- current
-M3 Canonical Project/Repository State
+M2 Walking Skeleton                   ✓ complete
+M3 Canonical Project/Repository State <- current
 M4 Trusted Durable Memory
 M5 Action/Credential Boundary + Writes
 M6 Minimal Daily-use UI
