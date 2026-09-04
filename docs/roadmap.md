@@ -8,49 +8,33 @@ Loren advances by **proven capability and trust**, not by calendar dates.
 
 **Current stage:** `v0.1 — Trustworthy Core development`  
 **Passed:** `Gate A — Core ownership`, `Gate B — v0.1 implementation stack`, `Gate C — canonical state/memory lifecycle`  
-**Current milestone:** `M4 — Trusted Durable Memory`
+**Completed milestone:** `M4 — Trusted Durable Memory`  
+**Next:** `Gate D — Action/Credential Policy before M5 writes`
 
-M2 proved the first owner-testable authenticated model-to-tool path. M3 then made Project/Repository identity provider-independent and restart-safe.
+M2 proved the first owner-testable authenticated model-to-tool path. M3 made Project/Repository identity provider-independent and restart-safe. M4 then made durable memory provider-independent, restart-safe, correctable, forgettable, bounded before brain use, and resistant to model/external-content poisoning.
 
-M3 evidence:
-
-```text
-M3 Slice 1
-canonical ProjectId / RepositoryId
--> SQLite + EF Core persistence
--> migrations
--> alias collision/update/restart tests
-
-M3 Slice 2
-exact configured project alias
--> IProjectCatalog
--> ProjectSnapshot
--> small prepared BrainContext
--> AgentLoop / IBrain
-
-M3 Slice 3
-ADR-003 / Gate C
--> canonical ID rules
--> migration policy
--> memory source authority
--> append/supersede correction
--> memory-vs-audit deletion boundary
--> logical export format versioning
-```
-
-PR #15 merged at `00fbba08587ba8275c121fd7f9532a785f55314d`. PR #16 merged at `56fd988d3b74c754604355e3c97a5d3656675bbb`; final PR CI #108 and post-merge main CI #109 passed all repository gates.
-
-Next step:
+M4 path:
 
 ```text
-MemoryRecord canonical model
--> OWNER_EXPLICIT save + provenance
--> Project-scoped persistence
--> restart-safe trusted retrieval
+OWNER_EXPLICIT durable memory
+-> restart-safe SQLite persistence
 -> OWNER_CORRECTION append/supersede
--> poisoning tests for EXTERNAL_CONTENT / MODEL_INFERENCE
--> prepared memory context
+-> current-memory retrieval
+-> source/provenance trust filtering
+-> bounded prepared memory context
+-> owner forget / full correction-chain purge
+-> adversarial poisoning boundary
 ```
+
+M4 evidence:
+
+- PR #18 — OWNER_EXPLICIT persistence;
+- PR #19 — correction/supersession;
+- PR #20 — authority-aware prepared context;
+- PR #21 — forget/delete without resurrection;
+- PR #22 — provenance and poisoning/trust-boundary acceptance.
+
+Implementation CI #140 / run `33866182751` passed the Slice 5 build/test/format/secret/dependency/web-auth gates. PR #22 requires one final exact-head pass before merge.
 
 ---
 
@@ -86,7 +70,8 @@ Milestones:
 M1 Engineering Foundation              ✓ complete
 M2 Walking Skeleton                    ✓ complete
 M3 Canonical Project/Repository State  ✓ complete
-M4 Trusted Durable Memory              <- current
+M4 Trusted Durable Memory              ✓ complete
+Gate D Action/Credential Policy        <- next
 M5 Action/Credential Boundary + Writes
 M6 Minimal Daily-use UI
 M7 Export/Restore + Recovery
@@ -99,12 +84,18 @@ Core capabilities across v0.1:
 - provider-neutral brain boundary;
 - bounded Loren-owned agent loop;
 - canonical Project/Repository state;
-- trusted durable memory with correction/provenance;
+- trusted durable memory with provenance, correction and forgetting;
 - ActionGateway + approvals;
 - credential-isolated GitHub read/narrow writes;
 - audit trail;
 - export/wipe/restore proof;
 - adversarial security/reliability tests.
+
+### Gate D before M5
+
+Gate D must define approval binding/non-replay, write-action contracts, credential storage/resolution and read/write separation, redaction/rotation/revocation, global read-only/kill behavior, post-write verification, and audit expectations.
+
+No real GitHub write path may be enabled until Gate D passes.
 
 Detailed plan: [`docs/plans/v0.1.md`](plans/v0.1.md)
 
