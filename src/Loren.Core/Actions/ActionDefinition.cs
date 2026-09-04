@@ -8,6 +8,14 @@ public enum ActionParameterType
     Flag,
 }
 
+public enum ActionAccessClass
+{
+    Read,
+    ReversibleWrite,
+    ExternalWrite,
+    PrivilegedWrite,
+}
+
 public sealed record ActionParameterDefinition(
     string Name,
     string Description,
@@ -21,13 +29,26 @@ public sealed record ActionDefinition
         string description,
         bool isReadOnly,
         IReadOnlyList<ActionParameterDefinition>? parameters = null)
+        : this(
+            name,
+            description,
+            isReadOnly ? ActionAccessClass.Read : ActionAccessClass.ExternalWrite,
+            parameters)
+    {
+    }
+
+    public ActionDefinition(
+        string name,
+        string description,
+        ActionAccessClass accessClass,
+        IReadOnlyList<ActionParameterDefinition>? parameters = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentException.ThrowIfNullOrWhiteSpace(description);
 
         Name = name;
         Description = description;
-        IsReadOnly = isReadOnly;
+        AccessClass = accessClass;
         Parameters = parameters?.ToArray() ?? [];
     }
 
@@ -35,7 +56,9 @@ public sealed record ActionDefinition
 
     public string Description { get; }
 
-    public bool IsReadOnly { get; }
+    public ActionAccessClass AccessClass { get; }
+
+    public bool IsReadOnly => AccessClass is ActionAccessClass.Read;
 
     public IReadOnlyList<ActionParameterDefinition> Parameters { get; }
 }
