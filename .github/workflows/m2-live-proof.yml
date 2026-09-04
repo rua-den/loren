@@ -62,15 +62,16 @@ jobs:
       - name: Build production host
         run: dotnet build Loren.slnx --configuration Release --no-restore
 
-      - name: Run trusted production read path
+      - name: Run trusted owner-authenticated production read path
         env:
-          ASPNETCORE_ENVIRONMENT: Development
-          LOREN_ENABLE_DEVELOPMENT_RUN_ENDPOINT: 'true'
+          ASPNETCORE_ENVIRONMENT: Production
           LOREN_OLLAMA_MODEL: gpt-oss:120b
           OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
         shell: bash
         run: |
           set -euo pipefail
+
+          export LOREN_OWNER_PASSWORD="$(openssl rand -hex 32)"
 
           dotnet run --project src/Loren.Web/Loren.Web.csproj \
             --configuration Release --no-build --urls http://127.0.0.1:5092 \
@@ -78,17 +79,43 @@ jobs:
           pid=$!
           trap 'cat /tmp/loren-m2-live.log || true; kill "$pid" 2>/dev/null || true' EXIT
 
+          ready=false
           for i in {1..30}; do
             if curl -fsS http://127.0.0.1:5092/health | grep -q '"status":"ok"'; then
+              ready=true
               break
             fi
             sleep 1
           done
 
+          if [[ "$ready" != "true" ]]; then
+            echo 'Loren web health check did not become ready.'
+            exit 1
+          fi
+
+          unauthenticated_status="$(curl -sS -o /dev/null -w '%{http_code}' \
+            -H 'Content-Type: application/json' \
+            -d '{"message":"should not run"}' \
+            http://127.0.0.1:5092/api/run)"
+          if [[ "$unauthenticated_status" != "401" ]]; then
+            echo "Owner API must reject unauthenticated access; got HTTP $unauthenticated_status."
+            exit 1
+          fi
+
+          login_payload="$(jq -nc --arg password "$LOREN_OWNER_PASSWORD" '{password:$password}')"
           curl -fsS \
+            -c /tmp/loren-owner.cookies \
+            -H 'Content-Type: application/json' \
+            -d "$login_payload" \
+            http://127.0.0.1:5092/auth/login \
+            > /tmp/loren-owner-login.json
+          jq -e '.authenticated == true' /tmp/loren-owner-login.json >/dev/null
+
+          curl -fsS \
+            -b /tmp/loren-owner.cookies \
             -H 'Content-Type: application/json' \
             -d '{"message":"You MUST use github.read_repository to check rua-den/loren. Report the repository name and its default branch from the tool result."}' \
-            http://127.0.0.1:5092/internal/dev/run \
+            http://127.0.0.1:5092/api/run \
             > /tmp/loren-m2-live-response.json
 
           jq -e '.runId | strings | length > 0' /tmp/loren-m2-live-response.json >/dev/null
@@ -102,8 +129,19 @@ jobs:
           jq -e '.audit[2].actionName == "github.read_repository"' /tmp/loren-m2-live-response.json >/dev/null
           jq -e '.audit[2].outcome == "succeeded"' /tmp/loren-m2-live-response.json >/dev/null
 
+          dev_status="$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:5092/internal/dev/run)"
+          if [[ "$dev_status" != "404" ]]; then
+            echo "Development run endpoint must remain absent in the trusted production host; got HTTP $dev_status."
+            exit 1
+          fi
+
           if grep -Fq "$OLLAMA_API_KEY" /tmp/loren-m2-live-response.json; then
             echo "Provider credential leaked into the owner-visible response."
+            exit 1
+          fi
+
+          if grep -Fq "$LOREN_OWNER_PASSWORD" /tmp/loren-m2-live-response.json; then
+            echo "Owner credential leaked into the owner-visible response."
             exit 1
           fi
 
