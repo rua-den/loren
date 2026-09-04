@@ -2,28 +2,29 @@
 
 **Last updated:** 2026-09-04  
 **Current version phase:** `v0.1 — Trustworthy Core development`  
-**Current decision gates:** `Gate A — PASSED`, `Gate B — PASSED`, `Gate C — PASSED`  
-**Current milestone:** `M4 — Trusted Durable Memory`  
-**Current execution target:** `M4 Slice 4 — final exact-head gate for owner forget/purge`
+**Current decision gates:** `Gate A — PASSED`, `Gate B — PASSED`, `Gate C — PASSED`; `Gate D — NEXT`  
+**Completed milestone:** `M4 — Trusted Durable Memory`  
+**Current execution target:** `Gate D — Action/Credential Policy before M5 external writes`
 
 This file is the authoritative progress ledger for the repository. `README.md` and `README.vi.md` summarize it.
 
-## Completed milestones
+No GitHub write path exists yet. Gate D remains mandatory before the first real external write.
+
+---
+
+# Completed milestones
 
 - `v0.0 — Architecture / Feasibility` — complete.
 - `M1 — Engineering Foundation` — complete.
 - `M2 — Walking Skeleton` — complete.
 - `M3 — Canonical Project/Repository State` — complete.
-
-No GitHub write path exists yet. Gate D remains mandatory before external writes.
+- `M4 — Trusted Durable Memory` — complete when the M4 exit changeset in PR #22 is present on `main`.
 
 ---
 
-# Current milestone — M4 Trusted Durable Memory
+# M4 completion evidence
 
-## Goal
-
-Give Loren durable memory with explicit authority/provenance, correction, forgetting, restart survival, bounded prepared retrieval, and poisoning resistance — without turning transcripts, model guesses, or hostile external content into owner truth.
+M4 gives Loren durable, provider-independent memory with provenance, owner correction, forgetting, bounded prepared retrieval, and explicit poisoning resistance.
 
 ## Slice 1 — OWNER_EXPLICIT persistence [COMPLETE]
 
@@ -44,107 +45,99 @@ Evidence:
 - implementation CI #119 / `33861345949` — **PASS**;
 - final exact-head CI #123 / `33861630472` — **PASS**.
 
-Correction is explicit append + supersede in one transaction. Old content is preserved. Invalid authority, changed scope, stale target, duplicate replacement, and partial failure all fail closed.
+Correction is explicit append + supersede in one SQLite transaction. Old content is preserved. Invalid authority, changed scope, stale target, duplicate replacement, and partial failure all fail closed.
 
 ## Slice 3 — Authority-aware prepared memory context [COMPLETE]
 
-PR #20 merged at:
-
-```text
-732b85db3a799638bcd73558f98232b276f3cb5e
-```
+PR #20 merged at `732b85db3a799638bcd73558f98232b276f3cb5e`.
 
 Evidence:
 - implementation CI #127 / `33864695658` — **PASS**;
-- final documentation-synchronized exact-head CI #131 / `33864946328` at `611e3737081bbce70396f249781d247e8cd50268` — **PASS**.
+- final exact-head CI #131 / `33864946328` — **PASS**.
 
-Delivered:
+Prepared-memory path:
 
 ```text
 canonical Project
  -> current IMemoryStore records
  -> exclude superseded
- -> exclude MODEL_INFERENCE / EXTERNAL_CONTENT by default
+ -> source/provenance filtering
  -> deterministic authority ordering
- -> hard record/character bounds
+ -> hard record/content/provenance bounds
  -> Loren-owned prepared memory package
  -> BrainContext -> AgentLoop / IBrain
 ```
 
-Default prepared-context classes:
-- included: `OWNER_CORRECTION`, `OWNER_EXPLICIT`, `OWNER_APPROVED_INFERENCE`, `VERIFIED_TOOL`;
-- excluded: `MODEL_INFERENCE`, `EXTERNAL_CONTENT`.
+Default included classes are `OWNER_CORRECTION`, `OWNER_EXPLICIT`, `OWNER_APPROVED_INFERENCE`, and `VERIFIED_TOOL`. `MODEL_INFERENCE` and `EXTERNAL_CONTENT` are excluded from default model context.
 
-Prepared memory retains canonical ID, scope, source class, provenance/source reference and timestamps. Runtime/brain receive no EF/DbContext. The prompt boundary explicitly states memory is data, not action authorization or policy override, and `VERIFIED_TOOL` is time/source-scoped external fact rather than automatic live state or owner permission.
+## Slice 4 — Owner forget/delete [COMPLETE]
 
-## Slice 4 — Owner forget/delete [IMPLEMENTED / PR #21]
-
-Current PR: `#21 — feat: add M4 memory forget purge`.
-
-Implemented candidate:
+PR #21 merged at:
 
 ```text
-A OWNER_EXPLICIT
- -> B OWNER_CORRECTION
- -> C OWNER_CORRECTION (current)
-
-ForgetAsync(C)
- -> verify C exists and is current
- -> walk reverse correction chain C <- B <- A
- -> require one linear chain + identical Project/Repository scope
- -> delete A, then B, then C in one SQLite transaction
- -> restart
- -> A/B/C remain absent
- -> prepared context cannot resurrect forgotten content
+87b5a39ccae7c931de9668fed5283a4742be73f7
 ```
 
-Properties:
-- explicit `IMemoryStore.ForgetAsync(currentMemoryRecordId)`; no generic delete API;
-- only a current record can be forgotten directly;
-- correction history must be a single linear chain or forgetting fails closed;
-- the whole correction chain is physically purged so an older claim cannot become current again;
-- each delete checks its expected supersession pointer, making concurrent/history changes roll back instead of partially deleting;
-- unrelated memories remain untouched;
-- memory forgetting has no generic cascade into audit; audit retention remains a separate concept under ADR-003;
-- no schema migration is required.
+Evidence:
+- implementation CI #133 / `33865419023` — **PASS**;
+- final exact-head CI #137 / `33865716479` at `04104efd90c47216275544812dbc27284408920b` — **PASS**.
 
-Real SQLite tests prove:
-- A -> B -> C is completely purged when C is forgotten;
-- all chain records remain absent after restart;
-- prepared memory context contains no forgotten marker after restart;
-- unrelated memory survives;
-- forgetting a superseded record fails without changing history/current truth;
-- forgetting an unknown record fails closed.
+For a correction chain `A -> B -> C(current)`, `ForgetAsync(C)` validates a same-scope linear history and physically purges A, B, C in one SQLite transaction. This prevents older corrected claims from resurrecting. Restart tests prove the whole forgotten chain stays absent while unrelated memory survives. Forgetting does not cascade into audit retention.
 
-Implementation CI #133 / run `33865419023` — **PASS** across restore, zero-warning build, all tests, format, secret scan, dependency scan, and web/auth smoke.
+## Slice 5 — Poisoning / trust-boundary acceptance [COMPLETE IN M4 EXIT CHANGESET]
 
-Slice 4 is not closed until this documentation-synchronized PR head passes final exact-head CI and PR #21 merges.
+PR #22 closes the M4 trust gate.
 
-## Slice 5 — Poisoning / trust-boundary acceptance [NEXT]
+Production hardening:
+- records entering trusted prepared context require non-empty provenance;
+- provenance/source references are independently bounded;
+- the whole serialized memory payload — content, provenance, IDs, scope, timestamps — is explicitly inert data, never instructions, permission, policy, or action authorization;
+- `MODEL_INFERENCE` and `EXTERNAL_CONTENT` remain excluded even with owner-looking provenance;
+- `OWNER_APPROVED_INFERENCE` and `VERIFIED_TOOL` require provenance;
+- `VERIFIED_TOOL` does not automatically represent current external state or grant owner permission.
 
-Final M4 adversarial gate will prove:
-- `MODEL_INFERENCE` cannot silently become owner truth or correction;
-- `EXTERNAL_CONTENT` cannot self-promote into trusted memory/policy/permission;
-- content and provenance/source references are data, not executable instructions;
-- `VERIFIED_TOOL` cannot grant owner permission and remains source/time scoped;
-- `OWNER_APPROVED_INFERENCE` is distinguishable from an unapproved model inference;
-- owner correction remains current owner truth in scope;
-- malicious excluded records do not leak into prepared brain context.
+Adversarial acceptance proves:
+- spoofed model/external records cannot enter trusted prepared context;
+- unproven approved-inference/tool records are excluded;
+- explicit owner-approved inference stays distinguishable from ordinary model inference;
+- owner correction wins current owner truth while superseded and conflicting untrusted records stay out;
+- malicious provenance text is bounded and treated as data;
+- `MODEL_INFERENCE` cannot use the correction boundary even with owner-looking provenance;
+- a normal `LorenRunService` turn reads prepared memory without calling `AddAsync`, `CorrectAsync`, or `ForgetAsync`.
 
-## M4 non-goals
+CI history:
+- CI #139 / `33866064004`: zero-warning build passed; two wording assertions exposed safety-text phrasing mismatches;
+- hardening commit `8b3c6c2a45ad06046ac8150efe8322a362cdac0b` clarified the boundary;
+- implementation CI #140 / `33866182751` — **PASS** across restore, zero-warning build, all tests, format, secret scan, dependency scan, and web/auth smoke.
 
-Do not add GitHub writes, broad vector infrastructure, generic graph entities, scheduler/background behavior, or v0.2 research capabilities while implementing the memory core.
+## M4 exit gate [PASSED]
 
-## Next execution sequence
+M4 now proves:
+- owner-explicit memory survives restart with canonical identity and provenance;
+- owner correction appends/supersedes without destructive content rewrite;
+- current retrieval excludes superseded claims;
+- owner forget purges the full correction chain and stays forgotten after restart;
+- runtime receives a small, inspectable, bounded prepared package rather than database access;
+- low-authority model/external content cannot silently become trusted owner state;
+- ordinary runtime turns do not silently mutate durable memory;
+- memory forgetting and audit retention remain separate concepts;
+- deterministic tests work without a live model.
 
-```text
-PR #21 final exact-head CI
- -> merge M4 Slice 4
- -> M4 Slice 5 poisoning/trust acceptance
- -> M4 exit gate
- -> M4 COMPLETE
- -> Gate D / M5
-```
+**M4 is complete once PR #22 is merged to `main`.**
+
+---
+
+# Next milestone — M5 Action/Credential Boundary + Narrow GitHub Writes
+
+Before implementing the first real GitHub write, **Gate D must pass** and lock:
+- write action contracts and policy dimensions;
+- exact approval binding and non-replay rules;
+- write credential storage/resolution and read/write separation;
+- secret redaction, rotation, and revocation;
+- global read-only / kill behavior;
+- post-write verification and audit expectations.
+
+Only after Gate D may M5 add the narrow v0.1 write set: create branch, create/update file/commit path, commit, and open pull request. Merge-main, force-push, repository deletion/admin changes, and production deploy remain outside the v0.1 write scope.
 
 ## Progress-update rule
 
