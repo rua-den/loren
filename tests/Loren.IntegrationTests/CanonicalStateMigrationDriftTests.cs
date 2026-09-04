@@ -34,6 +34,19 @@ public sealed class CanonicalStateMigrationDriftTests
         Assert.True(
             differences.Count == 0,
             "Pending canonical-state model changes: "
-            + string.Join(", ", differences.Select(operation => operation.GetType().Name)));
+            + string.Join(", ", differences.Select(Describe)));
     }
+
+    private static string Describe(MigrationOperation operation) => operation switch
+    {
+        AddColumnOperation add => $"AddColumn {add.Table}.{add.Name} ({add.ClrType.Name})",
+        DropColumnOperation drop => $"DropColumn {drop.Table}.{drop.Name}",
+        CreateIndexOperation index => $"CreateIndex {index.Table}.{index.Name}",
+        DropIndexOperation index => $"DropIndex {index.Table}.{index.Name}",
+        AddForeignKeyOperation foreignKey =>
+            $"AddForeignKey {foreignKey.Table}.{foreignKey.Name}",
+        DropForeignKeyOperation foreignKey =>
+            $"DropForeignKey {foreignKey.Table}.{foreignKey.Name}",
+        _ => operation.GetType().Name,
+    };
 }
