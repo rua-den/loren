@@ -1,5 +1,6 @@
 using Loren.Core.Actions;
 using Loren.Core.Audit;
+using Loren.Core.Projects;
 using Xunit;
 
 namespace Loren.Runtime.Tests;
@@ -59,6 +60,45 @@ public sealed class ActionGatewayTests
         Assert.Empty(executor.Requests);
         Assert.Equal("deny", result.Data["policy"]);
         Assert.Equal("denied", audit.Events[^1].Outcome);
+    }
+
+    [Fact]
+    public async Task MissingExecutorFailsBeforeApprovalConsumption()
+    {
+        ActionDefinition definition = new(
+            "write",
+            "write",
+            ActionAccessClass.ExternalWrite);
+        RecordingAuditSink audit = new();
+        CountingApprovalStore approvalStore = new();
+        ProjectId projectId = ProjectId.New();
+        RepositoryId repositoryId = RepositoryId.New();
+        ActionAuthorizationContext authorizationContext = new(
+            projectId,
+            repositoryId,
+            new RepositoryLocator("github", "owner", "repo"),
+            "owner-session");
+        ActionExecutionRequest execution = new(
+            RunId.New(),
+            ActionId.New(),
+            new ActionRequest("write", new Dictionary<string, string>()),
+            authorizationContext,
+            ApprovalId.New());
+        ActionGateway gateway = new(
+            [definition],
+            [],
+            new RequireApprovalPolicy(),
+            audit,
+            approvalStore);
+
+        ActionResult result = await gateway.ExecuteAsync(execution, CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Equal("No executor is registered for the action.", result.Error);
+        Assert.Equal(0, approvalStore.ConsumeCalls);
+        Assert.DoesNotContain(
+            audit.Events,
+            auditEvent => auditEvent.Kind is AuditEventKind.ApprovalEvaluated);
     }
 
     [Fact]
@@ -149,6 +189,50 @@ public sealed class ActionGatewayTests
             ActionExecutionRequest execution,
             CancellationToken cancellationToken) =>
             throw new InvalidOperationException("policy detail must not escape");
+    }
+
+    private sealed class RequireApprovalPolicy : IActionPolicy
+    {
+        public Task<PolicyDecision> EvaluateAsync(
+            ActionDefinition definition,
+            ActionExecutionRequest execution,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(PolicyDecision.RequireApproval("approval required"));
+        }
+    }
+
+    private sealed class CountingApprovalStore : IActionApprovalStore
+    {
+        public int ConsumeCalls { get; private set; }
+
+        public Task AddAsync(
+            ActionApproval approval,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<ActionApproval?> GetAsync(
+            ApprovalId approvalId,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<ApprovalConsumptionResult> ConsumeAsync(
+            ApprovalConsumptionRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            ConsumeCalls++;
+            return Task.FromResult(new ApprovalConsumptionResult(
+                ApprovalConsumptionStatus.Consumed,
+                "consumed"));
+        }
+
+        public Task RevokeAsync(
+            ApprovalId approvalId,
+            DateTimeOffset revokedAt,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
     }
 
     private sealed class RecordingAuditSink : IAuditSink
