@@ -23,66 +23,83 @@ Loren is a long-lived personal intelligence system with persistent memory, expli
 
 Completed:
 
-- **Gate A / ADR-001:** Loren-owned core/runtime boundary accepted.
-- **Gate B / ADR-002:** provider-neutral v0.1 stack accepted.
-- **Gate C / ADR-003:** canonical state + memory lifecycle rules accepted.
-- **M0:** technical feasibility proofs complete.
-- **M1:** engineering foundation complete.
-- **M2:** Walking Skeleton complete.
-- **M3:** Canonical Project/Repository State complete.
-- **M4 Slice 1:** OWNER_EXPLICIT durable persistence complete.
-- **M4 Slice 2:** owner correction + supersession complete.
+- Gate A / ADR-001
+- Gate B / ADR-002
+- Gate C / ADR-003
+- M0 technical feasibility
+- M1 engineering foundation
+- M2 Walking Skeleton
+- M3 Canonical Project/Repository State
+- M4 Slice 1 OWNER_EXPLICIT persistence
+- M4 Slice 2 correction/supersession
+- M4 Slice 3 authority-aware prepared memory context
 
 Detailed status: [`docs/status.md`](docs/status.md).
 
-## M4 memory path today
+## M4 memory path
 
 ```text
-OWNER_EXPLICIT durable fact
- -> canonical MemoryRecord / MemoryRecordId
+owner durable fact
+ -> MemoryRecord / MemoryRecordId
  -> Project / Repository scope + provenance
- -> SQLite / EF Core
+ -> SQLite
  -> restart-safe retrieval
 
 owner correction
- -> OWNER_CORRECTION replacement
- -> old.SupersededById = new.Id
- -> one transaction
- -> current retrieval returns correction only
+ -> append OWNER_CORRECTION
+ -> supersede old claim atomically
 
-current Project request
- -> current memory retrieval
- -> authority-aware filtering + hard bounds
- -> prepared Loren memory package
+project request
+ -> current memories
+ -> authority/lifecycle filtering
+ -> hard context bounds
+ -> prepared memory data
  -> BrainContext
+
+owner forget
+ -> current memory
+ -> purge its full correction chain transactionally
+ -> restart
+ -> forgotten claim stays absent
 ```
 
 ### Slice 1 [COMPLETE]
 
-PR #18 merged at `78adc287f7ae3744352b7019e3b8a838a5de499e` after final CI #117 / run `33860985267`; post-merge main CI #118 / run `33861089270` also passed.
+PR #18 merged at `78adc287f7ae3744352b7019e3b8a838a5de499e`. Final CI #117 / run `33860985267` and post-merge main CI #118 / run `33861089270` passed.
 
 ### Slice 2 [COMPLETE]
 
-PR #19 merged at `201b83eff0c6c3143856e348b4c9f029cc14a8b1`. Implementation CI #119 / run `33861345949` and final exact-head CI #123 / run `33861630472` passed.
+PR #19 merged at `201b83eff0c6c3143856e348b4c9f029cc14a8b1`. Implementation CI #119 / run `33861345949` and final CI #123 / run `33861630472` passed.
 
-Correction is explicit append + supersede. Old content is preserved, stale/scope-changing/non-owner correction attempts fail closed, and no generic destructive memory-update API exists.
+Correction is explicit append + supersede; old content is preserved and invalid/stale/scope-changing replacements fail closed.
 
-### Slice 3 [IMPLEMENTED / PR #20 FINAL GATE]
+### Slice 3 [COMPLETE]
 
-PR #20 adds application-owned prepared memory context:
+PR #20 merged at `732b85db3a799638bcd73558f98232b276f3cb5e`. Implementation CI #127 / run `33864695658` and final exact-head CI #131 / run `33864946328` passed.
 
-- `OWNER_CORRECTION`, `OWNER_EXPLICIT`, `OWNER_APPROVED_INFERENCE`, and `VERIFIED_TOOL` can enter the default prepared model context;
-- `MODEL_INFERENCE` and `EXTERNAL_CONTENT` are excluded by default;
-- superseded records are excluded before preparation;
-- authority ordering is deterministic;
-- record count and total content characters are hard-bounded before model execution;
-- MemoryRecordId, scope, provenance/source reference, and timestamps remain inspectable;
-- memory payload is explicitly data, not action authorization or a policy override;
-- verified-tool facts are not treated as automatically current external state.
+Prepared memory:
+- includes owner correction, owner explicit, owner-approved inference, and verified-tool records;
+- excludes model inference and external content by default;
+- excludes superseded records;
+- retains IDs, scope, provenance and timestamps;
+- has deterministic ordering plus hard record/character bounds;
+- is explicitly data, not action authorization or policy override.
 
-Real SQLite + fake-brain tests prove correction reaches the brain while superseded and poison-marker records do not. Implementation CI #127 / run `33864695658` at `179a203d6c3d11ff85eb8529d4107ae2edc7f720` is **PASS** across restore, zero-warning build, all tests, format, secret scan, dependency scan, and web/auth smoke.
+### Slice 4 [IMPLEMENTED / PR #21 FINAL GATE]
 
-PR #20 still needs the documentation-synchronized final exact-head CI before merge.
+PR #21 adds `IMemoryStore.ForgetAsync(...)`.
+
+For a chain `A -> B -> C(current)`, forgetting C walks the same-scope linear history and physically deletes A, then B, then C inside one SQLite transaction. This prevents an old corrected claim from reappearing as current truth.
+
+Real SQLite acceptance proves:
+- the whole chain remains absent after restart;
+- prepared context cannot resurrect forgotten content;
+- unrelated memories survive;
+- forgetting a stale/superseded or unknown target fails closed.
+
+Implementation CI #133 / run `33865419023` is **PASS** across restore, zero-warning build, all tests, format, secret scan, dependency scan, and web/auth smoke.
+
+Memory forgetting does not use an audit cascade; audit retention remains a separate concern under ADR-003. PR #21 still needs the documentation-synchronized final exact-head CI before merge.
 
 ## Durable-memory source classes
 
@@ -94,8 +111,6 @@ OWNER_APPROVED_INFERENCE
 MODEL_INFERENCE
 EXTERNAL_CONTENT
 ```
-
-ADR-003 locks append/supersede correction, memory deletion separate from audit retention, and logical export `format_version = 1` independently from EF migrations.
 
 ## Canonical storage
 
@@ -113,7 +128,6 @@ A fresh database currently has no configured Projects; owner-facing Project CRUD
 ```bash
 export LOREN_OWNER_PASSWORD='choose-a-local-owner-password'
 export OLLAMA_API_KEY='your-provider-secret'
-# optional: export LOREN_DATA_DIRECTORY='/path/to/loren-data'
 dotnet run --project src/Loren.Web/Loren.Web.csproj
 ```
 
@@ -122,20 +136,19 @@ PowerShell:
 ```powershell
 $env:LOREN_OWNER_PASSWORD='choose-a-local-owner-password'
 $env:OLLAMA_API_KEY='your-provider-secret'
-# optional: $env:LOREN_DATA_DIRECTORY='D:\loren-data'
 dotnet run --project src/Loren.Web/Loren.Web.csproj
 ```
 
-Do not commit real secrets. Use HTTPS or a trusted TLS-terminating reverse proxy when exposing the host beyond localhost.
+Do not commit real secrets.
 
 ## Next
 
 ```text
-PR #20 final exact-head CI
- -> merge M4 Slice 3
- -> M4 Slice 4 forget/delete
+PR #21 final exact-head CI
+ -> merge M4 Slice 4
  -> M4 Slice 5 poisoning/trust acceptance
  -> M4 exit gate
+ -> Gate D / M5
 ```
 
 Gate D remains mandatory before any GitHub write capability.
