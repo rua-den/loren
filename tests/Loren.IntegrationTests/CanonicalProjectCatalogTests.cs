@@ -11,6 +11,7 @@ public sealed class CanonicalProjectCatalogTests
     [Fact]
     public async Task ProjectAndRepositorySurviveRestartAndResolveAllAliases()
     {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         string tempDirectory = Path.Combine(
             Path.GetTempPath(),
             $"loren-m3-{Guid.NewGuid():N}");
@@ -43,27 +44,30 @@ public sealed class CanonicalProjectCatalogTests
         {
             await using (CanonicalStateDbContext firstContext = CreateContext(connectionString))
             {
-                await CanonicalStateDatabase.MigrateAsync(firstContext);
+                await CanonicalStateDatabase.MigrateAsync(firstContext, cancellationToken);
                 SqliteProjectCatalog firstCatalog = new(firstContext);
-                await firstCatalog.SaveAsync(snapshot);
+                await firstCatalog.SaveAsync(snapshot, cancellationToken);
 
                 string[] appliedMigrations = (await firstContext.Database
-                        .GetAppliedMigrationsAsync())
+                        .GetAppliedMigrationsAsync(cancellationToken))
                     .ToArray();
 
                 Assert.Contains("202609040001_InitialCanonicalState", appliedMigrations);
             }
 
             await using CanonicalStateDbContext restartedContext = CreateContext(connectionString);
-            await CanonicalStateDatabase.MigrateAsync(restartedContext);
+            await CanonicalStateDatabase.MigrateAsync(restartedContext, cancellationToken);
             SqliteProjectCatalog restartedCatalog = new(restartedContext);
 
             ProjectSnapshot? byWeddingProject = await restartedCatalog.FindByAliasAsync(
-                "  Wedding   Project  ");
+                "  Wedding   Project  ",
+                cancellationToken);
             ProjectSnapshot? byVietnameseAlias = await restartedCatalog.FindByAliasAsync(
-                "WEB ĐÁM CƯỚI");
+                "WEB ĐÁM CƯỚI",
+                cancellationToken);
             ProjectSnapshot? byRepositoryAlias = await restartedCatalog.FindByAliasAsync(
-                "wedding-online");
+                "wedding-online",
+                cancellationToken);
 
             Assert.NotNull(byWeddingProject);
             Assert.NotNull(byVietnameseAlias);
@@ -81,7 +85,10 @@ public sealed class CanonicalProjectCatalogTests
             Assert.Equal("github", persistedRepository.Locator.Provider);
             Assert.Equal("rua-den/wedding-online", persistedRepository.Locator.FullName);
 
-            Assert.Null(await restartedCatalog.FindByAliasAsync("unknown project"));
+            Assert.Null(
+                await restartedCatalog.FindByAliasAsync(
+                    "unknown project",
+                    cancellationToken));
         }
         finally
         {
@@ -92,6 +99,7 @@ public sealed class CanonicalProjectCatalogTests
     [Fact]
     public async Task AliasCannotSilentlyBelongToTwoProjects()
     {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         string tempDirectory = Path.Combine(
             Path.GetTempPath(),
             $"loren-m3-{Guid.NewGuid():N}");
@@ -103,7 +111,7 @@ public sealed class CanonicalProjectCatalogTests
         try
         {
             await using CanonicalStateDbContext context = CreateContext(connectionString);
-            await CanonicalStateDatabase.MigrateAsync(context);
+            await CanonicalStateDatabase.MigrateAsync(context, cancellationToken);
             SqliteProjectCatalog catalog = new(context);
 
             ProjectId firstProjectId = ProjectId.New();
@@ -115,7 +123,8 @@ public sealed class CanonicalProjectCatalogTests
                         ["shared alias"],
                         now,
                         now),
-                    []));
+                    []),
+                cancellationToken);
 
             ProjectId secondProjectId = ProjectId.New();
             ProjectSnapshot conflictingSnapshot = new(
@@ -128,7 +137,7 @@ public sealed class CanonicalProjectCatalogTests
                 []);
 
             await Assert.ThrowsAsync<DbUpdateException>(
-                () => catalog.SaveAsync(conflictingSnapshot));
+                () => catalog.SaveAsync(conflictingSnapshot, cancellationToken));
         }
         finally
         {
