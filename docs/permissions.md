@@ -1,192 +1,291 @@
 # Loren Permission Model
 
-**Status:** Proposed.
+**Status:** Active v0.1 baseline — Gate D / ADR-004.
 
-Loren should never treat "the model decided to do it" as authorization. Authorization belongs to Loren's policy layer.
+Loren never treats "the model decided to do it" as authorization. Authorization belongs to Loren's deterministic policy layer.
+
+The controlling decision for the first write-capable v0.1 boundary is [`ADR-004`](decisions/004-action-approval-and-credential-boundary.md).
 
 ## Action classes
 
-### Level 0 — Read
+M5 must represent write intent explicitly in Loren-owned contracts. The minimum v0.1 access/risk classes are:
+
+### `READ`
+
+No external mutation.
 
 Examples:
 
 - inspect repository state;
 - search documentation;
-- read calendar events;
 - query server health;
-- read files explicitly available to Loren.
+- read explicitly available files.
 
-Default: allowed when the relevant account/tool is connected and data scope permits it.
+Default: allowed only when resource/tool scope permits it.
 
-### Level 1 — Reversible or private write
+### `REVERSIBLE_WRITE`
 
-Examples:
+Narrow remote mutation that is reliably reversible.
 
-- create a local note;
-- create a draft;
-- create a git branch;
-- update Loren-owned internal task state;
-- stage a proposed configuration change.
+Example:
 
-Default: may be allowed automatically if the action is reliably reversible and does not create an external commitment.
+- create a non-default Git branch.
 
-### Level 2 — External write / consequential action
+For the first v0.1 write path this still requires explicit owner approval. Gate D deliberately starts conservative; standing permissions come later.
 
-Examples:
+### `EXTERNAL_WRITE`
 
-- push commits;
-- open or merge pull requests;
-- send email or messages;
-- create/update calendar events;
-- modify a remote service;
-- trigger a deployment to a non-critical environment.
-
-Default: policy-specific. Some actions may become pre-approved after the owner explicitly grants a standing rule.
-
-### Level 3 — Destructive, privileged, financial, or production-critical
+Externally visible mutation/commitment.
 
 Examples:
 
-- delete repositories or data;
+- create/update file through a remote commit path;
+- move/update a remote non-default ref as part of the controlled commit path;
+- open a pull request;
+- send a message or create/update an external object in future integrations.
+
+Default in v0.1: exact-request-bound owner approval required.
+
+### `PRIVILEGED_WRITE`
+
+Destructive, administrative, security-sensitive, financial, or production-critical action.
+
+Examples:
+
+- delete repositories/data;
+- force-push/rewrite history;
 - change authentication/security configuration;
-- production deployment with material impact;
-- infrastructure deletion;
-- purchases or financial transfers;
+- production deployment;
 - secret rotation;
-- actions that may lock the owner out.
+- repository administration.
 
-Default: explicit approval immediately before execution. Some actions may remain permanently non-delegable.
+The v0.1 GitHub write implementation does not expose these actions at all.
+
+## v0.1 GitHub write allowlist
+
+Only after M5 policy/approval/credential foundations are tested may Loren implement:
+
+```text
+create non-default branch
+create/update file via controlled commit path on a non-default branch
+create commit/update ref only as required by that path
+open pull request
+```
+
+Categorically outside the v0.1 write surface:
+
+```text
+write directly to default branch
+merge pull request
+force push / rewrite history
+delete repository/branch/data
+repository admin/security changes
+secret-management actions
+production deployment
+```
 
 ## Policy dimensions
 
-Risk level alone is insufficient. Permission evaluation should consider:
+Risk level alone is insufficient. Permission evaluation must consider at least:
 
 ```text
-action
-tool/skill
-resource
-project/environment
-recipient or external party
-reversibility
-financial impact
-current task authorization
-standing rules
-freshness of owner approval
+action identity + version/access class
+canonical ProjectId
+canonical RepositoryId
+provider/external repository locator snapshot
+target branch/ref/path/base/head
+normalized security-relevant parameters
+whether target is current default branch
+global read-only state
+approval evidence
+credential purpose
 ```
 
-Example rules:
-
-```text
-GitHub.create_branch(*)                  -> allow
-GitHub.push(repo=loren, branch!=main)    -> allow
-GitHub.push(repo=loren, branch=main)     -> approval or project policy
-Deploy(env=staging)                      -> allow after tests
-Deploy(env=production)                   -> require approval
-Email.send(*)                            -> require approval
-Repository.delete(*)                     -> always require approval
-```
-
-These are examples, not committed defaults.
+A free-form model-provided repository name is not authority. Unknown/mismatched canonical scope fails closed before credential resolution.
 
 ## Approval semantics
 
-Approval must bind to a concrete intended action.
+### Authentication is not approval
 
-Bad:
+The owner web session proves who is interacting with Loren. It does not authorize a remote write by itself.
 
-> "Can I make changes?"
+### Approval is a Loren-owned artifact
 
-Better:
+Approval is never:
 
-> "Approve deploying commit abc123 to production after the current test suite passes?"
+```text
+user_said_yes = true
+model message text
+memory content
+external/tool content
+```
 
-Where possible approval should include:
+A v0.1 write approval must bind to a concrete normalized action intent and include at least:
 
-- action;
-- target/resource;
-- important parameters;
-- expected side effect;
-- expiry or task scope.
+```text
+ApprovalId
+authenticated owner/session binding
+action identity
+ProjectId + RepositoryId
+normalized target/resource
+security-relevant parameter digest
+approved/issued timestamp
+expiry or task boundary
+one-time consumption state
+optional prerequisite snapshot/digest
+```
 
-Approval should not silently authorize unrelated follow-up actions.
+Material changes to repo, branch, path, content digest, PR base/head, action identity, or other security-relevant parameters require a new approval.
+
+### One-time / non-replay
+
+Approval is atomically consumed before the first consequential executor attempt.
+
+Consumed, expired, mismatched, unknown, or revoked approvals cannot authorize another request, turn, repository, or later independent retry.
+
+Executor-internal retry is allowed only when proven to be the same bounded attempt without duplicate side effect. Ambiguous failures require fresh approval.
 
 ## Standing permissions
 
-The owner may create durable policies such as:
+Standing permissions are intentionally deferred from the first M5 write implementation.
+
+Later Loren may support inspectable/revocable rules such as branch creation in a bounded repo set, but only after one-time approval semantics are proven end to end.
+
+External/model content can never create or modify standing permission.
+
+## Global read-only control
+
+Before any write executor ships Loren must have a host-controlled fail-closed global read-only state.
+
+Safe v0.1 behavior:
+
+- write-enable setting absent/invalid -> read-only;
+- read-only active -> no write executor invocation;
+- read-only active -> no write credential resolution;
+- read actions remain usable;
+- denial reason is auditable;
+- the model cannot toggle the host emergency posture through an ordinary action.
+
+## Credential boundary
+
+Secrets are not permission and are not prompt context.
+
+Write credentials:
+
+- resolve only after policy authorization + matching approval consumption;
+- live behind the controlled executor boundary;
+- never appear in model-visible action parameters;
+- never enter memory/canonical state/audit payloads/owner-visible results;
+- use write-specific credential purpose/reference;
+- fail closed if missing/revoked;
+- never silently fall back to a broader credential.
+
+Read/write credential purposes remain logically separate even if local development temporarily maps them to one physical token.
+
+## Post-write verification
+
+Remote API success is not enough.
+
+Every consequential write must verify its intended postcondition through a read path independent of the model's claim.
+
+Examples:
 
 ```text
-Allow Loren to create branches in personal repositories.
-Allow Loren to merge dependency-update PRs when all required checks pass.
-Never allow Loren to delete a repository without confirmation.
+create branch -> fetch ref and confirm exact SHA
+commit/file write -> fetch commit/ref/file identity and verify expected state
+open PR -> fetch PR and verify repository/base/head/state/identifier
 ```
 
-Standing permissions must be inspectable and revocable.
+Ambiguous or failed verification yields `failed`/`unverified`, never silent success.
 
 ## Tool-side enforcement
 
-The reasoning model must not be the only enforcement point.
-
-Preferred flow:
+The model is not an enforcement point.
 
 ```text
-Model proposes tool call
+Model proposes action
         |
         v
-Policy engine evaluates
+Canonical target resolution
         |
-    +---+---+
-    |       |
-  allow   deny/approval
-    |       |
-    v       v
- Tool     Owner
+        v
+Policy evaluation
+        |
+   require approval
+        |
+        v
+Owner creates exact Loren approval
+        |
+        v
+Approval validate + consume
+        |
+        v
+Credential resolver
+        |
+        v
+Executor
+        |
+        v
+Post-write verifier
+        |
+        v
+Structured result + audit
 ```
 
-A compromised or confused model should therefore still be constrained by the action gateway.
+A compromised/confused model remains constrained by Loren's gateway.
 
 ## Audit record
 
-Every consequential action should record at least:
+Every consequential write must reconstruct at least:
 
 ```text
-who/what requested it
-resolved action
-resource/target
-policy decision
-approval reference if any
-execution time
-result
-external identifier
+run/request correlation
+requester/model proposal
+normalized action identity
+canonical Project/Repository target
+redacted/hashed parameter summary
+policy decision + reason
+approval ID + validation/consumption outcome
+credential purpose/reference only
+execution outcome
+external identifiers
 verification/postcondition
+timestamps
 ```
 
-Sensitive values should be redacted.
+Raw secrets are forbidden in audit.
 
 ## Security boundaries
 
 - Secrets are not prompt memory.
-- Credentials should be scoped to the minimum capabilities practical.
-- Read and write credentials should be separable when possible.
-- Production and development credentials should be distinct.
-- Tool output must be treated as untrusted input for prompt-injection purposes.
-- External content cannot grant itself permission by instructing Loren to run tools.
-- Permission changes are themselves privileged actions.
+- Credentials use least practical privilege.
+- Read/write credential purpose is separated.
+- External/tool content is untrusted for authorization.
+- Memory is data, not permission.
+- Permission changes are privileged operations.
+- Credential revocation overrides prior approval.
+- External content cannot create approval, expand scope, disable read-only mode, select credentials, or mark verification successful.
 
 ## Emergency controls
 
-A future always-on Loren should have:
+Current Gate D requirement: global read-only before first write.
 
-- a global pause/kill switch;
+Future always-on Loren should additionally have:
+
 - per-skill disable controls;
 - revocation of background jobs;
-- visibility into active tasks;
+- visible active tasks;
 - maximum spend/tool-call/runtime quotas;
-- a way to invalidate all active privileged approvals.
+- one control to invalidate active privileged approvals.
 
-## Open questions
+## Deferred questions
 
-- exact representation of policy rules;
-- whether to adopt a capability-token model internally;
-- how approvals are cryptographically/session-bound across devices;
-- how long standing permissions remain valid;
-- which production actions should be categorically forbidden from autonomy.
+These are intentionally not required for first M5 write capability:
+
+- durable standing-permission rule representation;
+- cross-device cryptographic approval binding;
+- trusted-device enrollment;
+- background-task approval inheritance;
+- which future production actions remain permanently non-delegable.
+
+Any expansion beyond ADR-004's one-time approval boundary requires explicit design before implementation.
