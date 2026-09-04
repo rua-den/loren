@@ -6,35 +6,37 @@ Loren advances by **proven capability and trust**, not by calendar dates.
 
 ## Current status
 
-**Current stage:** `v0.0 — Architecture and feasibility`  
-**Passed:** ADR-001 — Loren-owned core/runtime boundary  
-**Open:** ADR-002 — v0.1 technology stack validation
+**Current stage:** `v0.1 — Trustworthy Core development`  
+**Passed:** `Gate A — Core ownership`, `Gate B — v0.1 implementation stack`  
+**Current milestone:** `M2 — Walking Skeleton`
+
+M2 has a proven real Ollama -> Loren -> GitHub read -> final-answer backend path and now has the one-owner authentication, protected request console, and owner-visible audit implementation. The remaining M2 exit proof is the exact-main trusted live run through that authenticated production owner path.
 
 Next step:
 
 ```text
-ADR-002 technical spike
--> accept/revise stack
--> scaffold solution
--> begin v0.1 walking skeleton
+owner preview CI + merge
+-> trusted exact-main owner-authenticated live read proof
+-> M2 COMPLETE
+-> M3 Canonical State
 ```
 
 ---
 
-## v0.0 — Architecture and feasibility
+## v0.0 — Architecture and feasibility [COMPLETE]
 
 Goal: establish the ownership boundary and prove the concrete v0.1 stack is implementable.
 
-Exit requires:
+Exit evidence:
 
 - ADR-001 Accepted;
-- ADR-002 Accepted after a small technical spike;
+- ADR-002 Accepted after technical spikes;
 - v0.1 implementation plan finalized;
-- brain/action/MCP/persistence boundaries proven enough to scaffold production code.
+- brain/action/MCP/persistence/host boundaries proven enough to scaffold production code.
 
 ---
 
-## v0.1 — Trustworthy Core
+## v0.1 — Trustworthy Core [ACTIVE]
 
 Goal: build the smallest trustworthy Loren.
 
@@ -50,7 +52,7 @@ Required flows:
 Core capabilities:
 
 - one-owner web interface;
-- initial OpenAI brain adapter behind `IBrain`;
+- provider-neutral brain boundary with a proven Ollama implementation and optional OpenAI adapter;
 - bounded Loren-owned agent loop;
 - Project/Repository canonical state;
 - trusted durable memory with correction/provenance;
@@ -60,9 +62,22 @@ Core capabilities:
 - export/wipe/restore proof;
 - adversarial security/reliability tests.
 
+Milestones:
+
+```text
+M1 Engineering Foundation             ✓ complete
+M2 Walking Skeleton                   <- current
+M3 Canonical Project/Repository State
+M4 Trusted Durable Memory
+M5 Action/Credential Boundary + Writes
+M6 Minimal Daily-use UI
+M7 Export/Restore + Recovery
+M8 Security/Reliability E2E
+```
+
 Explicitly not required:
 
-- web research;
+- broad web research;
 - scheduler/reminders;
 - Gmail/Calendar;
 - voice;
