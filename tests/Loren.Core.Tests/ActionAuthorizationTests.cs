@@ -124,4 +124,46 @@ public sealed class ActionAuthorizationTests
             baseline,
             ActionIntentFingerprint.Compute(definition, changedContent, approved));
     }
+
+    [Fact]
+    public void RequestAndAuthorizationContextFreezeInputDictionaries()
+    {
+        Dictionary<string, string> target = new(StringComparer.Ordinal)
+        {
+            ["branch"] = "feat/approved",
+            ["path"] = "README.md",
+        };
+        Dictionary<string, string> arguments = new(StringComparer.Ordinal)
+        {
+            ["content_digest"] = "ABC",
+        };
+        ActionDefinition definition = new(
+            "github.update_file",
+            "Update a file",
+            ActionAccessClass.ExternalWrite);
+        ActionAuthorizationContext context = new(
+            ProjectId.New(),
+            RepositoryId.New(),
+            new RepositoryLocator("github", "rua-den", "loren"),
+            "owner:session-1",
+            target);
+        ActionRequest request = new(definition.Name, arguments);
+        string approvedFingerprint = ActionIntentFingerprint.Compute(
+            definition,
+            request,
+            context);
+
+        target["branch"] = "main";
+        target["path"] = "SECURITY.md";
+        arguments["content_digest"] = "MUTATED";
+        arguments["extra"] = "later";
+
+        Assert.Equal("feat/approved", context.NormalizedTarget["branch"]);
+        Assert.Equal("README.md", context.NormalizedTarget["path"]);
+        Assert.Equal("ABC", request.Arguments["content_digest"]);
+        Assert.False(request.Arguments.ContainsKey("extra"));
+        Assert.Equal(
+            approvedFingerprint,
+            ActionIntentFingerprint.Compute(definition, request, context));
+    }
 }
