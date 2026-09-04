@@ -2,7 +2,8 @@
 
 **Status:** Active planning baseline  
 **Current phase:** `v0.1 — Trustworthy Core development`  
-**Current milestone:** `M4 — Trusted Durable Memory`
+**Completed milestone:** `M4 — Trusted Durable Memory`  
+**Next decision gate:** `Gate D — Action/Credential Policy before M5 writes`
 
 This is Loren's top-level delivery plan. The roadmap is **capability-driven, not date-driven**. Versions advance only when their trust/usefulness exit gates pass.
 
@@ -56,7 +57,7 @@ notification channels
 
 1. The model may request actions; it may not authorize itself.
 2. Privileged tool credentials remain outside model/runtime context.
-3. External content is untrusted and cannot silently promote itself to owner policy or trusted memory.
+3. External/model content cannot silently promote itself to owner policy or trusted memory.
 4. Consequential writes are validated, permission-checked, audited, and post-verified.
 5. Canonical state is exportable/recoverable independently of model-provider session state.
 6. Runtime/provider-specific IDs never become Loren's durable primary identity.
@@ -67,7 +68,7 @@ notification channels
 
 ```text
 v0.0   architecture / feasibility        ✓ complete
-v0.1   trustworthy core                 <- current development / M4
+v0.1   trustworthy core                 <- current / Gate D before M5
 v0.2   useful project assistant
 v0.3   personal operations
 v0.4   voice + device presence
@@ -111,7 +112,7 @@ M0 proved provider/tool/MCP/persistence/host feasibility. M1 rebuilt production 
 
 **Decision:** ADR-003 — Accepted on 2026-09-04.
 
-M3 made the Project/Repository boundary concrete and Gate C locked:
+Gate C locked:
 
 - opaque Loren-owned GUID identity rules;
 - SQLite + explicit EF Core migration policy;
@@ -121,7 +122,7 @@ M3 made the Project/Repository boundary concrete and Gate C locked:
 - memory deletion versus audit retention separation;
 - logical portable export versioning independent of EF schema migration IDs.
 
-The accepted memory source classes are:
+Accepted memory source classes:
 
 ```text
 OWNER_EXPLICIT
@@ -132,19 +133,20 @@ MODEL_INFERENCE
 EXTERNAL_CONTENT
 ```
 
-Portable export begins with a logical `format_version = 1` contract; raw SQLite copies may be backups but are not the portable canonical format.
+Portable export begins with logical `format_version = 1`; raw SQLite copies may be backups but are not the portable canonical format.
 
-Gate C authorizes M4 Trusted Memory. It does **not** authorize external writes.
+Gate C authorized M4 Trusted Durable Memory. M4 has now completed without authorizing external writes.
 
-## Gate D — Action/credential policy [before first real external write]
+## Gate D — Action/credential policy [NEXT — before first real external write]
 
 Must settle:
 
-- action contract and policy dimensions;
-- approval binding/replay rules;
-- credential storage/resolution;
+- write action contracts and policy dimensions;
+- approval binding to action/target/parameters and non-replay rules;
+- credential storage/resolution and read/write separation;
 - secret redaction and rotation/revocation;
-- global read-only/kill behavior.
+- global read-only/kill behavior;
+- post-write verification and audit expectations.
 
 No write-capable integration may ship before this gate passes.
 
@@ -170,7 +172,7 @@ Must settle export/restore compatibility, upgrade/migration path, stable core in
 
 ## v0.0 — Architecture and feasibility [COMPLETE]
 
-Completed ADR-001/ADR-002 feasibility and architecture work. **Transition completed:** `v0.0 -> v0.1 development` on 2026-09-03.
+Completed ADR-001/ADR-002 feasibility and architecture work. Transitioned to v0.1 development on 2026-09-03.
 
 ---
 
@@ -193,14 +195,14 @@ Create the smallest Loren that remembers project context, reads real GitHub stat
 
 ### Milestones
 
-- **M1 engineering foundation — COMPLETE**;
-- **M2 walking skeleton — COMPLETE**;
-- **M3 canonical project/repository state — COMPLETE**;
-- **M4 trusted durable memory + correction/retrieval — ACTIVE**;
-- M5 action/credential boundary + narrow GitHub writes;
-- M6 minimal daily-use UI;
-- M7 export/restore and recovery proof;
-- M8 adversarial security/reliability E2E.
+- **M1 Engineering Foundation — COMPLETE**;
+- **M2 Walking Skeleton — COMPLETE**;
+- **M3 Canonical Project/Repository State — COMPLETE**;
+- **M4 Trusted Durable Memory — COMPLETE**;
+- M5 Action/Credential Boundary + narrow GitHub writes;
+- M6 Minimal daily-use UI;
+- M7 Export/Restore and recovery proof;
+- M8 Adversarial security/reliability E2E.
 
 ### M1 completion evidence
 
@@ -227,58 +229,35 @@ Credential isolation and the production-only owner surface were also verified.
 
 M3 completed on 2026-09-04 in three slices.
 
-**Slice 1 — canonical identity + persistence**
+- PR #15 merged at `00fbba08587ba8275c121fd7f9532a785f55314d` — canonical IDs/persistence/aliases.
+- PR #16 merged at `56fd988d3b74c754604355e3c97a5d3656675bbb` — deterministic alias resolution and prepared project context.
+- PR #17 merged at `69223e8c4923510bb26fa50f77a3c44c1683b172` — ADR-003 / Gate C.
 
-- PR #15 merged at `00fbba08587ba8275c121fd7f9532a785f55314d`;
-- exact-head CI run `33842440251` / #99 passed;
-- Loren-owned `ProjectId`/`RepositoryId`, Project/Repository models, normalized aliases, `IProjectCatalog`, SQLite/EF persistence, initial migration, collision/update/restart tests.
+M3 established durable Project/Repository identity, restart-safe aliases, EF-neutral prepared project context, and the locked memory lifecycle semantics used by M4.
 
-**Slice 2 — deterministic alias resolution + prepared context**
+### M4 completion evidence
 
-- PR #16 merged at `56fd988d3b74c754604355e3c97a5d3656675bbb`;
-- final PR exact-head CI run `33843405386` / #108 passed;
-- post-merge main CI run `33843524467` / #109 passed;
-- explicit aliases resolve before model execution;
-- unknown aliases fail before the brain runs;
-- host prepares a small EF-neutral Project/Repository `BrainContext`;
-- runtime/brain never receive `DbContext`;
-- current external facts still require authorized tools.
-
-Acceptance:
+M4 completed on 2026-09-04 across five slices:
 
 ```text
-"wedding project"
-"web đám cưới"
-"wedding-online"
- -> same Loren ProjectId
- -> Repository locator rua-den/wedding-online
+OWNER_EXPLICIT persistence
+ -> owner correction / append+supersede
+ -> authority-aware bounded prepared memory
+ -> owner forget / full correction-chain purge
+ -> poisoning/provenance trust-boundary acceptance
 ```
 
-The mapping survives SQLite context restart and is independent of provider session identity.
+- PR #18 — canonical OWNER_EXPLICIT durable memory; final CI #117 / `33860985267`.
+- PR #19 — correction/supersession; final CI #123 / `33861630472`.
+- PR #20 — prepared memory context; final CI #131 / `33864946328`.
+- PR #21 — owner forget/delete; final CI #137 / `33865716479`.
+- PR #22 — poisoning/provenance hardening; implementation CI #140 / `33866182751`, with final exact-head gate required before merge.
 
-**Slice 3 — Gate C**
+M4 proves durable memory survives restart; correction preserves history/current-truth semantics; full claim chains can be forgotten without resurrection; prepared memory is bounded/inspectable; model/external content cannot silently become owner truth; ordinary runtime turns do not silently mutate durable memory; and memory deletion remains separate from audit retention.
 
-ADR-003 locks canonical IDs, migrations, memory source authority, correction/supersession, deletion/audit separation, and export versioning. With ADR-003 merged and source-of-truth docs synchronized, Gate C and M3 are complete.
+### Current next action — Gate D
 
-### M4 active target
-
-Implement durable memory under ADR-003 without creating a transcript dump or letting external/model content silently become owner truth.
-
-Initial M4 vertical flow:
-
-```text
-Owner: "Nhớ wedding-online là web đám cưới của tao."
- -> OWNER_EXPLICIT MemoryRecord
- -> canonical Project scope
- -> persist + provenance
- -> restart
-Owner: "Web đám cưới repo nào?"
- -> trusted retrieval
- -> small prepared context
- -> correct canonical repository answer
-```
-
-Correction must create a new `OWNER_CORRECTION` record that supersedes prior current truth. External-content poisoning tests must prove retrieved text cannot promote itself into trusted memory/policy.
+Before M5 adds any write-capable GitHub integration, Gate D must freeze the action/approval/credential boundary. No GitHub write implementation begins until that decision gate passes.
 
 ### v0.1 exit gate
 
@@ -286,8 +265,8 @@ Do not tag v0.1 until:
 
 - all four required flows run end to end from the UI;
 - external state answers are tool-grounded;
-- memory survives restart and correction;
-- hostile external content cannot silently become trusted policy;
+- memory survives restart, correction, and owner forgetting;
+- hostile external/model content cannot silently become trusted policy/memory;
 - all writes pass Loren policy and controlled credential resolution;
 - approval cannot be replayed for unrelated actions;
 - writes are post-verified and auditable;
@@ -370,7 +349,7 @@ A milestone is complete only when its acceptance criteria pass on the main integ
 
 # 7. Stop-the-line conditions
 
-Do not continue if model/runtime can bypass ActionGateway, privileged credentials leak, canonical state depends on provider sessions, external content can self-promote to trusted policy/memory, recovery is known broken, or deterministic core logic cannot be tested without live model behavior.
+Do not continue if model/runtime can bypass ActionGateway, privileged credentials leak, canonical state depends on provider sessions, external/model content can self-promote to trusted policy/memory, recovery is known broken, or deterministic core logic cannot be tested without live model behavior.
 
 Fix the boundary first, then continue.
 
@@ -378,24 +357,17 @@ Fix the boundary first, then continue.
 
 # 8. Current next action
 
-The project is now at **v0.1 / M4 — Trusted Durable Memory**.
-
 ```text
-ADR-003 source/trust semantics
+M4 Trusted Durable Memory       ✓ complete
         |
-MemoryRecord canonical model + migration
+        v
+Gate D Action/Credential Policy <- next
         |
-owner-explicit save with Project scope + provenance
+        v
+M5 narrow GitHub writes
         |
-restart-safe trusted retrieval
-        |
-owner correction -> append/supersede
-        |
-external-content poisoning rejection
-        |
-prepared memory context
-        |
-M4 exit gate
+        v
+M6 UI -> M7 Recovery -> M8 E2E -> v0.1 release gate
 ```
 
 Gate D remains mandatory before any GitHub write capability. Do not implement v0.2 capabilities before the v0.1 exit gate is satisfied.

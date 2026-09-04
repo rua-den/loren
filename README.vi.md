@@ -19,13 +19,23 @@ Loren là một hệ thống trí tuệ cá nhân sống lâu dài, có memory b
 
 **Cập nhật:** 2026-09-04  
 **Phase:** `v0.1 — Trustworthy Core development`  
-**Milestone hiện tại:** `M4 — Trusted Durable Memory`
+**Milestone đã hoàn tất:** `M4 — Trusted Durable Memory`  
+**Decision gate tiếp theo:** `Gate D — Action/Credential Policy trước M5 writes`
 
-Đã hoàn tất: Gate A/B/C, M0, M1, M2, M3, M4 Slice 1, M4 Slice 2 và M4 Slice 3.
+Đã hoàn tất:
+
+- Gate A / ADR-001 — Loren-owned core/runtime boundary.
+- Gate B / ADR-002 — stack v0.1 provider-neutral.
+- Gate C / ADR-003 — canonical state + memory lifecycle.
+- M0 — technical feasibility.
+- M1 — engineering foundation.
+- M2 — Walking Skeleton.
+- M3 — Canonical Project/Repository State.
+- M4 — Trusted Durable Memory.
 
 Chi tiết chuẩn: [`docs/status.md`](docs/status.md).
 
-## Memory path M4
+## Memory path M4 [COMPLETE]
 
 ```text
 owner durable fact
@@ -37,12 +47,14 @@ owner durable fact
 owner correction
  -> append OWNER_CORRECTION
  -> supersede claim cũ atomically
+ -> history cũ vẫn reconstruct được
 
 project request
  -> current memories
- -> authority/lifecycle filtering
- -> hard context bounds
- -> prepared memory data
+ -> source/provenance + lifecycle filtering
+ -> deterministic ordering
+ -> hard content/provenance bounds
+ -> prepared Loren memory data
  -> BrainContext
 
 owner forget
@@ -52,43 +64,51 @@ owner forget
  -> fact đã quên vẫn không quay lại
 ```
 
-### Slice 1 [COMPLETE]
+### Slice 1 — OWNER_EXPLICIT persistence
 
 PR #18 merge tại `78adc287f7ae3744352b7019e3b8a838a5de499e`. Final CI #117 / run `33860985267` và post-merge main CI #118 / run `33861089270` pass.
 
-### Slice 2 [COMPLETE]
+### Slice 2 — correction + supersession
 
 PR #19 merge tại `201b83eff0c6c3143856e348b4c9f029cc14a8b1`. Implementation CI #119 / run `33861345949` và final CI #123 / run `33861630472` pass.
 
-Correction là explicit append + supersede; content cũ được giữ nguyên và replacement sai authority/scope/stale đều fail closed.
+Correction là explicit append + supersede. Content cũ được giữ nguyên; sai authority/scope, stale target, duplicate replacement ID hoặc partial failure đều fail closed.
 
-### Slice 3 [COMPLETE]
+### Slice 3 — authority-aware prepared memory
 
 PR #20 merge tại `732b85db3a799638bcd73558f98232b276f3cb5e`. Implementation CI #127 / run `33864695658` và final exact-head CI #131 / run `33864946328` pass.
 
 Prepared memory:
-- include owner correction, owner explicit, owner-approved inference và verified-tool;
-- mặc định exclude model inference và external content;
-- exclude superseded record;
-- giữ IDs, scope, provenance và timestamps;
-- deterministic ordering + hard bounds record/character;
-- được ghi rõ là data, không phải action authorization hay policy override.
 
-### Slice 4 [IMPLEMENTED / PR #21 FINAL GATE]
+- chỉ include `OWNER_CORRECTION`, `OWNER_EXPLICIT`, `OWNER_APPROVED_INFERENCE`, `VERIFIED_TOOL` khi source semantics hợp lệ;
+- mặc định exclude `MODEL_INFERENCE` và `EXTERNAL_CONTENT` khỏi trusted model context;
+- exclude superseded records;
+- giữ canonical IDs, scope, provenance và timestamps;
+- deterministic ordering + hard record/content bounds trước khi model chạy;
+- được ghi rõ là data, không bao giờ là action authorization hay policy override.
 
-PR #21 thêm `IMemoryStore.ForgetAsync(...)`.
+### Slice 4 — owner forget/delete
 
-Với chain `A -> B -> C(current)`, forget C sẽ đi ngược history cùng scope rồi physical delete A, B, C trong một SQLite transaction. Như vậy fact cũ đã từng bị correction không thể tự sống lại khi record current bị quên.
+PR #21 merge tại `87b5a39ccae7c931de9668fed5283a4742be73f7`. Implementation CI #133 / run `33865419023` và final exact-head CI #137 / run `33865716479` pass.
 
-Real SQLite acceptance chứng minh:
-- cả chain vẫn biến mất sau restart;
-- prepared context không resurrect forgotten content;
-- unrelated memories vẫn còn;
-- forget stale/superseded hoặc unknown target fail closed.
+Với `A -> B -> C(current)`, `ForgetAsync(C)` validate correction history tuyến tính cùng scope rồi physical purge A, B, C trong một SQLite transaction. Restart acceptance chứng minh fact đã quên không resurrect còn unrelated memories vẫn tồn tại. Memory forgetting không cascade sang audit retention.
 
-Implementation CI #133 / run `33865419023` đã **PASS** restore, zero-warning build, toàn bộ tests, format, secret scan, dependency scan và web/auth smoke.
+### Slice 5 — poisoning / trust boundary
 
-Memory forget không dùng audit cascade; audit retention vẫn là concern riêng theo ADR-003. PR #21 vẫn cần final exact-head CI trên head đã sync docs trước khi merge.
+PR #22 đóng trust gate cuối của M4.
+
+Hardening và adversarial acceptance chứng minh:
+
+- record vào trusted prepared context phải có provenance;
+- provenance/source reference có bound riêng độc lập content;
+- toàn bộ serialized memory payload — content, provenance, IDs, scope, timestamps — là inert data, không phải instruction, permission, policy hay action authorization;
+- `MODEL_INFERENCE` / `EXTERNAL_CONTENT` giả provenance giống owner vẫn bị loại;
+- `OWNER_APPROVED_INFERENCE` / `VERIFIED_TOOL` không có provenance hợp lệ vẫn bị loại;
+- `VERIFIED_TOOL` không tự đại diện current external state và không grant owner permission;
+- owner correction vẫn là current owner truth trong scope;
+- execution bình thường qua `LorenRunService` chỉ đọc prepared memory, không âm thầm gọi Add/Correct/Forget.
+
+Implementation CI #140 / run `33866182751` đã pass restore, zero-warning build, toàn bộ tests, format, secret scan, dependency scan và web/auth smoke.
 
 ## Durable-memory source classes
 
@@ -101,6 +121,8 @@ MODEL_INFERENCE
 EXTERNAL_CONTENT
 ```
 
+ADR-003 giữ authority theo ngữ cảnh, không gom thành một confidence score duy nhất.
+
 ## Canonical storage
 
 ```text
@@ -110,7 +132,7 @@ override: LOREN_DATA_DIRECTORY
 migrations: tự chạy khi host start
 ```
 
-Database mới hiện chưa có Project cấu hình sẵn; owner-facing Project CRUD/configuration UI vẫn deferred.
+Database mới hiện chưa có Project cấu hình sẵn; owner-facing Project CRUD/configuration và memory-management UI vẫn deferred sang phần UI v0.1 sau.
 
 ## Chạy local
 
@@ -130,23 +152,24 @@ dotnet run --project src/Loren.Web/Loren.Web.csproj
 
 Không commit secret thật.
 
-## Tiếp theo
+## Tiếp theo — Gate D / M5
 
-```text
-PR #21 final exact-head CI
- -> merge M4 Slice 4
- -> M4 Slice 5 poisoning/trust acceptance
- -> M4 exit gate
- -> Gate D / M5
-```
+Trước khi bật bất kỳ GitHub write capability thật nào, Gate D phải lock:
 
-Gate D vẫn bắt buộc trước bất kỳ GitHub write capability nào.
+- write action contracts và policy dimensions;
+- approval binding chính xác + non-replay rules;
+- credential storage/resolution và tách read/write credential;
+- secret redaction, rotation, revocation;
+- global read-only / kill behavior;
+- post-write verification và audit expectations.
+
+Chỉ sau Gate D thì M5 mới được implement narrow v0.1 write set: create branch, create/update file hoặc equivalent commit path, create commit và open pull request. Merge-main, force-push, repository deletion/admin changes và production deploy vẫn ngoài write scope này.
 
 ## Lộ trình version
 
 ```text
 v0.0  architecture / feasibility        ✓ hoàn tất
-v0.1  trustworthy core                 <- hiện tại / M4
+v0.1  trustworthy core                 <- hiện tại / Gate D trước M5
 v0.2  useful project assistant
 v0.3  personal operations
 v0.4  voice + device presence

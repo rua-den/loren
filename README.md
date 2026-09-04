@@ -19,24 +19,23 @@ Loren is a long-lived personal intelligence system with persistent memory, expli
 
 **Last updated:** 2026-09-04  
 **Phase:** `v0.1 — Trustworthy Core development`  
-**Current milestone:** `M4 — Trusted Durable Memory`
+**Completed milestone:** `M4 — Trusted Durable Memory`  
+**Next decision gate:** `Gate D — Action/Credential Policy before M5 writes`
 
 Completed:
 
-- Gate A / ADR-001
-- Gate B / ADR-002
-- Gate C / ADR-003
-- M0 technical feasibility
-- M1 engineering foundation
-- M2 Walking Skeleton
-- M3 Canonical Project/Repository State
-- M4 Slice 1 OWNER_EXPLICIT persistence
-- M4 Slice 2 correction/supersession
-- M4 Slice 3 authority-aware prepared memory context
+- Gate A / ADR-001 — Loren-owned core/runtime boundary.
+- Gate B / ADR-002 — provider-neutral v0.1 stack.
+- Gate C / ADR-003 — canonical state + memory lifecycle.
+- M0 — technical feasibility.
+- M1 — engineering foundation.
+- M2 — Walking Skeleton.
+- M3 — Canonical Project/Repository State.
+- M4 — Trusted Durable Memory.
 
 Detailed status: [`docs/status.md`](docs/status.md).
 
-## M4 memory path
+## M4 memory path [COMPLETE]
 
 ```text
 owner durable fact
@@ -48,58 +47,68 @@ owner durable fact
 owner correction
  -> append OWNER_CORRECTION
  -> supersede old claim atomically
+ -> old history remains reconstructable
 
 project request
  -> current memories
- -> authority/lifecycle filtering
- -> hard context bounds
- -> prepared memory data
+ -> source/provenance + lifecycle filtering
+ -> deterministic ordering
+ -> hard content/provenance bounds
+ -> prepared Loren memory data
  -> BrainContext
 
 owner forget
  -> current memory
- -> purge its full correction chain transactionally
+ -> purge full correction chain transactionally
  -> restart
  -> forgotten claim stays absent
 ```
 
-### Slice 1 [COMPLETE]
+### Slice 1 — OWNER_EXPLICIT persistence
 
 PR #18 merged at `78adc287f7ae3744352b7019e3b8a838a5de499e`. Final CI #117 / run `33860985267` and post-merge main CI #118 / run `33861089270` passed.
 
-### Slice 2 [COMPLETE]
+### Slice 2 — correction + supersession
 
 PR #19 merged at `201b83eff0c6c3143856e348b4c9f029cc14a8b1`. Implementation CI #119 / run `33861345949` and final CI #123 / run `33861630472` passed.
 
-Correction is explicit append + supersede; old content is preserved and invalid/stale/scope-changing replacements fail closed.
+Correction is explicit append + supersede. Old content is preserved; invalid authority/scope, stale targets, duplicate replacement IDs, and partial failure all fail closed.
 
-### Slice 3 [COMPLETE]
+### Slice 3 — authority-aware prepared memory
 
 PR #20 merged at `732b85db3a799638bcd73558f98232b276f3cb5e`. Implementation CI #127 / run `33864695658` and final exact-head CI #131 / run `33864946328` passed.
 
 Prepared memory:
-- includes owner correction, owner explicit, owner-approved inference, and verified-tool records;
-- excludes model inference and external content by default;
+
+- includes `OWNER_CORRECTION`, `OWNER_EXPLICIT`, `OWNER_APPROVED_INFERENCE`, and `VERIFIED_TOOL` only when the source semantics are valid;
+- excludes `MODEL_INFERENCE` and `EXTERNAL_CONTENT` from default trusted model context;
 - excludes superseded records;
-- retains IDs, scope, provenance and timestamps;
-- has deterministic ordering plus hard record/character bounds;
-- is explicitly data, not action authorization or policy override.
+- retains canonical IDs, scope, provenance, and timestamps;
+- applies deterministic ordering and hard record/content bounds before model execution;
+- is explicitly data, never action authorization or policy override.
 
-### Slice 4 [IMPLEMENTED / PR #21 FINAL GATE]
+### Slice 4 — owner forget/delete
 
-PR #21 adds `IMemoryStore.ForgetAsync(...)`.
+PR #21 merged at `87b5a39ccae7c931de9668fed5283a4742be73f7`. Implementation CI #133 / run `33865419023` and final exact-head CI #137 / run `33865716479` passed.
 
-For a chain `A -> B -> C(current)`, forgetting C walks the same-scope linear history and physically deletes A, then B, then C inside one SQLite transaction. This prevents an old corrected claim from reappearing as current truth.
+For `A -> B -> C(current)`, `ForgetAsync(C)` validates a same-scope linear correction history and physically purges A, B, C inside one SQLite transaction. Restart acceptance proves forgotten claims do not resurrect while unrelated memories survive. Memory forgetting does not cascade into audit retention.
 
-Real SQLite acceptance proves:
-- the whole chain remains absent after restart;
-- prepared context cannot resurrect forgotten content;
-- unrelated memories survive;
-- forgetting a stale/superseded or unknown target fails closed.
+### Slice 5 — poisoning / trust boundary
 
-Implementation CI #133 / run `33865419023` is **PASS** across restore, zero-warning build, all tests, format, secret scan, dependency scan, and web/auth smoke.
+PR #22 closes the M4 trust gate.
 
-Memory forgetting does not use an audit cascade; audit retention remains a separate concern under ADR-003. PR #21 still needs the documentation-synchronized final exact-head CI before merge.
+Hardening and adversarial acceptance prove:
+
+- trusted prepared-context records require provenance;
+- provenance/source references are bounded independently from memory content;
+- the entire serialized memory payload — content, provenance, IDs, scope and timestamps — is inert data, never instructions, permission, policy or action authorization;
+- spoofed `MODEL_INFERENCE` / `EXTERNAL_CONTENT` stay excluded even with owner-looking provenance;
+- unproven `OWNER_APPROVED_INFERENCE` / `VERIFIED_TOOL` records stay excluded;
+- `VERIFIED_TOOL` does not automatically represent current external state or grant owner permission;
+- owner correction remains current owner truth in scope;
+- normal `LorenRunService` execution reads prepared memory without silently calling Add/Correct/Forget mutations.
+
+Implementation CI #140 / run `33866182751` passed restore, zero-warning build, all tests, format, secret scan, dependency scan, and web/auth smoke.
 
 ## Durable-memory source classes
 
@@ -112,6 +121,8 @@ MODEL_INFERENCE
 EXTERNAL_CONTENT
 ```
 
+ADR-003 keeps authority contextual rather than collapsing it into one confidence score.
+
 ## Canonical storage
 
 ```text
@@ -121,7 +132,7 @@ override: LOREN_DATA_DIRECTORY
 migrations: automatic at host startup
 ```
 
-A fresh database currently has no configured Projects; owner-facing Project CRUD/configuration UI remains deferred.
+A fresh database currently has no configured Projects; owner-facing Project CRUD/configuration and memory-management UI remain deferred to later v0.1 UI work.
 
 ## Run locally
 
@@ -141,23 +152,24 @@ dotnet run --project src/Loren.Web/Loren.Web.csproj
 
 Do not commit real secrets.
 
-## Next
+## Next — Gate D / M5
 
-```text
-PR #21 final exact-head CI
- -> merge M4 Slice 4
- -> M4 Slice 5 poisoning/trust acceptance
- -> M4 exit gate
- -> Gate D / M5
-```
+Before any real GitHub write capability is enabled, Gate D must lock:
 
-Gate D remains mandatory before any GitHub write capability.
+- write action contracts and policy dimensions;
+- exact approval binding and non-replay rules;
+- credential storage/resolution and read/write separation;
+- secret redaction, rotation, and revocation;
+- global read-only / kill behavior;
+- post-write verification and audit expectations.
+
+Only after Gate D may M5 implement the narrow v0.1 write set: create branch, create/update file or equivalent commit path, create commit, and open pull request. Merge-main, force-push, repository deletion/admin changes, and production deploy remain outside that write scope.
 
 ## Version path
 
 ```text
 v0.0  architecture / feasibility        ✓ complete
-v0.1  trustworthy core                 <- current / M4
+v0.1  trustworthy core                 <- current / Gate D before M5
 v0.2  useful project assistant
 v0.3  personal operations
 v0.4  voice + device presence

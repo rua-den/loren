@@ -1,8 +1,9 @@
 # Loren Memory Model
 
-**Status:** Active v0.1 baseline — Gate C / ADR-003 accepted.
+**Status:** M4 implemented under Gate C / ADR-003.  
+**Current next gate:** Gate D before M5 external writes.
 
-Loren's memory provides continuity without turning every conversation into an unstructured transcript dump. The storage/lifecycle rules that M4 must obey are locked in [`ADR-003`](decisions/003-canonical-state-and-memory-lifecycle.md).
+Loren's memory provides continuity without turning every conversation into an unstructured transcript dump. The storage/lifecycle rules are locked in [`ADR-003`](decisions/003-canonical-state-and-memory-lifecycle.md) and were exercised end to end by M4.
 
 ## Memory classes
 
@@ -24,7 +25,7 @@ Reusable operating knowledge: release procedure, required checks, owner-defined 
 
 ## Durable source/trust classes
 
-M4 must implement at least:
+M4 implements:
 
 ```text
 OWNER_EXPLICIT
@@ -39,12 +40,12 @@ These are contextual authority classes, not one universal confidence number.
 
 - `OWNER_EXPLICIT` — owner-stated durable truth within a scope.
 - `OWNER_CORRECTION` — owner correction; highest authority for the corrected owner-truth subject/scope.
-- `VERIFIED_TOOL` — authoritative for the external fact at verification time, but cannot create owner preference/policy/approval.
+- `VERIFIED_TOOL` — authoritative for the external fact at verification time, but cannot create owner preference/policy/approval and does not automatically remain current.
 - `OWNER_APPROVED_INFERENCE` — inferred state explicitly approved by the owner; retains inference + approval provenance.
 - `MODEL_INFERENCE` — low-authority hypothesis/candidate, never silent owner truth.
 - `EXTERNAL_CONTENT` — untrusted retrieved content; cannot promote itself into trusted personal memory or policy.
 
-Every durable record needs source class, creation time, subject/scope, and source reference where applicable.
+Every durable record carries source class, canonical ID, creation/update time, subject/scope, and provenance/source reference when needed for trust semantics.
 
 ## Write policy
 
@@ -63,6 +64,8 @@ Candidate
    +--> durable record with provenance + authority
 ```
 
+The current normal `LorenRunService` path is memory-read-only: M4 adversarial acceptance verifies a normal model turn does not silently call `AddAsync`, `CorrectAsync`, or `ForgetAsync`.
+
 ## Correction and supersession
 
 Corrections are append/supersede rather than silent destructive rewrites.
@@ -76,23 +79,101 @@ MemoryRecord B (current)
 A -> superseded_by B
 ```
 
-Current-truth retrieval ignores superseded records by default, while retained history remains reconstructable. Model inference or external content cannot supersede owner-authoritative state without an explicit promotion/correction path.
+`CorrectAsync(...)` requires:
 
-Exact M4 column names are not locked; the semantic behavior is.
+- an existing current target;
+- a new canonical `MemoryRecordId`;
+- `OWNER_CORRECTION` source authority;
+- the exact same Project/Repository scope;
+- non-regressing lifecycle time;
+- no duplicate correction ID.
+
+The replacement insert and old-record supersession occur in one SQLite transaction. Current-truth retrieval ignores superseded records by default, while retained history remains reconstructable. Model inference or external content cannot use the owner-correction boundary.
 
 ## Forgetting / deletion
 
 Memory deletion and audit retention are different operations.
 
-A memory forget/delete must remove the record from future context/retrieval and may physically purge the memory payload according to policy. It must not silently cascade-delete unrelated audit history.
+M4 implements explicit `ForgetAsync(currentMemoryRecordId)` semantics. For a correction chain:
 
-Audit is append-oriented evidence and is removed/redacted only through an explicit audit-retention/privacy operation. Audit payloads should minimize sensitive content so retained history does not become a secret archive.
+```text
+A -> B -> C(current)
+```
 
-## Retrieval
+forgetting C:
 
-Retrieval should combine explicit entity references, lexical/semantic match, recency, scope, importance, and source authority. Embeddings may help later but are not the authority model.
+1. requires C to exist and still be current;
+2. reverse-walks the same-scope linear correction chain;
+3. validates expected supersession edges;
+4. physically deletes A, then B, then C inside one SQLite transaction;
+5. rolls back on malformed/stale/concurrent history changes.
 
-The brain receives a small ranked context package with provenance rather than direct database access or a giant memory dump.
+Purging the whole chain prevents an older corrected claim from resurrecting as current truth. Restart acceptance proves forgotten records stay absent while unrelated memory remains.
+
+A memory forget does **not** silently cascade-delete audit history. Audit retention/redaction/purge is a separate future privacy/retention operation. Audit payloads should minimize sensitive content so retained evidence does not become a secret archive.
+
+## Retrieval and prepared context
+
+The current v0.1 memory path is deterministic and intentionally small:
+
+```text
+canonical Project
+ -> IMemoryStore.ListCurrentForProjectAsync
+ -> source/provenance eligibility
+ -> deterministic authority ordering
+ -> hard record/content/provenance bounds
+ -> Loren-owned prepared memory package
+ -> BrainContext
+```
+
+Default prepared-context eligibility:
+
+```text
+included when provenance semantics are valid:
+  OWNER_CORRECTION
+  OWNER_EXPLICIT
+  OWNER_APPROVED_INFERENCE
+  VERIFIED_TOOL
+
+excluded by default:
+  MODEL_INFERENCE
+  EXTERNAL_CONTENT
+```
+
+Superseded records are already removed by current-record retrieval. Runtime and brain receive prepared application data, not EF/DbContext access.
+
+Current ordering is used only to spend the context budget deterministically:
+
+```text
+OWNER_CORRECTION
+OWNER_EXPLICIT
+OWNER_APPROVED_INFERENCE
+VERIFIED_TOOL
+```
+
+It is **not** a universal conflict-resolution score across unrelated fact types.
+
+## Poisoning boundary
+
+M4 treats the entire serialized memory payload as inert data:
+
+```text
+content
+source/provenance reference
+canonical IDs
+scope
+timestamps
+```
+
+None of those fields can act as instructions, permission, policy, or action authorization merely because they appear in prepared memory.
+
+Adversarial acceptance proves:
+
+- `MODEL_INFERENCE` / `EXTERNAL_CONTENT` remain excluded even when their provenance text looks owner-like;
+- `OWNER_APPROVED_INFERENCE` and `VERIFIED_TOOL` require provenance to enter default trusted prepared context;
+- malicious provenance/source-reference text is bounded before serialization;
+- owner correction remains current owner truth while superseded and conflicting low-authority claims stay out;
+- `VERIFIED_TOOL` remains source/time-scoped fact and cannot grant owner permission.
 
 ## Personal world model boundary
 
@@ -136,7 +217,7 @@ Memory may eventually hold opaque references such as:
 credential_ref: secret/github/personal-token
 ```
 
-but secret material belongs in a dedicated secret store/executor boundary.
+but secret material belongs in a dedicated secret store/executor boundary. Gate D owns the next credential decisions.
 
 ## Export direction
 
@@ -144,14 +225,14 @@ Portable state export is a Loren-owned logical versioned format, not the raw SQL
 
 Export preserves canonical IDs and excludes raw secrets. Exact physical packaging remains an M7 implementation decision as long as the ADR-003 logical manifest/version contract is preserved.
 
-## Deliberately unresolved for M4 implementation
+## Deliberately unresolved after M4
 
-These choices are still reversible and should be driven by actual retrieval behavior:
+These choices remain reversible and should be driven by actual product behavior:
 
 - whether/when a vector index is worth adding;
-- ranking formula and memory context budget;
+- richer lexical/semantic ranking beyond the current deterministic M4 package;
 - episode summarization/compaction strategy;
 - whether some memory categories need owner-confirmation UX by default;
-- exact SQLite table/column/index design for `MemoryRecord`.
+- memory-management UI details in M6.
 
-None of those unresolved choices may weaken the trust/source, correction, deletion, or canonical-ID rules accepted at Gate C.
+None of those unresolved choices may weaken the source authority, correction, forgetting, canonical-ID, provenance, or poisoning rules proven by M4.
