@@ -3,53 +3,53 @@
 **Last updated:** 2026-09-04  
 **Current version phase:** `v0.1 — Trustworthy Core development`  
 **Current decision gates:** `Gate A — PASSED`, `Gate B — PASSED`  
-**Current milestone:** `M2 — Walking Skeleton`
+**Current milestone:** `M3 — Canonical state`
 
 This file is the authoritative progress ledger for the repository. `README.md` and `README.vi.md` summarize it.
 
 ## Current status
 
-Loren has completed `v0.0 — Architecture / Feasibility` and `M1 — Engineering Foundation`. M2 now has the complete owner-facing implementation candidate on top of the already-proven production read vertical slice.
+Loren has completed `v0.0 — Architecture / Feasibility`, `M1 — Engineering Foundation`, and `M2 — Walking Skeleton`.
 
-- **Gate A PASSED** through ADR-001: Loren owns canonical identity/state/memory/policy/action authorization/audit.
-- **Gate B PASSED** through ADR-002: the provider-neutral v0.1 stack and brain boundary are technically proven.
-- **M0 COMPLETE**: provider loop, cancellation, MCP, persistence/recovery, and host proofs passed.
-- **M1 COMPLETE**: production solution, deterministic tests, CI, package/version policy, and provider-independent Core are in place.
-- **M2 Slice 1 COMPLETE**: read-only ActionGateway, Loren-owned run/action IDs, audit path, and `github.read_repository` executor.
-- **M2 Slice 2 COMPLETE**: production `OllamaBrain : IBrain`, typed action-schema translation, observation replay, cancellation, and provider-secret isolation.
-- **M2 Slice 3 COMPLETE**: `Loren.Web` composes OllamaBrain, AgentLoop, ActionGateway, read-only GitHub execution, and audit through DI; deterministic end-to-end production-component coverage passes.
-- **M2 Slice 4 COMPLETE — TRUSTED LIVE BACKEND PROOF**: exact-main trusted GitHub Actions run completed a real Ollama Cloud -> production Loren host -> real GitHub read -> Ollama final-answer round trip.
-- **M2 Slice 5 IMPLEMENTED — OWNER PREVIEW SURFACE**: one-owner cookie authentication, protected `/api/run`, minimal owner console, sign-out/session path, and owner-visible per-run audit presentation are implemented. CI now exercises the fail-closed unauthenticated boundary and authenticated console surface.
+**M2 is COMPLETE.** The first owner-testable Loren preview now has a trusted exact-main proof through the normal authenticated production owner path.
 
-M2 remains active until the new exact-main trusted live workflow proves the complete owner-authenticated production path. No GitHub write path is allowed in M2.
+Current development moves to **M3 — Canonical Project/Repository State**.
 
-## Accepted v0.1 stack
+## M2 completion evidence
 
-```text
-C# 14 / .NET 10 LTS
-ASP.NET Core
-small Loren-owned bounded agent loop
-provider-neutral IBrain
-  ├─ Ollama adapter
-  ├─ OpenAI adapter
-  └─ future providers/local models
-MCP C# SDK behind Loren action contracts
-SQLite + EF Core
-Blazor Web App
-xUnit / Microsoft Testing Platform
-```
+### Deterministic/main CI
 
-## M2 previously trusted live backend proof
+Main commit: `94ce6d1e74f2dfdf0584b8dbf8a4edbbb3774f7d`  
+Main CI run: `33840135772` / run #89 — **PASS**
+
+Passed:
+
+- restore;
+- zero-warning release build;
+- deterministic tests;
+- format verification;
+- tracked-secret scan;
+- dependency vulnerability scan;
+- web health/auth/default-surface smoke test.
+
+### Trusted exact-main owner-authenticated live proof
 
 Workflow: `M2 Trusted Live Read Proof`  
-Run: `33781183510` / run #1  
-Trusted commit: `717fc92b167ce40c2d1652bf66cefce22b123577`  
-Trigger branch: `proof/m2-live-read`, required to point exactly at current `main`.
+Run: `33840149005` / run #2 — **PASS**  
+Trusted commit: `94ce6d1e74f2dfdf0584b8dbf8a4edbbb3774f7d`  
+Trigger branch: `proof/m2-live-read`, verified to point exactly at current `main` before the provider secret was used.
 
-Observed live path:
+Observed production path:
 
 ```text
-Development-only localhost proof endpoint
+unauthenticated POST /api/run
+ -> HTTP 401
+
+Owner login
+ -> POST /auth/login
+ -> HTTP 200 + owner cookie session
+
+Authenticated POST /api/run
  -> production LorenRunService
  -> production OllamaBrain (gpt-oss:120b)
  -> POST https://ollama.com/api/chat        200
@@ -62,20 +62,20 @@ Development-only localhost proof endpoint
  -> production OllamaBrain second turn
  -> POST https://ollama.com/api/chat        200
  -> final answer
- -> LorenRunResult + correlated audit
+ -> correlated owner-visible audit
 ```
 
 Live result:
 
 ```text
-runId:       20c8bdc28b904ac1a92ae244f5346c97
+runId:       5bb9cc341387430c82759d58309da85a
 turns:       2
 actionCount: 1
-final:       Repository name: rua-den/loren
+final:       Repository rua-den/loren
              Default branch: main
 ```
 
-Audit for the same action ID:
+Audit for action `5b5d3a6a059942d9bed81b7cfa00003d`:
 
 ```text
 ActionRequested   github.read_repository   requested
@@ -83,122 +83,123 @@ PolicyEvaluated   github.read_repository   allow
 ActionCompleted   github.read_repository   succeeded
 ```
 
-That proof established the real provider/tool path. The updated M2 trusted workflow now targets the normal production owner surface instead of the temporary development proof endpoint.
+The same trusted step asserted:
 
-## M2 owner preview implementation
+- provider credential absent from the owner-visible response;
+- owner credential absent from the owner-visible response;
+- `/internal/dev/run` remained HTTP `404` in the production host.
 
-Normal owner path:
+## M2 delivered capability
 
 ```text
 Owner browser
- -> /login
- -> one-owner cookie session
+ -> one-owner authentication/session
  -> protected owner console
- -> POST /api/run
- -> LorenRunService
- -> AgentLoop / configured IBrain
- -> ActionGateway / policy / GitHub read
+ -> protected /api/run
+ -> Loren Runtime / bounded AgentLoop
+ -> configured provider-neutral IBrain
+ -> ActionRequest(github.read_repository)
+ -> ActionGateway / read-only policy
+ -> real GitHub read executor
  -> structured ActionResult
  -> final answer
- -> correlated audit rendered to owner
+ -> correlated owner-visible audit
 ```
 
-Authentication behavior:
+M2 keeps the important trust boundaries intact:
 
-- `LOREN_OWNER_PASSWORD` is host configuration and is not placed in brain/tool context;
-- the authentication service keeps a SHA-256 digest for fixed-time comparison rather than retaining the plaintext password itself;
-- cookie is `HttpOnly`, `SameSite=Strict`, non-persistent, and uses `Secure` when the request is secure;
-- unauthenticated `/api/*` requests fail with HTTP `401` instead of redirecting into HTML;
-- wrong passwords fail closed;
-- owner console and `/api/run` require authorization;
-- `/health` remains public;
-- `/internal/dev/run` remains absent by default and is not part of normal owner use.
+- the model may request actions but cannot authorize them;
+- Loren owns trusted run/action IDs;
+- every action crosses ActionGateway;
+- unregistered/non-read-only actions fail closed;
+- owner/provider credentials remain outside model/tool context;
+- GitHub read has no write credential path;
+- normal owner use no longer depends on the temporary development proof endpoint.
 
-Deployment beyond localhost must use HTTPS or an equivalent trusted TLS-terminating reverse-proxy boundary.
+No GitHub write path was added in M2.
 
-## M2 security invariants already proven or deterministically checked
+---
 
-- model output cannot choose trusted Loren `RunId` / `ActionId` values;
-- every tool action crosses Loren's ActionGateway;
-- unregistered and non-read-only actions fail closed;
-- policy/executor failures are converted to safe results and audited;
-- cancellation is propagated with terminal audit behavior;
-- `github.read_repository` is public GET-only and has no GitHub write credential path;
-- Ollama provider JSON/types remain outside `Loren.Core`;
-- provider API key is outside serializable options/model context and sent only as Ollama authorization;
-- Ollama and GitHub use separate named `HttpClient` instances;
-- the default host has no unauthenticated production run API;
-- owner console/API are authentication-gated;
-- the temporary `/internal/dev/run` route is absent by default and CI verifies HTTP `404`;
-- enabling the temporary route outside `Development` fails startup;
-- trusted live provider work is guarded by an exact-current-main check before using the repository secret.
+# Current milestone — M3 Canonical State
 
-## Current milestone — M2 Walking Skeleton
+## Goal
 
-Target end state:
+Give Loren durable, provider-independent canonical identity for the minimum world model needed by v0.1.
+
+Initial entities:
 
 ```text
-Owner / minimal UI
- -> owner auth/session
- -> Loren Runtime
- -> configured IBrain
- -> github.read_repository ActionRequest
- -> Loren ActionGateway
- -> GitHub read executor
- -> structured ActionResult
- -> IBrain final response
- -> owner-visible Audit
+Owner
+Project
+Repository
+MemoryRecord
+PermissionRule
+AuditEvent
 ```
 
-Implemented inside M2:
+M3 should implement only the Project/Repository/identity pieces needed now and avoid prematurely building a broad graph.
 
-- [x] ActionGateway read path;
-- [x] structured GitHub read-only executor;
-- [x] Loren-owned run/action IDs;
-- [x] append-oriented audit path;
-- [x] bounded deterministic AgentLoop;
-- [x] production Ollama `IBrain` adapter;
-- [x] production host/DI composition;
-- [x] deterministic production-component E2E coverage;
-- [x] default host does not expose the temporary unauthenticated run route;
-- [x] trusted exact-main live Ollama -> ActionGateway -> real GitHub read -> final answer backend proof;
-- [x] one-owner authentication/session implementation;
-- [x] minimal owner request console and protected `/api/run`;
-- [x] owner-visible correlated audit presentation;
-- [x] CI auth/default-surface smoke checks defined.
+## Required behavior
 
-Still required before M2 exits:
+- stable Loren IDs independent of GitHub/provider/runtime IDs;
+- Project -> Repository relation;
+- project aliases;
+- timestamps and migrations;
+- external/provider IDs only as integration metadata;
+- no secret fields in canonical entities;
+- prepared context can resolve owner language to canonical Project/Repository state;
+- provider conversation/session deletion cannot destroy canonical project state.
 
-- [ ] merge the owner preview implementation with CI green;
-- [ ] run the updated exact-main trusted live proof through authenticated `/api/run`;
-- [ ] record the trusted result and advance the active milestone to M3.
+## Acceptance target
+
+When configured as aliases:
+
+```text
+"wedding project"
+"web đám cưới"
+"wedding-online"
+```
+
+all resolve deterministically to the same Loren Project, whose Repository resolves to `rua-den/wedding-online`.
+
+Restarting Loren or discarding model/provider session state must not remove that mapping.
+
+## M3 decision checkpoint / Gate C preparation
+
+Before broad memory work begins, M3 must make the storage choices expensive enough to evaluate and then lock:
+
+- canonical ID rules;
+- EF Core/SQLite migration policy;
+- Project/Repository schema boundary;
+- memory versus audit deletion distinction;
+- export format versioning approach.
+
+Do not add `Person`, `Task`, `Decision`, `Preference`, or a generic graph until an actual product flow requires them.
 
 ## Next execution sequence
 
 ```text
-owner preview PR CI
+NOW
+M3 canonical ID + Project/Repository schema
     |
     v
-merge exact tested implementation to main
+SQLite / EF Core migration + repository persistence
     |
     v
-move proof/m2-live-read exactly to current main
+alias resolution + restart tests
     |
     v
-trusted live owner-authenticated Ollama -> GitHub read -> audit proof
+Project/Repository context available to runtime
     |
     v
-M2 COMPLETE / FIRST OWNER-TESTABLE LOREN PREVIEW
+M3 acceptance flow
     |
     v
-M3 — Canonical state
+Gate C checkpoint
+    |
+    v
+M4 — Trusted Memory
 ```
-
-## Historical gates
-
-M0's earlier trusted brain proof used Ollama Cloud with `gpt-oss:120b` to validate the provider-neutral brain contract, cancellation, MCP, SQLite/EF recovery, and host feasibility. M1 then rebuilt production code behind Loren-owned interfaces instead of promoting spike code directly.
-
-The production M2 proof is stronger because it runs through actual `Loren.Web` composition, production `OllamaBrain`, production AgentLoop/ActionGateway/policy/audit, and production GitHub executor. The final M2 proof additionally requires the normal owner authentication/session surface.
 
 ## Progress-update rule
 

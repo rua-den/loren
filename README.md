@@ -19,22 +19,88 @@ Loren is a long-lived personal intelligence system with persistent memory, expli
 
 **Last updated:** 2026-09-04  
 **Phase:** `v0.1 — Trustworthy Core development`  
-**Current milestone:** `M2 — Walking Skeleton`
+**Current milestone:** `M3 — Canonical State`
 
-Completed or implemented:
+Completed:
 
-- **Gate A / ADR-001:** Loren owns canonical identity/state/policy/action authorization.
-- **Gate B / ADR-002:** provider-neutral v0.1 stack accepted; M0 complete.
-- **M1:** production engineering foundation complete.
-- **M2 Slice 1:** read-only ActionGateway + structured `github.read_repository` + Loren-owned run/action IDs + audit.
-- **M2 Slice 2:** production `OllamaBrain : IBrain` with typed action schemas, observation replay, cancellation, and provider-secret isolation.
-- **M2 Slice 3:** production ASP.NET host composition and deterministic production-component E2E.
-- **M2 Slice 4:** trusted exact-main live backend proof passed through real Ollama Cloud and real GitHub read.
-- **M2 Slice 5:** one-owner cookie auth, protected `/api/run`, minimal owner console, and owner-visible correlated audit are implemented.
+- **Gate A / ADR-001:** Loren-owned core/runtime boundary accepted.
+- **Gate B / ADR-002:** provider-neutral v0.1 stack accepted.
+- **M0:** technical feasibility proofs complete.
+- **M1:** engineering foundation complete.
+- **M2:** **Walking Skeleton complete.**
 
-M2's implementation is now owner-testable in shape. Its exit gate is one final exact-main trusted live proof through the **authenticated production owner path**, after which the active milestone advances to M3.
+M2's trusted exact-main production proof passed on run `33840149005` against commit `94ce6d1e74f2dfdf0584b8dbf8a4edbbb3774f7d`:
+
+```text
+unauthenticated /api/run -> 401
+owner login -> 200 + cookie session
+authenticated /api/run
+ -> Ollama gpt-oss:120b
+ -> github.read_repository
+ -> real GitHub GET rua-den/loren
+ -> Ollama final answer
+ -> correlated owner-visible audit
+```
+
+Observed result:
+
+```text
+runId:       5bb9cc341387430c82759d58309da85a
+turns:       2
+actionCount: 1
+final:       Repository rua-den/loren
+             Default branch: main
+```
+
+Audit passed:
+
+```text
+ActionRequested -> PolicyEvaluated -> ActionCompleted
+requested       -> allow           -> succeeded
+```
+
+The trusted workflow also verified that owner/provider credentials were absent from the owner-visible response and `/internal/dev/run` remained `404` in Production.
+
+**First owner-testable Loren preview: achieved.**
 
 Detailed status: [`docs/status.md`](docs/status.md).
+
+## Current M3 target
+
+M3 gives Loren provider-independent canonical Project/Repository identity.
+
+```text
+Owner wording / project alias
+        |
+        v
+canonical Loren Project ID
+        |
+        v
+canonical Repository record
+        |
+        +--> integration metadata: GitHub owner/repo
+        |
+        v
+prepared runtime context / authoritative tool use
+```
+
+Acceptance target:
+
+```text
+"wedding project"
+"web đám cưới"
+"wedding-online"
+        |
+        v
+same Loren Project
+        |
+        v
+rua-den/wedding-online
+```
+
+The mapping must survive restart and provider-session deletion.
+
+M3 deliberately starts small. Do not add a generic personal graph or unrelated `Person`, `Task`, `Decision`, or `Preference` entities until real product flows require them.
 
 ## Accepted v0.1 stack
 
@@ -52,63 +118,7 @@ Blazor Web App
 xUnit / Microsoft Testing Platform
 ```
 
-## Current M2 production path
-
-```text
-Owner browser
-        |
-        v
-/login -> one-owner cookie session
-        |
-        v
-protected owner console
-        |
-        v
-POST /api/run
-        |
-        v
-LorenRunService
-        |
-        v
-AgentLoop -> IBrain -> Ollama
-        |
-        v
-ActionRequest
-        |
-        v
-ActionGateway
-  -> ReadOnlyActionPolicy
-  -> Audit
-        |
-        v
-GitHubReadRepositoryExecutor
-        |
-        v
-real public GitHub GET
-        |
-        v
-structured result -> final answer -> owner-visible audit
-```
-
-Important invariants already implemented/proven:
-
-- every action crosses Loren's ActionGateway;
-- model output cannot choose trusted Loren run/action IDs;
-- non-read-only/unregistered actions fail closed;
-- owner and provider credentials stay outside model-visible tool context;
-- owner console and `/api/run` require authentication;
-- unauthenticated `/api/*` requests fail with HTTP `401`;
-- owner session cookie is `HttpOnly` and `SameSite=Strict`;
-- Ollama and GitHub transports are separated;
-- `github.read_repository` has no GitHub write credential path;
-- the temporary `/internal/dev/run` route is absent by default and is not the normal owner path;
-- trusted live-secret validation requires an exact-current-main guard.
-
-No GitHub write path is allowed in M2.
-
-## Run the owner preview locally
-
-Set local secrets in the process environment:
+## Run the current owner preview locally
 
 ```bash
 export LOREN_OWNER_PASSWORD='choose-a-local-owner-password'
@@ -116,29 +126,30 @@ export OLLAMA_API_KEY='your-provider-secret'
 dotnet run --project src/Loren.Web/Loren.Web.csproj
 ```
 
-Then open the root URL printed by ASP.NET Core, sign in, and run the prefilled request:
+Then open the root URL printed by ASP.NET Core, sign in, and run:
 
 ```text
 Loren, check repo rua-den/loren.
 ```
 
-Do not commit real values. Use HTTPS or a trusted TLS-terminating reverse proxy when exposing the host beyond localhost. More details: [`docs/development.md`](docs/development.md).
+Do not commit real secrets. Use HTTPS or a trusted TLS-terminating reverse proxy when exposing the host beyond localhost. More details: [`docs/development.md`](docs/development.md).
 
 ## Next
 
 ```text
-owner preview PR CI
- -> merge to main
- -> trusted exact-main owner-authenticated live proof
- -> M2 COMPLETE / FIRST OWNER-TESTABLE LOREN PREVIEW
- -> M3 Canonical State
+M3 canonical IDs + Project/Repository schema
+ -> SQLite / EF Core persistence
+ -> alias resolution + restart tests
+ -> canonical Project/Repository context
+ -> Gate C checkpoint
+ -> M4 Trusted Memory
 ```
 
 ## Version path
 
 ```text
 v0.0  architecture / feasibility        ✓ complete
-v0.1  trustworthy core                 <- current / M2
+v0.1  trustworthy core                 <- current / M3
 v0.2  useful project assistant
 v0.3  personal operations
 v0.4  voice + device presence
