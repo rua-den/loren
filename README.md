@@ -31,19 +31,13 @@ Completed:
 - **M2:** Walking Skeleton complete; first owner-testable Loren preview proven.
 - **M3:** Canonical Project/Repository State complete.
 
+Gate C PR #17 passed exact-head CI #110 / run `33860095412` and merged at `69223e8c4923510bb26fa50f77a3c44c1683b172`.
+
 Detailed status: [`docs/status.md`](docs/status.md).
 
 ## What M3 proved
 
-M3 Slice 1 merged in PR #15 at `00fbba08587ba8275c121fd7f9532a785f55314d`. M3 Slice 2 merged in PR #16 at `56fd988d3b74c754604355e3c97a5d3656675bbb`.
-
-Validation:
-
-- Slice 1 exact-head CI #99 / run `33842440251` — PASS;
-- Slice 2 final PR exact-head CI #108 / run `33843405386` — PASS;
-- Slice 2 post-merge main CI #109 / run `33843524467` — PASS.
-
-Canonical identity path:
+M3 established durable provider-independent Project/Repository identity and a prepared runtime context.
 
 ```text
 "wedding project"
@@ -60,32 +54,11 @@ canonical RepositoryId
 github locator: rua-den/wedding-online
 ```
 
-Runtime path:
-
-```text
-Owner request + optional exact Project alias
-        |
-        v
-IProjectCatalog
-        |
-        v
-SQLite / EF Core canonical state
-        |
-        v
-ProjectSnapshot
-        |
-        v
-small prepared BrainContext
-        |
-        v
-AgentLoop -> IBrain -> authorized tools
-```
-
-Unknown aliases fail before model execution. Runtime and brain adapters never receive EF `DbContext`. Configured Project/Repository identity is trusted canonical context, but current external facts still have to be fetched through authorized tools.
+Unknown aliases fail before model execution. Runtime and brain adapters never receive EF `DbContext`. Configured Project/Repository identity is trusted canonical context, while current external facts still require authorized tools.
 
 ## Gate C / ADR-003
 
-Before durable memory code begins, Loren now has locked rules for:
+Before durable memory implementation, Loren locked:
 
 - opaque Loren-owned GUID IDs;
 - explicit EF Core migration policy;
@@ -93,7 +66,7 @@ Before durable memory code begins, Loren now has locked rules for:
 - memory source/trust classes;
 - append/supersede corrections;
 - memory deletion versus audit retention;
-- logical export format versioning independent from EF schema migrations.
+- logical export `format_version = 1` independent from EF schema migrations.
 
 Required durable-memory source classes:
 
@@ -108,30 +81,46 @@ EXTERNAL_CONTENT
 
 See [`ADR-003`](docs/decisions/003-canonical-state-and-memory-lifecycle.md) and [`docs/memory.md`](docs/memory.md).
 
-## Current M4 target
+## M4 Slice 1 — owner-explicit memory persistence
 
-M4 builds durable memory under those trust rules.
-
-First vertical flow:
+PR #18 currently implements the first durable-memory storage slice:
 
 ```text
-Owner: "Nhớ wedding-online là web đám cưới của tao."
+OWNER_EXPLICIT durable fact
         |
         v
-OWNER_EXPLICIT MemoryRecord
+MemoryRecord + Loren-owned MemoryRecordId
         |
-Project scope + provenance
+Project / Repository scope + provenance
         |
-SQLite persistence
+        v
+IMemoryStore
+        |
+SQLite / EF Core
         |
 restart
         |
-trusted retrieval
-        |
-small prepared memory context
+        v
+same memory ID + authority + scope
 ```
 
-Then M4 must prove owner correction/supersession and that `MODEL_INFERENCE` / `EXTERNAL_CONTENT` cannot silently become owner truth or policy.
+Candidate capability includes:
+
+- canonical `MemoryRecordId` and `MemoryRecord` in `Loren.Core`;
+- all six ADR-003 source classes;
+- Project/Repository scope, source reference, timestamps, and supersession pointer;
+- EF-neutral `IMemoryStore` with only add/get/current-project retrieval;
+- no generic content update API;
+- migration `202609040002_AddMemoryRecords`;
+- SQLite `MemoryRecords` persistence with Project/Repository/self-supersession foreign keys;
+- fail-closed Project/Repository scope validation;
+- real SQLite restart acceptance for an `OWNER_EXPLICIT` record.
+
+Implementation CI #113 / run `33860641367` is **PASS** across restore, zero-warning build, tests, format, secret scan, dependency scan, and web/auth smoke.
+
+PR #18 is not considered complete until the final documentation-synchronized exact-head CI passes and the PR merges.
+
+Deliberately not in Slice 1: correction/supersession mutation, runtime prepared memory context, memory write UI/API, forget/delete, or automatic model-driven memory promotion.
 
 ## Canonical storage
 
@@ -180,14 +169,12 @@ xUnit / Microsoft Testing Platform
 ## Next
 
 ```text
-M4 Slice 1
-MemoryRecord + source authority model
- -> SQLite migration/persistence
- -> OWNER_EXPLICIT save + Project scope
- -> restart-safe retrieval
- -> correction/supersession
- -> poisoning tests
- -> prepared memory context
+PR #18 final exact-head CI
+ -> merge M4 Slice 1
+ -> M4 Slice 2 owner correction + supersession
+ -> M4 Slice 3 authority-aware prepared memory context
+ -> M4 Slice 4 forget/delete
+ -> M4 Slice 5 poisoning/trust acceptance
  -> M4 exit gate
 ```
 
