@@ -17,38 +17,22 @@ Loren là một hệ thống trí tuệ cá nhân sống lâu dài, có memory b
 
 ## Trạng thái hiện tại
 
-**Cập nhật:** 2026-09-03  
+**Cập nhật:** 2026-09-04  
 **Phase:** `v0.1 — Trustworthy Core development`  
 **Milestone hiện tại:** `M2 — Walking Skeleton`
 
-Đã hoàn tất:
+Đã hoàn tất hoặc đã implement:
 
 - **Gate A / ADR-001:** Loren sở hữu canonical identity/state/policy/action authorization.
 - **Gate B / ADR-002:** stack v0.1 provider-neutral đã accept; M0 hoàn tất.
 - **M1:** production engineering foundation hoàn tất.
 - **M2 Slice 1:** read-only ActionGateway + structured `github.read_repository` + Loren-owned run/action IDs + audit.
 - **M2 Slice 2:** production `OllamaBrain : IBrain` với typed action schema, observation replay, cancellation và provider-secret isolation.
-- **M2 Slice 3:** ASP.NET host thật compose OllamaBrain, AgentLoop, ActionGateway, read-only GitHub execution và audit qua DI; deterministic production-component E2E đã PASS.
-- **M2 Slice 4:** **trusted live production proof đã PASS** trên exact `main`.
+- **M2 Slice 3:** ASP.NET host production compose đầy đủ và deterministic production-component E2E.
+- **M2 Slice 4:** trusted exact-main live backend proof đã PASS qua Ollama Cloud thật và GitHub read thật.
+- **M2 Slice 5:** one-owner cookie auth, `/api/run` được bảo vệ, owner console tối thiểu và correlated audit hiển thị cho owner đã được implement.
 
-Trusted run `33781183510` đã chứng minh:
-
-```text
-real Ollama Cloud (gpt-oss:120b)
- -> production Loren.Web
- -> production OllamaBrain
- -> ActionRequest(github.read_repository)
- -> production AgentLoop / ActionGateway / ReadOnlyActionPolicy
- -> real GET https://api.github.com/repos/rua-den/loren
- -> structured ActionResult
- -> real Ollama turn thứ hai
- -> final answer: rua-den/loren / main
- -> correlated audit
-```
-
-Kết quả thực tế: `turns=2`, `actionCount=1`, audit `ActionRequested -> PolicyEvaluated -> ActionCompleted`, action cuối `succeeded`.
-
-M2 giờ đã có **vertical path model-to-tool thật**. Trước khi M2 kết thúc còn đúng phần owner-facing: **one-owner auth/session, minimal owner UI/endpoint và owner-visible audit presentation**.
+Về hình dạng sản phẩm, M2 giờ đã có bản owner có thể tự dùng/test. Exit gate còn một lần trusted live proof cuối chạy qua **production owner path có authentication**; pass xong sẽ chuyển milestone active sang M3.
 
 Chi tiết chuẩn: [`docs/status.md`](docs/status.md).
 
@@ -68,13 +52,22 @@ Blazor Web App
 xUnit / Microsoft Testing Platform
 ```
 
-## Kiến trúc production read hiện tại
+## Production path M2 hiện tại
 
 ```text
-Owner (bước kế: authenticated UI)
+Owner browser
         |
         v
-Loren.Web
+/login -> one-owner cookie session
+        |
+        v
+protected owner console
+        |
+        v
+POST /api/run
+        |
+        v
+LorenRunService
         |
         v
 AgentLoop -> IBrain -> Ollama
@@ -92,29 +85,60 @@ GitHubReadRepositoryExecutor
         |
         v
 real public GitHub GET
+        |
+        v
+structured result -> final answer -> owner-visible audit
 ```
 
-Các invariant quan trọng đã được chứng minh:
+Các invariant quan trọng đã implement/chứng minh:
 
 - mọi action đều phải đi qua Loren ActionGateway;
 - model không thể chọn trusted Loren run/action IDs;
 - action chưa đăng ký hoặc không read-only fail closed;
-- provider API key không lọt vào model-visible JSON hay owner-visible live response;
-- transport Ollama và GitHub được tách riêng;
+- owner credential và provider credential không được đưa vào model-visible tool context;
+- owner console và `/api/run` bắt buộc authentication;
+- request `/api/*` chưa login fail bằng HTTP `401`;
+- owner session cookie là `HttpOnly`, `SameSite=Strict`;
+- transport Ollama và GitHub tách riêng;
 - `github.read_repository` không có GitHub write credential path;
-- route tạm `/internal/dev/run` mặc định không tồn tại và chỉ được bật trong Development với explicit flag;
+- route tạm `/internal/dev/run` mặc định không tồn tại và không phải normal owner path;
 - trusted validation có secret chỉ chạy sau exact-current-main guard.
 
 M2 chưa được phép có GitHub write path.
 
+## Chạy owner preview local
+
+Set secret trong process environment:
+
+```bash
+export LOREN_OWNER_PASSWORD='choose-a-local-owner-password'
+export OLLAMA_API_KEY='your-provider-secret'
+dotnet run --project src/Loren.Web/Loren.Web.csproj
+```
+
+PowerShell:
+
+```powershell
+$env:LOREN_OWNER_PASSWORD='choose-a-local-owner-password'
+$env:OLLAMA_API_KEY='your-provider-secret'
+dotnet run --project src/Loren.Web/Loren.Web.csproj
+```
+
+Sau đó mở root URL do ASP.NET Core in ra, login rồi chạy câu đã prefill:
+
+```text
+Loren, check repo rua-den/loren.
+```
+
+Không commit secret thật. Nếu expose host ra ngoài localhost thì phải dùng HTTPS hoặc reverse proxy terminate TLS đáng tin cậy. Chi tiết: [`docs/development.md`](docs/development.md).
+
 ## Tiếp theo
 
 ```text
-one-owner authentication/session
- -> minimal owner request UI
- -> owner-visible audit
- -> "Loren, check repo rua-den/loren."
- -> FIRST OWNER-TESTABLE LOREN PREVIEW
+owner preview PR CI
+ -> merge main
+ -> trusted exact-main owner-authenticated live proof
+ -> M2 COMPLETE / FIRST OWNER-TESTABLE LOREN PREVIEW
  -> M3 Canonical State
 ```
 

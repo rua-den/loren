@@ -47,11 +47,11 @@ jobs:
       - name: Dependency vulnerability scan
         run: dotnet package list --project Loren.slnx --vulnerable --include-transitive
 
-      - name: Web health and default-surface smoke test
+      - name: Web health, auth, and default-surface smoke test
         shell: bash
         run: |
           set -euo pipefail
-          dotnet run --project src/Loren.Web/Loren.Web.csproj \
+          LOREN_OWNER_PASSWORD='ci-owner-password' dotnet run --project src/Loren.Web/Loren.Web.csproj \
             --configuration Release --no-build --urls http://127.0.0.1:5091 \
             > /tmp/loren-web.log 2>&1 &
           pid=$!
@@ -68,6 +68,46 @@ jobs:
 
           if [[ "$ready" != "true" ]]; then
             echo 'Loren web health check did not become ready.'
+            exit 1
+          fi
+
+          root_status="$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:5091/)"
+          if [[ "$root_status" != "302" ]]; then
+            echo "Unauthenticated owner console must redirect to login; got HTTP $root_status."
+            exit 1
+          fi
+
+          api_status="$(curl -sS -o /dev/null -w '%{http_code}' \
+            -H 'Content-Type: application/json' \
+            -d '{"message":"should not run"}' \
+            http://127.0.0.1:5091/api/run)"
+          if [[ "$api_status" != "401" ]]; then
+            echo "Unauthenticated API request must be rejected; got HTTP $api_status."
+            exit 1
+          fi
+
+          wrong_login_status="$(curl -sS -o /dev/null -w '%{http_code}' \
+            -H 'Content-Type: application/json' \
+            -d '{"password":"wrong"}' \
+            http://127.0.0.1:5091/auth/login)"
+          if [[ "$wrong_login_status" != "401" ]]; then
+            echo "Wrong owner password must be rejected; got HTTP $wrong_login_status."
+            exit 1
+          fi
+
+          login_status="$(curl -sS -o /dev/null -w '%{http_code}' \
+            -c /tmp/loren-owner.cookies \
+            -H 'Content-Type: application/json' \
+            -d '{"password":"ci-owner-password"}' \
+            http://127.0.0.1:5091/auth/login)"
+          if [[ "$login_status" != "200" ]]; then
+            echo "Owner login failed; got HTTP $login_status."
+            exit 1
+          fi
+
+          if ! curl -fsS -b /tmp/loren-owner.cookies http://127.0.0.1:5091/ \
+            | grep -q 'Loren owner console'; then
+            echo 'Authenticated owner console did not render.'
             exit 1
           fi
 

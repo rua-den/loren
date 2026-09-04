@@ -17,38 +17,22 @@ Loren is a long-lived personal intelligence system with persistent memory, expli
 
 ## Current status
 
-**Last updated:** 2026-09-03  
+**Last updated:** 2026-09-04  
 **Phase:** `v0.1 — Trustworthy Core development`  
 **Current milestone:** `M2 — Walking Skeleton`
 
-Completed:
+Completed or implemented:
 
 - **Gate A / ADR-001:** Loren owns canonical identity/state/policy/action authorization.
 - **Gate B / ADR-002:** provider-neutral v0.1 stack accepted; M0 complete.
 - **M1:** production engineering foundation complete.
 - **M2 Slice 1:** read-only ActionGateway + structured `github.read_repository` + Loren-owned run/action IDs + audit.
 - **M2 Slice 2:** production `OllamaBrain : IBrain` with typed action schemas, observation replay, cancellation, and provider-secret isolation.
-- **M2 Slice 3:** production ASP.NET host composes OllamaBrain, AgentLoop, ActionGateway, read-only GitHub execution, and audit through DI; deterministic production-component E2E coverage passes.
-- **M2 Slice 4:** **trusted live production proof passed** on exact `main`.
+- **M2 Slice 3:** production ASP.NET host composition and deterministic production-component E2E.
+- **M2 Slice 4:** trusted exact-main live backend proof passed through real Ollama Cloud and real GitHub read.
+- **M2 Slice 5:** one-owner cookie auth, protected `/api/run`, minimal owner console, and owner-visible correlated audit are implemented.
 
-Trusted run `33781183510` proved:
-
-```text
-real Ollama Cloud (gpt-oss:120b)
- -> production Loren.Web
- -> production OllamaBrain
- -> ActionRequest(github.read_repository)
- -> production AgentLoop / ActionGateway / ReadOnlyActionPolicy
- -> real GET https://api.github.com/repos/rua-den/loren
- -> structured ActionResult
- -> real Ollama second turn
- -> final answer: rua-den/loren / main
- -> correlated audit
-```
-
-Observed result: `turns=2`, `actionCount=1`, audit sequence `ActionRequested -> PolicyEvaluated -> ActionCompleted`, final action outcome `succeeded`.
-
-M2 now has a real model-to-tool vertical path. Remaining work before M2 exits is **one-owner auth/session, minimal owner UI/endpoint, and owner-visible audit presentation**.
+M2's implementation is now owner-testable in shape. Its exit gate is one final exact-main trusted live proof through the **authenticated production owner path**, after which the active milestone advances to M3.
 
 Detailed status: [`docs/status.md`](docs/status.md).
 
@@ -68,13 +52,22 @@ Blazor Web App
 xUnit / Microsoft Testing Platform
 ```
 
-## Current production read architecture
+## Current M2 production path
 
 ```text
-Owner (next: authenticated UI)
+Owner browser
         |
         v
-Loren.Web
+/login -> one-owner cookie session
+        |
+        v
+protected owner console
+        |
+        v
+POST /api/run
+        |
+        v
+LorenRunService
         |
         v
 AgentLoop -> IBrain -> Ollama
@@ -92,29 +85,52 @@ GitHubReadRepositoryExecutor
         |
         v
 real public GitHub GET
+        |
+        v
+structured result -> final answer -> owner-visible audit
 ```
 
-Important invariants already proven:
+Important invariants already implemented/proven:
 
 - every action crosses Loren's ActionGateway;
 - model output cannot choose trusted Loren run/action IDs;
 - non-read-only/unregistered actions fail closed;
-- provider API key stays outside model-visible request JSON and owner-visible live response;
+- owner and provider credentials stay outside model-visible tool context;
+- owner console and `/api/run` require authentication;
+- unauthenticated `/api/*` requests fail with HTTP `401`;
+- owner session cookie is `HttpOnly` and `SameSite=Strict`;
 - Ollama and GitHub transports are separated;
 - `github.read_repository` has no GitHub write credential path;
-- the temporary `/internal/dev/run` route is absent by default and may only exist in Development with an explicit flag;
+- the temporary `/internal/dev/run` route is absent by default and is not the normal owner path;
 - trusted live-secret validation requires an exact-current-main guard.
 
 No GitHub write path is allowed in M2.
 
+## Run the owner preview locally
+
+Set local secrets in the process environment:
+
+```bash
+export LOREN_OWNER_PASSWORD='choose-a-local-owner-password'
+export OLLAMA_API_KEY='your-provider-secret'
+dotnet run --project src/Loren.Web/Loren.Web.csproj
+```
+
+Then open the root URL printed by ASP.NET Core, sign in, and run the prefilled request:
+
+```text
+Loren, check repo rua-den/loren.
+```
+
+Do not commit real values. Use HTTPS or a trusted TLS-terminating reverse proxy when exposing the host beyond localhost. More details: [`docs/development.md`](docs/development.md).
+
 ## Next
 
 ```text
-one-owner authentication/session
- -> minimal owner request UI
- -> owner-visible audit
- -> "Loren, check repo rua-den/loren."
- -> FIRST OWNER-TESTABLE LOREN PREVIEW
+owner preview PR CI
+ -> merge to main
+ -> trusted exact-main owner-authenticated live proof
+ -> M2 COMPLETE / FIRST OWNER-TESTABLE LOREN PREVIEW
  -> M3 Canonical State
 ```
 

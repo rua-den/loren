@@ -2,11 +2,40 @@ using Loren.Web;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 builder.Services.AddLorenM2ReadPath(builder.Configuration);
+builder.Services.AddLorenOwnerAuthentication(builder.Configuration);
 
 WebApplication app = builder.Build();
 
-app.MapGet("/", () => Results.Text("Loren v0.1 M2 host"));
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapLorenOwnerEndpoints();
+
+app.MapGet(
+        "/",
+        () => Results.Content(OwnerPages.Console, "text/html; charset=utf-8"))
+    .RequireAuthorization();
+
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
+
+app.MapPost(
+        "/api/run",
+        async (
+            LorenRunRequest request,
+            LorenRunService runService,
+            CancellationToken cancellationToken) =>
+        {
+            if (string.IsNullOrWhiteSpace(request.Message))
+            {
+                return Results.BadRequest(new { error = "message is required" });
+            }
+
+            LorenRunResult result = await runService.RunAsync(
+                request.Message,
+                cancellationToken);
+            return Results.Ok(result);
+        })
+    .RequireAuthorization();
 
 bool developmentRunEndpointEnabled = bool.TryParse(
     builder.Configuration["LOREN_ENABLE_DEVELOPMENT_RUN_ENDPOINT"],

@@ -94,6 +94,31 @@ Examples:
 - confirm message/send identifier;
 - inspect target state after configuration change.
 
+## Current M2 owner authentication boundary
+
+M2 introduces the first owner-facing authentication/session boundary for the one-owner preview.
+
+Current behavior:
+
+- owner login is backed by the host-only `LOREN_OWNER_PASSWORD` configuration secret;
+- the authentication service immediately derives a SHA-256 digest used for fixed-time equality checks and does not retain a plaintext password field;
+- the owner credential is never inserted into Loren brain context, tool input, canonical state, memory, or audit;
+- successful login creates a non-persistent ASP.NET Core cookie session;
+- the cookie is `HttpOnly`, `SameSite=Strict`, and uses the request transport's secure-cookie policy;
+- owner console and `/api/run` require authorization;
+- unauthenticated `/api/*` requests fail closed with HTTP `401`;
+- `/health` is intentionally public for health checks;
+- the temporary `/internal/dev/run` surface remains disabled by default and is not part of the owner flow.
+
+This is deliberately a **one-owner M2 boundary**, not the final remote-access/device identity model. Before exposing Loren beyond localhost or a trusted network boundary:
+
+- terminate TLS with HTTPS;
+- store `LOREN_OWNER_PASSWORD` in process environment or a real secret store, never source control;
+- add deployment-level request throttling/rate limiting if the login surface is internet reachable;
+- avoid treating possession of the cookie as approval for future privileged writes; write approvals still require the dedicated M5 action/approval policy boundary.
+
+Trusted M2 CI checks unauthenticated rejection, wrong-password rejection, authenticated console access, and absence of the development run route. The trusted exact-main live proof is designed to assert that neither the provider credential nor owner credential appears in the owner-visible response.
+
 ## Approval security
 
 Approval must not be a vague conversational state such as `user_said_yes=true`.
