@@ -38,12 +38,7 @@ public sealed class SqliteMemoryStore : IMemoryStore
     {
         ArgumentNullException.ThrowIfNull(correction);
 
-        if (currentMemoryRecordId.Value == Guid.Empty)
-        {
-            throw new ArgumentException(
-                "Memory record ID cannot be empty.",
-                nameof(currentMemoryRecordId));
-        }
+        ValidateMemoryRecordId(currentMemoryRecordId, nameof(currentMemoryRecordId));
 
         if (correction.SourceClass != MemorySourceClass.OwnerCorrection)
         {
@@ -122,16 +117,101 @@ public sealed class SqliteMemoryStore : IMemoryStore
         }
     }
 
+    public async Task ForgetAsync(
+        MemoryRecordId currentMemoryRecordId,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateMemoryRecordId(currentMemoryRecordId, nameof(currentMemoryRecordId));
+
+        _dbContext.ChangeTracker.Clear();
+        await using var transaction = await _dbContext.Database
+            .BeginTransactionAsync(cancellationToken);
+
+        try
+        {
+            MemoryRecordRow current = await _dbContext.MemoryRecords
+                .AsNoTracking()
+                .SingleOrDefaultAsync(
+                    memory => memory.Id == currentMemoryRecordId.Value,
+                    cancellationToken)
+                ?? throw new InvalidOperationException(
+                    $"Memory record '{currentMemoryRecordId}' does not exist.");
+
+            if (current.SupersededById is not null)
+            {
+                throw new InvalidOperationException(
+                    $"Memory record '{currentMemoryRecordId}' is not current and cannot be forgotten directly.");
+            }
+
+            Guid? projectId = current.ProjectId;
+            Guid? repositoryId = current.RepositoryId;
+            List<MemoryForgetLink> chainFromCurrentToOldest =
+            [
+                new(current.Id, current.SupersededById),
+            ];
+            Guid newerMemoryId = current.Id;
+
+            while (true)
+            {
+                MemoryRecordRow[] predecessors = await _dbContext.MemoryRecords
+                    .AsNoTracking()
+                    .Where(memory => memory.SupersededById == newerMemoryId)
+                    .Take(2)
+                    .ToArrayAsync(cancellationToken);
+
+                if (predecessors.Length == 0)
+                {
+                    break;
+                }
+
+                if (predecessors.Length > 1)
+                {
+                    throw new InvalidOperationException(
+                        "Memory correction history is not a linear chain; forgetting failed closed.");
+                }
+
+                MemoryRecordRow predecessor = predecessors[0];
+                if (predecessor.ProjectId != projectId
+                    || predecessor.RepositoryId != repositoryId)
+                {
+                    throw new InvalidOperationException(
+                        "Memory correction history changed scope; forgetting failed closed.");
+                }
+
+                chainFromCurrentToOldest.Add(
+                    new MemoryForgetLink(predecessor.Id, predecessor.SupersededById));
+                newerMemoryId = predecessor.Id;
+            }
+
+            for (int index = chainFromCurrentToOldest.Count - 1; index >= 0; index--)
+            {
+                MemoryForgetLink link = chainFromCurrentToOldest[index];
+                int deleted = await _dbContext.MemoryRecords
+                    .Where(memory =>
+                        memory.Id == link.Id
+                        && memory.SupersededById == link.ExpectedSupersededById)
+                    .ExecuteDeleteAsync(cancellationToken);
+
+                if (deleted != 1)
+                {
+                    throw new InvalidOperationException(
+                        "Memory correction history changed while forgetting; operation rolled back.");
+                }
+            }
+
+            await transaction.CommitAsync(cancellationToken);
+        }
+        finally
+        {
+            _dbContext.ChangeTracker.Clear();
+        }
+    }
+
     public async Task<MemoryRecord?> GetAsync(
         MemoryRecordId memoryRecordId,
         CancellationToken cancellationToken = default)
     {
-        if (memoryRecordId.Value == Guid.Empty)
-        {
-            throw new ArgumentException(
-                "Memory record ID cannot be empty.",
-                nameof(memoryRecordId));
-        }
+        ValidateMemoryRecordId(memoryRecordId, nameof(memoryRecordId));
 
         MemoryRecordRow? row = await _dbContext.MemoryRecords
             .AsNoTracking()
@@ -197,6 +277,14 @@ public sealed class SqliteMemoryStore : IMemoryStore
         }
     }
 
+    private static void ValidateMemoryRecordId(MemoryRecordId memoryRecordId, string parameterName)
+    {
+        if (memoryRecordId.Value == Guid.Empty)
+        {
+            throw new ArgumentException("Memory record ID cannot be empty.", parameterName);
+        }
+    }
+
     private static MemoryRecordRow ToRow(MemoryRecord record) => new()
     {
         Id = record.Id.Value,
@@ -245,4 +333,8 @@ public sealed class SqliteMemoryStore : IMemoryStore
         _ => throw new InvalidOperationException(
             $"Unknown durable memory source class '{sourceClass}'."),
     };
+
+    private readonly record struct MemoryForgetLink(
+        Guid Id,
+        Guid? ExpectedSupersededById);
 }
