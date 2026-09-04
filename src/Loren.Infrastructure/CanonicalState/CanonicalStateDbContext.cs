@@ -123,6 +123,8 @@ internal static class CanonicalStateModel
             entity.Property(approval => approval.IntentFingerprint).HasMaxLength(128).IsRequired();
             entity.Property(approval => approval.ApprovedAtUnixMs).IsRequired();
             entity.Property(approval => approval.ExpiresAtUnixMs).IsRequired();
+            entity.Property(approval => approval.ConsumedAtUnixMs).IsRequired(false);
+            entity.Property(approval => approval.RevokedAtUnixMs).IsRequired(false);
             entity.HasIndex(approval => approval.ProjectId);
             entity.HasIndex(approval => approval.RepositoryId);
             entity.HasIndex(approval => new { approval.ProjectId, approval.RepositoryId, approval.ConsumedAtUnixMs });
