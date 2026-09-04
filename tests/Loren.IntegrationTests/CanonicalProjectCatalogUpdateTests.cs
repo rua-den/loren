@@ -10,6 +10,7 @@ public sealed class CanonicalProjectCatalogUpdateTests
     [Fact]
     public async Task SameCatalogCanReplaceAliasesForExistingProject()
     {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         string tempDirectory = Path.Combine(
             Path.GetTempPath(),
             $"loren-m3-update-{Guid.NewGuid():N}");
@@ -28,7 +29,7 @@ public sealed class CanonicalProjectCatalogUpdateTests
                     .Options;
 
             await using CanonicalStateDbContext context = new(options);
-            await CanonicalStateDatabase.MigrateAsync(context);
+            await CanonicalStateDatabase.MigrateAsync(context, cancellationToken);
             SqliteProjectCatalog catalog = new(context);
 
             await catalog.SaveAsync(
@@ -39,7 +40,8 @@ public sealed class CanonicalProjectCatalogUpdateTests
                         ["old alias", "wedding-online"],
                         createdAt,
                         createdAt),
-                    []));
+                    []),
+                cancellationToken);
 
             await catalog.SaveAsync(
                 new ProjectSnapshot(
@@ -49,11 +51,14 @@ public sealed class CanonicalProjectCatalogUpdateTests
                         ["new alias", "wedding-online"],
                         createdAt,
                         updatedAt),
-                    []));
+                    []),
+                cancellationToken);
 
-            Assert.Null(await catalog.FindByAliasAsync("old alias"));
+            Assert.Null(await catalog.FindByAliasAsync("old alias", cancellationToken));
 
-            ProjectSnapshot? updated = await catalog.FindByAliasAsync("new alias");
+            ProjectSnapshot? updated = await catalog.FindByAliasAsync(
+                "new alias",
+                cancellationToken);
             Assert.NotNull(updated);
             Assert.Equal(projectId, updated.Project.Id);
             Assert.Equal(updatedAt, updated.Project.UpdatedAt);
