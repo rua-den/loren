@@ -42,6 +42,8 @@ public static class LorenHostServices
             options.UseSqlite(connectionStringBuilder.ConnectionString));
         services.AddScoped<IProjectCatalog, SqliteProjectCatalog>();
         services.AddScoped<IMemoryStore, SqliteMemoryStore>();
+        services.AddSingleton(new LorenMemoryContextOptions());
+        services.AddScoped<LorenMemoryContextBuilder>();
         services.AddScoped<LorenProjectContextBuilder>();
 
         services.AddSingleton<InMemoryAuditSink>();
