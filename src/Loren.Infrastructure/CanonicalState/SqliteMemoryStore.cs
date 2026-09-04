@@ -38,6 +38,13 @@ public sealed class SqliteMemoryStore : IMemoryStore
     {
         ArgumentNullException.ThrowIfNull(correction);
 
+        if (currentMemoryRecordId.Value == Guid.Empty)
+        {
+            throw new ArgumentException(
+                "Memory record ID cannot be empty.",
+                nameof(currentMemoryRecordId));
+        }
+
         if (correction.SourceClass != MemorySourceClass.OwnerCorrection)
         {
             throw new InvalidOperationException(
@@ -84,10 +91,10 @@ public sealed class SqliteMemoryStore : IMemoryStore
                     "A correction must keep the same Project/Repository scope as the current memory.");
             }
 
-            if (correction.CreatedAt < current.CreatedAt)
+            if (correction.CreatedAt < current.UpdatedAt)
             {
                 throw new InvalidOperationException(
-                    "A correction cannot be created before the memory it supersedes.");
+                    "A correction cannot be created before the current memory lifecycle timestamp.");
             }
 
             bool correctionIdAlreadyExists = await _dbContext.MemoryRecords
