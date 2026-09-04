@@ -11,8 +11,8 @@ Loren is a long-lived personal intelligence system with persistent memory, expli
 1. **Memory-first** — durable state survives conversations, restarts, and provider changes.
 2. **Tool-first** — external facts/actions come from authoritative tools instead of model guessing.
 3. **Permission-first** — a model may request an action; Loren authorizes and executes it.
-4. **Model-independent** — Ollama, OpenAI, Claude, local models, and future providers are adapters.
-5. **Auditable** — consequential actions and important state changes must be reconstructable.
+4. **Model-independent** — Ollama, OpenAI, local models, and future providers are adapters.
+5. **Auditable** — consequential behavior must be reconstructable.
 6. **Progressive autonomy** — proactive/background behavior comes only after lower-level trust boundaries are proven.
 
 ## Current status
@@ -27,64 +27,40 @@ Completed:
 - **Gate B / ADR-002:** provider-neutral v0.1 stack accepted.
 - **M0:** technical feasibility proofs complete.
 - **M1:** engineering foundation complete.
-- **M2:** **Walking Skeleton complete.**
+- **M2:** Walking Skeleton complete; first owner-testable Loren preview proven.
+- **M3 Slice 1:** canonical Project/Repository identity + SQLite persistence complete.
 
-M2's trusted exact-main production proof passed on run `33840149005` against commit `94ce6d1e74f2dfdf0584b8dbf8a4edbbb3774f7d`:
+M3 Slice 1 merged in PR #15 at `00fbba08587ba8275c121fd7f9532a785f55314d`. Exact-head CI run `33842440251` passed restore/build/test/format/secret/dependency/web-auth gates.
 
-```text
-unauthenticated /api/run -> 401
-owner login -> 200 + cookie session
-authenticated /api/run
- -> Ollama gpt-oss:120b
- -> github.read_repository
- -> real GitHub GET rua-den/loren
- -> Ollama final answer
- -> correlated owner-visible audit
-```
-
-Observed result:
-
-```text
-runId:       5bb9cc341387430c82759d58309da85a
-turns:       2
-actionCount: 1
-final:       Repository rua-den/loren
-             Default branch: main
-```
-
-Audit passed:
-
-```text
-ActionRequested -> PolicyEvaluated -> ActionCompleted
-requested       -> allow           -> succeeded
-```
-
-The trusted workflow also verified that owner/provider credentials were absent from the owner-visible response and `/internal/dev/run` remained `404` in Production.
-
-**First owner-testable Loren preview: achieved.**
+Current M3 Slice 2 candidate in PR #16 adds deterministic configured-alias resolution and prepared runtime context. Its implementation CI run `33843033700` passed before the final documentation sync; the final PR head must pass CI again before merge.
 
 Detailed status: [`docs/status.md`](docs/status.md).
 
-## Current M3 target
-
-M3 gives Loren provider-independent canonical Project/Repository identity.
+## Current M3 architecture
 
 ```text
-Owner wording / project alias
+Owner request + optional exact Project alias
         |
         v
-canonical Loren Project ID
+Loren.Web
         |
         v
-canonical Repository record
-        |
-        +--> integration metadata: GitHub owner/repo
+IProjectCatalog
         |
         v
-prepared runtime context / authoritative tool use
+SQLite / EF Core canonical state
+        |
+        v
+ProjectSnapshot
+        |
+        v
+small prepared BrainContext
+        |
+        v
+AgentLoop -> IBrain -> authorized tools
 ```
 
-Acceptance target:
+Canonical identity example:
 
 ```text
 "wedding project"
@@ -92,15 +68,55 @@ Acceptance target:
 "wedding-online"
         |
         v
-same Loren Project
+same Loren ProjectId
         |
         v
-rua-den/wedding-online
+canonical RepositoryId
+        |
+        v
+github locator: rua-den/wedding-online
 ```
 
-The mapping must survive restart and provider-session deletion.
+Important boundary: configured Project/Repository identity is trusted canonical context, but it is **not live external state**. Current GitHub facts still have to be fetched through authorized tools.
 
-M3 deliberately starts small. Do not add a generic personal graph or unrelated `Person`, `Task`, `Decision`, or `Preference` entities until real product flows require them.
+Unknown project aliases fail before model execution. Runtime and brain adapters never receive EF `DbContext`.
+
+A fresh database has no configured Projects yet; M3 does not add owner-facing Project CRUD UI.
+
+## Canonical storage
+
+M3 uses the accepted SQLite + EF Core baseline.
+
+```text
+database file: loren.db
+default directory: OS local application data / Loren
+override: LOREN_DATA_DIRECTORY
+migrations: automatic at host startup
+```
+
+Loren-owned `ProjectId` / `RepositoryId` are independent from GitHub, model-provider, or runtime session IDs.
+
+## Run locally
+
+```bash
+export LOREN_OWNER_PASSWORD='choose-a-local-owner-password'
+export OLLAMA_API_KEY='your-provider-secret'
+# optional: export LOREN_DATA_DIRECTORY='/path/to/loren-data'
+dotnet run --project src/Loren.Web/Loren.Web.csproj
+```
+
+PowerShell:
+
+```powershell
+$env:LOREN_OWNER_PASSWORD='choose-a-local-owner-password'
+$env:OLLAMA_API_KEY='your-provider-secret'
+# optional: $env:LOREN_DATA_DIRECTORY='D:\loren-data'
+dotnet run --project src/Loren.Web/Loren.Web.csproj
+```
+
+Open the root URL printed by ASP.NET Core and sign in. The Project alias field only resolves aliases already present in canonical state.
+
+Do not commit real secrets. Use HTTPS or a trusted TLS-terminating reverse proxy when exposing the host beyond localhost. More details: [`docs/development.md`](docs/development.md).
 
 ## Accepted v0.1 stack
 
@@ -118,32 +134,16 @@ Blazor Web App
 xUnit / Microsoft Testing Platform
 ```
 
-## Run the current owner preview locally
-
-```bash
-export LOREN_OWNER_PASSWORD='choose-a-local-owner-password'
-export OLLAMA_API_KEY='your-provider-secret'
-dotnet run --project src/Loren.Web/Loren.Web.csproj
-```
-
-Then open the root URL printed by ASP.NET Core, sign in, and run:
-
-```text
-Loren, check repo rua-den/loren.
-```
-
-Do not commit real secrets. Use HTTPS or a trusted TLS-terminating reverse proxy when exposing the host beyond localhost. More details: [`docs/development.md`](docs/development.md).
-
 ## Next
 
 ```text
-M3 canonical IDs + Project/Repository schema
- -> SQLite / EF Core persistence
- -> alias resolution + restart tests
- -> canonical Project/Repository context
- -> Gate C checkpoint
+M3 Slice 2 final CI + merge
+ -> M3 Slice 3 / Gate C checkpoint
+ -> M3 COMPLETE
  -> M4 Trusted Memory
 ```
+
+M3 Slice 3 will lock canonical ID rules, migration policy, Project/Repository schema boundaries, memory-vs-audit deletion semantics, and export versioning direction before durable memory implementation begins.
 
 ## Version path
 
@@ -168,11 +168,11 @@ Versions advance by exit gates, not dates or code volume.
 - [`docs/architecture.md`](docs/architecture.md) — active system boundaries
 - [`docs/plans/master-plan.md`](docs/plans/master-plan.md) — version milestones and gates
 - [`docs/plans/v0.1.md`](docs/plans/v0.1.md) — detailed v0.1 implementation plan
-- [`docs/decisions/001-agent-runtime-strategy.md`](docs/decisions/001-agent-runtime-strategy.md) — accepted Loren-owned core/runtime boundary
-- [`docs/decisions/002-v0.1-technology-stack.md`](docs/decisions/002-v0.1-technology-stack.md) — accepted provider-neutral v0.1 stack and M0 evidence
-- [`docs/memory.md`](docs/memory.md) — memory model
-- [`docs/permissions.md`](docs/permissions.md) — permission model
-- [`docs/security.md`](docs/security.md) — security baseline
-- [`docs/skills.md`](docs/skills.md) — skill/tool model
+- [`docs/decisions/001-agent-runtime-strategy.md`](docs/decisions/001-agent-runtime-strategy.md)
+- [`docs/decisions/002-v0.1-technology-stack.md`](docs/decisions/002-v0.1-technology-stack.md)
+- [`docs/memory.md`](docs/memory.md)
+- [`docs/permissions.md`](docs/permissions.md)
+- [`docs/security.md`](docs/security.md)
+- [`docs/skills.md`](docs/skills.md)
 
 This repository is the source of truth for Loren's product decisions, architecture, delivery plans, implementation, progress, and release history.

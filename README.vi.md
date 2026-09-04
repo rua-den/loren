@@ -11,8 +11,8 @@ Loren là một hệ thống trí tuệ cá nhân sống lâu dài, có memory b
 1. **Memory-first** — state bền vững sống qua conversation, restart và đổi provider.
 2. **Tool-first** — dữ liệu/action bên ngoài phải đi qua tool có thẩm quyền thay vì để model đoán.
 3. **Permission-first** — model có thể request action; Loren mới authorize và execute.
-4. **Model-independent** — Ollama, OpenAI, Claude, local model và provider tương lai đều chỉ là adapter.
-5. **Auditable** — action quan trọng và state mutation phải reconstruct được.
+4. **Model-independent** — Ollama, OpenAI, local model và provider tương lai đều chỉ là adapter.
+5. **Auditable** — hành vi quan trọng phải reconstruct được.
 6. **Tự chủ tăng dần** — background/proactive behavior chỉ đến sau khi trust boundary thấp hơn đã được chứng minh.
 
 ## Trạng thái hiện tại
@@ -27,64 +27,40 @@ Loren là một hệ thống trí tuệ cá nhân sống lâu dài, có memory b
 - **Gate B / ADR-002:** stack v0.1 provider-neutral đã accept.
 - **M0:** technical feasibility proofs hoàn tất.
 - **M1:** engineering foundation hoàn tất.
-- **M2:** **Walking Skeleton hoàn tất.**
+- **M2:** Walking Skeleton hoàn tất; first owner-testable Loren preview đã được chứng minh.
+- **M3 Slice 1:** canonical Project/Repository identity + SQLite persistence hoàn tất.
 
-Trusted exact-main production proof của M2 đã PASS ở run `33840149005` trên commit `94ce6d1e74f2dfdf0584b8dbf8a4edbbb3774f7d`:
+M3 Slice 1 đã merge qua PR #15 tại `00fbba08587ba8275c121fd7f9532a785f55314d`. Exact-head CI run `33842440251` pass restore/build/test/format/secret/dependency/web-auth gates.
 
-```text
-unauthenticated /api/run -> 401
-owner login -> 200 + cookie session
-authenticated /api/run
- -> Ollama gpt-oss:120b
- -> github.read_repository
- -> real GitHub GET rua-den/loren
- -> Ollama final answer
- -> correlated owner-visible audit
-```
-
-Kết quả thật:
-
-```text
-runId:       5bb9cc341387430c82759d58309da85a
-turns:       2
-actionCount: 1
-final:       Repository rua-den/loren
-             Default branch: main
-```
-
-Audit đã PASS:
-
-```text
-ActionRequested -> PolicyEvaluated -> ActionCompleted
-requested       -> allow           -> succeeded
-```
-
-Workflow cũng kiểm tra owner/provider credential không xuất hiện trong response owner thấy được và `/internal/dev/run` vẫn trả `404` ở Production.
-
-**First owner-testable Loren preview: đã đạt.**
+M3 Slice 2 hiện là candidate trong PR #16: deterministic alias resolution + prepared runtime context. Implementation CI run `33843033700` đã pass trước lần đồng bộ docs cuối; final PR head vẫn phải pass CI thêm lần nữa trước khi merge.
 
 Chi tiết chuẩn: [`docs/status.md`](docs/status.md).
 
-## Mục tiêu M3 hiện tại
-
-M3 đưa Project/Repository của Loren thành canonical state độc lập provider.
+## Kiến trúc M3 hiện tại
 
 ```text
-cách owner gọi project / alias
+Owner request + optional exact Project alias
         |
         v
-canonical Loren Project ID
+Loren.Web
         |
         v
-canonical Repository record
-        |
-        +--> integration metadata: GitHub owner/repo
+IProjectCatalog
         |
         v
-prepared runtime context / authoritative tool use
+SQLite / EF Core canonical state
+        |
+        v
+ProjectSnapshot
+        |
+        v
+small prepared BrainContext
+        |
+        v
+AgentLoop -> IBrain -> authorized tools
 ```
 
-Acceptance target:
+Ví dụ canonical identity:
 
 ```text
 "wedding project"
@@ -92,15 +68,55 @@ Acceptance target:
 "wedding-online"
         |
         v
-cùng một Loren Project
+cùng Loren ProjectId
         |
         v
-rua-den/wedding-online
+canonical RepositoryId
+        |
+        v
+github locator: rua-den/wedding-online
 ```
 
-Mapping này phải sống qua restart và không phụ thuộc provider conversation/session.
+Boundary quan trọng: Project/Repository được cấu hình là trusted canonical identity/context, nhưng **không phải live external state**. Dữ liệu GitHub hiện tại vẫn phải fetch qua authorized tool.
 
-M3 cố ý giữ world model nhỏ. Chưa thêm generic graph hay các entity `Person`, `Task`, `Decision`, `Preference` nếu chưa có flow thật cần chúng.
+Alias không tồn tại sẽ fail trước khi model chạy. Runtime và brain adapter không bao giờ nhận EF `DbContext`.
+
+Database mới mặc định chưa có Project nào; M3 chưa thêm owner-facing Project CRUD UI.
+
+## Canonical storage
+
+M3 dùng baseline SQLite + EF Core đã accept.
+
+```text
+database file: loren.db
+default directory: OS local application data / Loren
+override: LOREN_DATA_DIRECTORY
+migrations: tự chạy khi host start
+```
+
+`ProjectId` / `RepositoryId` do Loren sở hữu, độc lập với GitHub ID, provider ID và runtime session ID.
+
+## Chạy local
+
+```powershell
+$env:LOREN_OWNER_PASSWORD='choose-a-local-owner-password'
+$env:OLLAMA_API_KEY='your-provider-secret'
+# optional: $env:LOREN_DATA_DIRECTORY='D:\loren-data'
+dotnet run --project src/Loren.Web/Loren.Web.csproj
+```
+
+Bash:
+
+```bash
+export LOREN_OWNER_PASSWORD='choose-a-local-owner-password'
+export OLLAMA_API_KEY='your-provider-secret'
+# optional: export LOREN_DATA_DIRECTORY='/path/to/loren-data'
+dotnet run --project src/Loren.Web/Loren.Web.csproj
+```
+
+Mở root URL do ASP.NET Core in ra rồi login. Ô Project alias chỉ resolve alias đã tồn tại trong canonical state.
+
+Không commit secret thật. Nếu expose host ra ngoài localhost phải dùng HTTPS hoặc reverse proxy terminate TLS đáng tin cậy. Chi tiết: [`docs/development.md`](docs/development.md).
 
 ## Stack v0.1 đã accept
 
@@ -118,32 +134,16 @@ Blazor Web App
 xUnit / Microsoft Testing Platform
 ```
 
-## Chạy owner preview hiện tại local
-
-```powershell
-$env:LOREN_OWNER_PASSWORD='choose-a-local-owner-password'
-$env:OLLAMA_API_KEY='your-provider-secret'
-dotnet run --project src/Loren.Web/Loren.Web.csproj
-```
-
-Sau đó mở root URL do ASP.NET Core in ra, login và chạy:
-
-```text
-Loren, check repo rua-den/loren.
-```
-
-Không commit secret thật. Nếu expose host ra ngoài localhost thì phải dùng HTTPS hoặc reverse proxy terminate TLS đáng tin cậy. Chi tiết: [`docs/development.md`](docs/development.md).
-
 ## Tiếp theo
 
 ```text
-M3 canonical IDs + Project/Repository schema
- -> SQLite / EF Core persistence
- -> alias resolution + restart tests
- -> canonical Project/Repository context
- -> Gate C checkpoint
+M3 Slice 2 final CI + merge
+ -> M3 Slice 3 / Gate C checkpoint
+ -> M3 COMPLETE
  -> M4 Trusted Memory
 ```
+
+M3 Slice 3 sẽ lock canonical ID rules, migration policy, Project/Repository schema boundary, memory-vs-audit deletion semantics và hướng export versioning trước khi bắt đầu durable memory.
 
 ## Lộ trình version
 
@@ -158,7 +158,7 @@ v0.6+ hardening từ sử dụng thực tế
 v1.0  stable personal daily driver
 ```
 
-Version chỉ được nâng khi vượt exit gate, không dựa vào ngày tháng hay số lượng code.
+Version chỉ nâng khi vượt exit gate, không dựa vào ngày hay số lượng code.
 
 ## Tài liệu
 
@@ -168,11 +168,11 @@ Version chỉ được nâng khi vượt exit gate, không dựa vào ngày thá
 - [`docs/architecture.md`](docs/architecture.md) — system boundaries
 - [`docs/plans/master-plan.md`](docs/plans/master-plan.md) — milestones/version gates
 - [`docs/plans/v0.1.md`](docs/plans/v0.1.md) — plan implementation chi tiết v0.1
-- [`docs/decisions/001-agent-runtime-strategy.md`](docs/decisions/001-agent-runtime-strategy.md) — Loren-owned core/runtime boundary đã accept
-- [`docs/decisions/002-v0.1-technology-stack.md`](docs/decisions/002-v0.1-technology-stack.md) — stack v0.1 provider-neutral đã accept và evidence M0
-- [`docs/memory.md`](docs/memory.md) — memory model
-- [`docs/permissions.md`](docs/permissions.md) — permission model
-- [`docs/security.md`](docs/security.md) — security baseline
-- [`docs/skills.md`](docs/skills.md) — skill/tool model
+- [`docs/decisions/001-agent-runtime-strategy.md`](docs/decisions/001-agent-runtime-strategy.md)
+- [`docs/decisions/002-v0.1-technology-stack.md`](docs/decisions/002-v0.1-technology-stack.md)
+- [`docs/memory.md`](docs/memory.md)
+- [`docs/permissions.md`](docs/permissions.md)
+- [`docs/security.md`](docs/security.md)
+- [`docs/skills.md`](docs/skills.md)
 
 Repository này là source of truth cho product decisions, architecture, delivery plan, implementation, progress và release history của Loren.

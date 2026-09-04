@@ -2,9 +2,13 @@ using Loren.Brain.Ollama;
 using Loren.Core.Actions;
 using Loren.Core.Audit;
 using Loren.Core.Brains;
+using Loren.Core.Projects;
 using Loren.Infrastructure.Audit;
+using Loren.Infrastructure.CanonicalState;
 using Loren.Runtime;
 using Loren.Tools.GitHub;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -24,6 +28,19 @@ public static class LorenHostServices
 
         services.AddHttpClient(OllamaHttpClientName);
         services.AddHttpClient(GitHubHttpClientName);
+
+        string dataDirectory = ResolveDataDirectory(configuration);
+        Directory.CreateDirectory(dataDirectory);
+        string databasePath = Path.Combine(dataDirectory, "loren.db");
+        SqliteConnectionStringBuilder connectionStringBuilder = new()
+        {
+            DataSource = databasePath,
+        };
+
+        services.AddDbContext<CanonicalStateDbContext>(options =>
+            options.UseSqlite(connectionStringBuilder.ConnectionString));
+        services.AddScoped<IProjectCatalog, SqliteProjectCatalog>();
+        services.AddScoped<LorenProjectContextBuilder>();
 
         services.AddSingleton<InMemoryAuditSink>();
         services.AddSingleton<IAuditSink>(provider =>
@@ -69,7 +86,24 @@ public static class LorenHostServices
                 provider.GetRequiredService<IActionGateway>(),
                 new AgentLoopOptions()));
 
-        services.AddSingleton<LorenRunService>();
+        services.AddScoped<LorenRunService>();
         return services;
+    }
+
+    private static string ResolveDataDirectory(IConfiguration configuration)
+    {
+        string? configuredDirectory = configuration["LOREN_DATA_DIRECTORY"];
+        if (!string.IsNullOrWhiteSpace(configuredDirectory))
+        {
+            return Path.GetFullPath(configuredDirectory);
+        }
+
+        string localApplicationData = Environment.GetFolderPath(
+            Environment.SpecialFolder.LocalApplicationData);
+        string baseDirectory = string.IsNullOrWhiteSpace(localApplicationData)
+            ? AppContext.BaseDirectory
+            : localApplicationData;
+
+        return Path.Combine(baseDirectory, "Loren");
     }
 }

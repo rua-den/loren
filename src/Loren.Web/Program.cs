@@ -1,3 +1,4 @@
+using Loren.Infrastructure.CanonicalState;
 using Loren.Web;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
@@ -5,6 +6,13 @@ builder.Services.AddLorenM2ReadPath(builder.Configuration);
 builder.Services.AddLorenOwnerAuthentication(builder.Configuration);
 
 WebApplication app = builder.Build();
+
+await using (AsyncServiceScope scope = app.Services.CreateAsyncScope())
+{
+    CanonicalStateDbContext dbContext = scope.ServiceProvider
+        .GetRequiredService<CanonicalStateDbContext>();
+    await CanonicalStateDatabase.MigrateAsync(dbContext);
+}
 
 app.UseAuthentication();
 app.UseAuthorization();
@@ -30,10 +38,18 @@ app.MapPost(
                 return Results.BadRequest(new { error = "message is required" });
             }
 
-            LorenRunResult result = await runService.RunAsync(
-                request.Message,
-                cancellationToken);
-            return Results.Ok(result);
+            try
+            {
+                LorenRunResult result = await runService.RunAsync(
+                    request.Message,
+                    request.ProjectAlias,
+                    cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (UnknownProjectAliasException exception)
+            {
+                return Results.NotFound(new { error = exception.Message });
+            }
         })
     .RequireAuthorization();
 
@@ -62,10 +78,18 @@ if (developmentRunEndpointEnabled)
                 return Results.BadRequest(new { error = "message is required" });
             }
 
-            LorenRunResult result = await runService.RunAsync(
-                request.Message,
-                cancellationToken);
-            return Results.Ok(result);
+            try
+            {
+                LorenRunResult result = await runService.RunAsync(
+                    request.Message,
+                    request.ProjectAlias,
+                    cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (UnknownProjectAliasException exception)
+            {
+                return Results.NotFound(new { error = exception.Message });
+            }
         });
 }
 
