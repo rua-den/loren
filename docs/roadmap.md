@@ -7,32 +7,49 @@ Loren advances by **proven capability and trust**, not by calendar dates.
 ## Current status
 
 **Current stage:** `v0.1 — Trustworthy Core development`  
-**Passed:** `Gate A — Core ownership`, `Gate B — v0.1 implementation stack`  
-**Current milestone:** `M3 — Canonical Project/Repository State`
+**Passed:** `Gate A — Core ownership`, `Gate B — v0.1 implementation stack`, `Gate C — canonical state/memory lifecycle`  
+**Current milestone:** `M4 — Trusted Durable Memory`
 
-M2 is complete. Trusted exact-main run `33840149005` proved the normal production path:
+M2 proved the first owner-testable authenticated model-to-tool path. M3 then made Project/Repository identity provider-independent and restart-safe.
+
+M3 evidence:
 
 ```text
-owner auth/session
--> protected /api/run
--> real Ollama
--> Loren ActionGateway
--> real GitHub read
--> final answer
--> correlated owner-visible audit
+M3 Slice 1
+canonical ProjectId / RepositoryId
+-> SQLite + EF Core persistence
+-> migrations
+-> alias collision/update/restart tests
+
+M3 Slice 2
+exact configured project alias
+-> IProjectCatalog
+-> ProjectSnapshot
+-> small prepared BrainContext
+-> AgentLoop / IBrain
+
+M3 Slice 3
+ADR-003 / Gate C
+-> canonical ID rules
+-> migration policy
+-> memory source authority
+-> append/supersede correction
+-> memory-vs-audit deletion boundary
+-> logical export format versioning
 ```
 
-The first owner-testable Loren preview is therefore proven. Development now moves from a stateless read skeleton to provider-independent canonical Project/Repository identity.
+PR #15 merged at `00fbba08587ba8275c121fd7f9532a785f55314d`. PR #16 merged at `56fd988d3b74c754604355e3c97a5d3656675bbb`; final PR CI #108 and post-merge main CI #109 passed all repository gates.
 
 Next step:
 
 ```text
-canonical Loren IDs
--> Project / Repository schema
--> SQLite + EF Core persistence
--> alias resolution + restart tests
--> runtime context integration
--> Gate C checkpoint
+MemoryRecord canonical model
+-> OWNER_EXPLICIT save + provenance
+-> Project-scoped persistence
+-> restart-safe trusted retrieval
+-> OWNER_CORRECTION append/supersede
+-> poisoning tests for EXTERNAL_CONTENT / MODEL_INFERENCE
+-> prepared memory context
 ```
 
 ---
@@ -63,39 +80,31 @@ Required flows:
 "Tại sao mày vừa làm việc đó?"
 ```
 
-Core capabilities:
-
-- one-owner web interface;
-- provider-neutral brain boundary with a proven Ollama implementation and optional OpenAI adapter;
-- bounded Loren-owned agent loop;
-- Project/Repository canonical state;
-- trusted durable memory with correction/provenance;
-- Action Gateway + approvals;
-- credential-isolated GitHub read/narrow writes;
-- audit trail;
-- export/wipe/restore proof;
-- adversarial security/reliability tests.
-
 Milestones:
 
 ```text
-M1 Engineering Foundation             ✓ complete
-M2 Walking Skeleton                   ✓ complete
-M3 Canonical Project/Repository State <- current
-M4 Trusted Durable Memory
+M1 Engineering Foundation              ✓ complete
+M2 Walking Skeleton                    ✓ complete
+M3 Canonical Project/Repository State  ✓ complete
+M4 Trusted Durable Memory              <- current
 M5 Action/Credential Boundary + Writes
 M6 Minimal Daily-use UI
 M7 Export/Restore + Recovery
 M8 Security/Reliability E2E
 ```
 
-Explicitly not required:
+Core capabilities across v0.1:
 
-- broad web research;
-- scheduler/reminders;
-- Gmail/Calendar;
-- voice;
-- proactive/background autonomy.
+- one-owner web interface;
+- provider-neutral brain boundary;
+- bounded Loren-owned agent loop;
+- canonical Project/Repository state;
+- trusted durable memory with correction/provenance;
+- ActionGateway + approvals;
+- credential-isolated GitHub read/narrow writes;
+- audit trail;
+- export/wipe/restore proof;
+- adversarial security/reliability tests.
 
 Detailed plan: [`docs/plans/v0.1.md`](plans/v0.1.md)
 
@@ -113,104 +122,41 @@ Candidate capabilities:
 - project decisions/procedures;
 - richer GitHub project health summaries;
 - improved memory retrieval/conflict handling;
-- model/run cost visibility;
-- optional second brain-provider proof if useful.
+- model/run cost visibility.
 
-Before moving into private/background personal operations, the scheduler/background execution gate must be proven.
+Before private/background personal operations, Gate E must pass.
 
 ---
 
 ## v0.3 — Personal Operations
 
-Goal: expand Loren into a controlled personal digital operator.
-
-Candidate capabilities:
-
-- Gmail;
-- Google Calendar;
-- server/VPS health and constrained actions;
-- filesystem integrations;
-- notifications;
-- cross-tool project context;
-- project-aware/day-aware brief;
-- stronger data classification and credential scopes.
-
-Exit requires private-data handling, connector failures, and consequential external actions to remain within the same permission/audit boundaries proven earlier.
+Candidate capabilities include Gmail, Google Calendar, server/VPS health and constrained actions, filesystem integrations, notifications, cross-tool context, daily brief, and stronger data/credential scopes.
 
 ---
 
 ## v0.4 — Voice and Device Presence
 
-Goal: make Loren convenient away from the desktop without creating a second identity or security model.
-
-Candidate capabilities:
-
-- mobile-friendly/PWA interface;
-- trusted devices;
-- push-to-talk;
-- speech-to-text / text-to-speech;
-- notification actions;
-- optional desktop/device node;
-- optional messaging-channel adapters.
-
-Before this version, trusted-device enrollment/revocation and voice-approval rules must be decided.
+Candidate capabilities include mobile/PWA, trusted devices, push-to-talk, STT/TTS, notification actions, and optional device nodes. Gate F must pass first.
 
 ---
 
 ## v0.5 — Proactive Loren
 
-Goal: let Loren notice meaningful events and perform bounded background work under explicit standing policy.
-
-Candidate capabilities:
-
-- event ingestion;
-- GitHub/webhook watchers;
-- server/calendar/email triggers;
-- proactive notifications;
-- recurring/background workflows;
-- allowlisted standing permissions;
-- quotas/rate limits;
-- active-task visibility;
-- global pause/kill switch.
-
-This version requires a dedicated proactive-autonomy gate before release.
+Candidate capabilities include event ingestion, GitHub/webhook watchers, proactive notifications, recurring/background work, bounded standing permissions, quotas, active-task visibility, and global pause. Gate G must pass first.
 
 ---
 
 ## v0.6+ — Real-use hardening
 
-Do not pre-design these versions deeply. Let actual usage determine priorities.
-
-Possible themes:
-
-- memory consolidation;
-- additional brain providers/local models;
-- Home Assistant;
-- desktop/computer use;
-- more integrations;
-- offline/private execution;
-- performance/cost optimization;
-- packaging and deployment simplification.
+Let actual usage determine priorities: memory consolidation, more providers/local models, Home Assistant, computer use, offline/private execution, performance/cost, packaging, and UX.
 
 ---
 
 ## v1.0 — Stable Personal Daily Driver
 
-v1.0 does not mean "all Jarvis features". It means Loren's core can be trusted as a long-lived daily assistant.
+v1.0 means Loren's core can be trusted as a long-lived daily assistant: stable workflows, tested recovery/migration, continuity across upgrades/providers, maintainable action/skill boundaries, reliable background/device controls, secret rotation, reconstructable audit, and documented privacy/security defaults.
 
-Minimum properties:
-
-- stable daily-use workflows;
-- tested backup/export/restore and schema migration;
-- upgrades preserve identity/memory/policy;
-- brain/action/skill boundaries are maintainable;
-- trusted devices/background execution have strong controls;
-- secret rotation/revocation is documented and tested;
-- consequential behavior is reconstructable through audit;
-- integrations can fail without destroying Loren core state;
-- model/provider replacement remains possible behind the brain boundary.
-
-The full v1.0 gate is defined in the master plan.
+Gate H must pass before release.
 
 ---
 

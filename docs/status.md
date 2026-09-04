@@ -2,9 +2,9 @@
 
 **Last updated:** 2026-09-04  
 **Current version phase:** `v0.1 — Trustworthy Core development`  
-**Current decision gates:** `Gate A — PASSED`, `Gate B — PASSED`  
-**Current milestone:** `M3 — Canonical State`  
-**Current execution target:** `M3 Slice 2 — prepared canonical project context`
+**Current decision gates:** `Gate A — PASSED`, `Gate B — PASSED`, `Gate C — PASSED`  
+**Current milestone:** `M4 — Trusted Durable Memory`  
+**Current execution target:** `M4 Slice 1 — canonical MemoryRecord + owner-explicit persistence`
 
 This file is the authoritative progress ledger for the repository. `README.md` and `README.vi.md` summarize it.
 
@@ -13,149 +13,215 @@ This file is the authoritative progress ledger for the repository. `README.md` a
 - `v0.0 — Architecture / Feasibility` — complete.
 - `M1 — Engineering Foundation` — complete.
 - `M2 — Walking Skeleton` — complete.
+- `M3 — Canonical Project/Repository State` — complete.
 
-M2's trusted exact-main production proof passed in workflow run `33840149005`: unauthenticated `/api/run` was rejected, owner login succeeded, authenticated production execution crossed real Ollama -> Loren ActionGateway -> real GitHub read -> Ollama final response, and owner-visible correlated audit completed. Owner/provider credentials were absent from the response and `/internal/dev/run` remained `404` in Production.
-
-No GitHub write path exists yet.
+No GitHub write path exists yet. Gate D remains mandatory before external writes.
 
 ---
 
-# Current milestone — M3 Canonical State
+# M2 completion summary
 
-## Goal
+M2's trusted exact-main production proof passed in workflow run `33840149005`:
 
-Give Loren durable, provider-independent Project/Repository identity and feed that state into runtime as a small prepared context rather than database access.
+```text
+owner auth
+ -> authenticated /api/run
+ -> real Ollama
+ -> Loren ActionGateway
+ -> real GitHub read
+ -> final model answer
+ -> correlated owner-visible audit
+```
 
-Acceptance identity:
+Owner/provider credentials were absent from the response and `/internal/dev/run` remained unavailable in Production.
+
+---
+
+# M3 completion evidence
+
+## Slice 1 — Canonical identity + persistence [COMPLETE]
+
+PR #15 merged at:
+
+```text
+00fbba08587ba8275c121fd7f9532a785f55314d
+```
+
+Exact-head CI run `33842440251` / #99 — **PASS**.
+
+Delivered:
+
+- Loren-owned `ProjectId` and `RepositoryId`;
+- `Project`, `Repository`, `RepositoryLocator`, aliases, `ProjectSnapshot`;
+- provider/EF-neutral `IProjectCatalog` in `Loren.Core`;
+- SQLite + EF Core `10.0.11` persistence in `Loren.Infrastructure`;
+- production schema + initial migration `202609040001_InitialCanonicalState`;
+- real SQLite restart tests;
+- normalized alias collision fails closed;
+- repeated update behavior covered;
+- external GitHub locator stored as integration metadata rather than Loren primary identity.
+
+Acceptance:
 
 ```text
 "wedding project"
 "web đám cưới"
 "wedding-online"
-        |
-        v
-same Loren ProjectId
-        |
-        v
-canonical RepositoryId
-        |
-        v
-integration locator: github / rua-den/wedding-online
+ -> same Loren ProjectId
+ -> Repository locator rua-den/wedding-online
 ```
 
-This mapping must survive process/database-context restart and must not depend on provider conversation/session identity.
+## Slice 2 — Deterministic alias resolution + prepared context [COMPLETE]
 
-## M3 Slice 1 — Canonical identity + persistence [COMPLETE]
+PR #16 merged at:
 
-Merged PR: `#15`  
-Main commit: `00fbba08587ba8275c121fd7f9532a785f55314d`  
-Exact-head CI: run `33842440251` / run #99 — **PASS**
+```text
+56fd988d3b74c754604355e3c97a5d3656675bbb
+```
+
+Evidence:
+
+- implementation CI run `33843033700` / #102 — **PASS**;
+- final PR exact-head CI run `33843405386` / #108 — **PASS**;
+- post-merge main CI run `33843524467` / #109 — **PASS**.
 
 Delivered:
 
-- Loren-owned `ProjectId` and `RepositoryId` backed by stable GUID values;
-- canonical `Project`, `Repository`, `RepositoryLocator`, normalized aliases, and `ProjectSnapshot`;
-- provider/EF-neutral `IProjectCatalog` in `Loren.Core`;
-- EF Core SQLite `10.0.11` only in `Loren.Infrastructure`;
-- production `Projects`, `ProjectAliases`, and `Repositories` schema;
-- initial production migration `202609040001_InitialCanonicalState`;
-- `SqliteProjectCatalog` persistence/query boundary;
-- deterministic restart acceptance using a real temporary SQLite database;
-- three configured aliases resolving to the same Loren Project after restart;
-- external GitHub locator stored as integration metadata rather than canonical primary identity;
-- normalized alias collision fails closed;
-- repeated update of one canonical project in the same context is covered.
-
-CI #99 passed restore, zero-warning build, deterministic tests, format, secret scan, dependency vulnerability scan, and web/auth smoke checks.
-
-## M3 Slice 2 — Deterministic alias resolution + prepared context [IMPLEMENTED / PR #16]
-
-Current PR: `#16 — feat: add M3 canonical prepared project context`
-
-Implementation candidate now provides:
-
 ```text
-owner request + optional exact projectAlias
-        |
-        v
-Loren.Web / IProjectCatalog
-        |
-        +-- unknown alias -> fail closed before model
-        |
-        v
-ProjectSnapshot
-        |
-        v
-small trusted configured system context
-        |
-        v
-AgentLoop -> IBrain
+owner request + optional projectAlias
+ -> IProjectCatalog
+ -> ProjectSnapshot
+ -> small prepared BrainContext
+ -> AgentLoop / IBrain
 ```
 
 Properties:
 
-- production host wires a scoped `CanonicalStateDbContext` and `IProjectCatalog`;
-- canonical database is migrated at host startup;
-- `/api/run` accepts optional `projectAlias` without breaking message-only M2 callers;
-- alias lookup occurs before the brain runs;
-- unknown configured project alias returns `404` and does not invoke the brain;
-- runtime/brain receive only prepared `BrainContext`, never EF/DbContext;
-- prepared context explicitly distinguishes configured canonical identity from live external facts;
-- current external facts must still come from authorized tools;
-- owner console exposes project alias and displays resolved canonical Project/Repository metadata;
-- real-SQLite restart tests prove all three aliases produce the same prepared project context;
-- deterministic fake-brain integration proves the prepared context reaches `AgentLoop`/`IBrain`.
+- canonical DB migrates at host startup;
+- `/api/run` accepts optional `projectAlias`;
+- exact configured alias resolves before model execution;
+- unknown alias fails with `404` before the brain runs;
+- runtime/brain never receive EF `DbContext`;
+- prepared context contains Loren-owned Project/Repository identity and external locator metadata;
+- prepared context explicitly says configured identity is not live external state;
+- current GitHub facts still require authorized tools;
+- owner console can submit an alias and inspect resolved canonical metadata;
+- real-SQLite restart tests and deterministic fake-brain tests prove the path.
 
-Pre-doc exact-head implementation CI run `33843033700` / run #102 passed build, tests, format, secret scan, dependency scan, and web/auth smoke. Because this PR also synchronizes documentation/configuration, the final PR head must pass CI again before merge.
+Current product limitation remains: a fresh DB contains no Project records and owner-facing Project CRUD/configuration UI is not implemented yet.
 
-### Current limitation
+## Slice 3 — Gate C [COMPLETE]
 
-A fresh canonical database contains no Projects. M3 currently proves the persistence/resolution/context boundary but does **not** add owner-facing Project CRUD/configuration UI. Explicitly configured canonical data is required before the Project alias field can resolve anything.
+Decision: [`ADR-003 — Canonical State and Memory Lifecycle`](decisions/003-canonical-state-and-memory-lifecycle.md).
 
-Canonical database configuration:
+Gate C locks:
+
+- opaque Loren-owned GUID IDs;
+- explicit EF Core migration policy;
+- Project/Repository canonical schema boundary;
+- durable-memory source/trust classes;
+- append/supersede correction semantics;
+- memory deletion versus audit retention separation;
+- logical portable export versioning independent from EF schema versioning.
+
+Required memory source classes:
 
 ```text
-file: loren.db
-default directory: OS local application data / Loren
-override directory: LOREN_DATA_DIRECTORY
-migration: automatic at host startup
+OWNER_EXPLICIT
+OWNER_CORRECTION
+VERIFIED_TOOL
+OWNER_APPROVED_INFERENCE
+MODEL_INFERENCE
+EXTERNAL_CONTENT
 ```
 
-## M3 Slice 3 — Gate C checkpoint [NEXT]
+First portable export direction uses logical `format_version = 1`; raw SQLite copies may be backups but are not the portable contract.
 
-Before M4 expands memory, lock/document:
+**Gate C PASSED. M3 COMPLETE.**
 
-- canonical ID rules and serialization format;
-- SQLite/EF migration policy;
-- Project/Repository schema boundary;
-- durable-memory source/trust classes;
-- correction/supersession direction;
-- memory versus audit deletion distinction;
-- export format versioning approach.
+---
 
-A new storage ADR is required only if persistence becomes materially more complex than the accepted SQLite/EF Core baseline.
+# Current milestone — M4 Trusted Durable Memory
 
-## M3 non-goals
+## Goal
 
-Do not add `Person`, `Task`, `Decision`, `Preference`, a generic graph, memory semantics, permission semantics, or GitHub writes merely because the schema could support them.
+Give Loren durable memory with provenance/authority, correction, deletion semantics, restart survival, and safe prepared retrieval — without turning transcripts, model guesses, or hostile external content into owner truth.
+
+## First vertical slice
+
+```text
+Owner: "Nhớ wedding-online là web đám cưới của tao."
+        |
+        v
+OWNER_EXPLICIT MemoryRecord
+        |
+Project scope + provenance
+        |
+SQLite persistence
+        |
+restart
+        |
+trusted retrieval
+        |
+small prepared memory context
+```
+
+Initial implementation target:
+
+- Loren-owned `MemoryRecordId`;
+- `MemoryRecord` canonical model;
+- source class enum/type from ADR-003;
+- Project/Repository scope references where applicable;
+- content + timestamps + provenance/source reference;
+- current/superseded lifecycle representation;
+- EF migration + persistence/query boundary outside `Loren.Core`;
+- owner-explicit save/restart/retrieve acceptance test.
+
+## Required M4 follow-up behavior
+
+### Correction
+
+```text
+old OWNER_EXPLICIT record
+ -> owner correction
+ -> new OWNER_CORRECTION record
+ -> old record superseded
+ -> current-truth query returns correction
+```
+
+### Poisoning resistance
+
+`MODEL_INFERENCE` and `EXTERNAL_CONTENT` cannot silently become current owner-authoritative memory or policy.
+
+### Retrieval
+
+The brain receives a small provenance-bearing memory package; it does not receive raw database access.
+
+## M4 non-goals
+
+Do not add GitHub writes, broad vector infrastructure, generic graph entities, scheduler/background behavior, or v0.2 research capabilities while implementing the memory core.
 
 ## Next execution sequence
 
 ```text
-PR #16 final exact-head CI
- -> merge M3 Slice 2
- -> M3 Slice 3 / Gate C checkpoint
- -> M3 COMPLETE
- -> M4 Trusted Memory
+NOW
+MemoryRecord + source authority model
+ -> SQLite migration/persistence
+ -> OWNER_EXPLICIT save + Project scope
+ -> restart-safe retrieval
+ -> correction/supersession
+ -> poisoning tests
+ -> prepared memory context
+ -> M4 exit gate
 ```
 
 ## Progress-update rule
 
-Any merge that changes capability, milestone completion, ADR status, validated dependencies/providers, or the next execution target must synchronize:
+Any merge that changes capability, milestone completion, ADR status, validated dependencies/providers, or next execution target must synchronize:
 
 1. `docs/status.md`;
 2. `README.md`;
 3. `README.vi.md`;
-4. the relevant ADR/plan when a decision or milestone changes.
+4. relevant ADRs/plans/roadmap.
 
 A milestone is not closed until implementation/tests and repository documentation agree.

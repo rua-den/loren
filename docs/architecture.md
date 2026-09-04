@@ -1,357 +1,238 @@
 # Loren Architecture
 
-**Status:** Active baseline. Core ownership is accepted in ADR-001; the v0.1 provider-neutral technology stack is accepted in ADR-002.
+**Status:** Active baseline. ADR-001, ADR-002, and ADR-003 are accepted.
 
 ## Architectural objective
 
 Loren owns stable personal state, context, policy, and action authorization while treating language models, MCP, vendor APIs, UI clients, and execution runtimes as replaceable infrastructure.
 
-The key distinction is:
-
 > **The model is the reasoning brain. Loren is the stateful system that gives that brain identity, memory, context, tools, and boundaries.**
 
-## Top-level architecture
+## Current v0.1 architecture
 
 ```text
-                        Interfaces
-             Web / Mobile / Voice / Messaging
-                           |
-                           v
-                    +-------------+
-                    | Loren Host  |
-                    +------+------+ 
-                           |
-                           v
-                 +-------------------+
-                 |   Loren Runtime   |
-                 |-------------------|
-                 | context assembly  |
-                 | bounded agent loop|
-                 | task/run state    |
-                 +----+---------+----+
-                      |         |
-                      |         v
-                      |     +--------+
-                      |     | IBrain |
-                      |     +---+----+
-                      |         |
-                      |   Ollama / OpenAI /
-                      |   future cloud/local
-                      |
-                      v
-                ActionRequest
-                      |
-                      v
-               +--------------+
-               |Action Gateway|
-               +--+-------+---+
-                  |       |
-             policy/      | audit
-             approval     |
-                  |       |
-                  v       v
-             +----------------+
-             | Controlled     |
-             | Executors      |
-             +-------+--------+
-                     |
-              secret resolution
-                     |
-        +------------+-------------+
-        |            |             |
-        v            v             v
-      GitHub        MCP         direct APIs
-                                 / systems
-
-         +--------------------------------+
-         |       Loren-owned state        |
-         |--------------------------------|
-         | Identity                       |
-         | Projects / world model         |
-         | Memory + provenance            |
-         | Permission rules               |
-         | Audit history                  |
-         | Integration metadata           |
-         +--------------------------------+
-```
-
-## Boundary 1 — Loren-owned state
-
-These concepts must remain usable even if the brain provider, MCP implementation, UI, or external runtime is replaced.
-
-### Identity
-
-Stable Loren behavior, operating rules, owner relationship, communication preferences, and policy defaults.
-
-### Personal world model
-
-Structured anchors for the owner's world. v0.1 intentionally starts small:
-
-```text
-Owner
-Project
-Repository
-```
-
-Later versions may add entities such as Person, Device, Place, Service, Environment, Decision, Procedure, Event, or Task only when real workflows justify them.
-
-Example:
-
-```text
-Project:wedding-online
-  alias -> "web đám cưới"
-  repository -> GitHub:rua-den/wedding-online
-```
-
-The world model gives Loren stable referents for phrases such as "that project" or "the wedding site". It does not replace memory.
-
-### Memory
-
-Durable knowledge and experience with provenance, trust/source classes, correction, and forgetting. See `memory.md` and the v0.1 plan.
-
-### Permissions
-
-Policies describing which actions are allowed, denied, or approval-gated. Authorization is deterministic application behavior, not an LLM decision. See `permissions.md`.
-
-### Audit history
-
-Append-oriented records of important runs, action requests, policy decisions, approvals, executions, verifications, failures, and memory mutations.
-
-## Boundary 2 — Brain
-
-A brain is a replaceable reasoning provider behind Loren's `IBrain` boundary.
-
-Conceptual contract:
-
-```text
-IBrain.Think(context, available_actions) -> BrainTurnResult
-```
-
-A brain may:
-
-- interpret user intent;
-- reason over supplied context;
-- select/request an action;
-- use structured tool results;
-- produce a final response.
-
-A brain may **not**:
-
-- authorize itself;
-- receive raw privileged tool credentials as ordinary context;
-- directly mutate Loren canonical state outside controlled services;
-- define Loren's durable identity.
-
-v0.1 supports provider adapters rather than one privileged provider. The first real M0 behavior proof passed with native Ollama Cloud (`gpt-oss:120b`), while the OpenAI adapter remains optional. Future adapters may use other cloud or local models without changing Loren-owned state or action contracts.
-
-## Boundary 3 — Loren runtime
-
-The runtime is deliberately small. It coordinates a turn/task but does not own Loren's durable identity.
-
-v0.1 responsibilities:
-
-- build the brain context;
-- call configured `IBrain`;
-- receive final output or structured action requests;
-- route action requests to the Action Gateway;
-- append structured action results back to the brain context;
-- stop on final output, cancellation, error, or hard loop limit;
-- maintain correlation/run IDs.
-
-Conceptual loop:
-
-```text
-prepare context
--> brain turn
--> final answer OR ActionRequest
--> Action Gateway
--> ActionResult
--> brain turn
--> ... bounded ...
-```
-
-Do not build generic workflow/orchestration features until Loren has a concrete use for them.
-
-## Boundary 4 — Action Gateway
-
-The Action Gateway is the security-critical boundary between reasoning and side effects.
-
-Flow:
-
-```text
+Owner Web UI
+    |
+    v
+Loren.Web
+  auth/session
+  request/API surface
+  canonical context preparation
+    |
+    +-------> IProjectCatalog
+    |             |
+    |             v
+    |       Loren.Infrastructure
+    |       SQLite + EF Core
+    |       canonical state
+    |
+    v
+small prepared BrainContext
+    |
+    v
+Loren.Runtime / AgentLoop
+    |
+    +-------> IBrain -> Ollama/OpenAI/future provider
+    |
+    v
 ActionRequest
     |
     v
-schema validation
+ActionGateway
+  -> policy
+  -> audit
+  -> controlled executor
     |
     v
-policy evaluation
-    |
-    +--> deny
-    |
-    +--> request owner approval
-    |
-    v
-controlled executor
-    |
-    v
-postcondition verification
-    |
-    v
-ActionResult + audit
+GitHub / MCP / direct APIs
 ```
 
-No privileged integration may have an alternate route that bypasses this gateway.
+## Boundary 1 — Loren-owned canonical state
 
-## Boundary 5 — Skills, tools, MCP, and APIs
+State must remain usable if the brain provider, provider session, MCP implementation, UI, or external runtime is replaced.
 
-Loren has an internal action model independent of any one tool protocol.
+### Canonical IDs
 
-Each action should describe at least:
+ADR-003 locks v0.1 durable identity to opaque Loren-owned GUID values.
 
-- stable action name;
-- human-readable description;
-- typed input/output contract;
-- external target/resource;
-- side-effect characteristics;
-- policy metadata;
-- verification strategy when consequential.
+Rules:
 
-Execution may come from:
+- never derive Loren IDs from GitHub names, provider/session IDs, paths, usernames, or display names;
+- canonical IDs are immutable;
+- import/restore preserves IDs;
+- external IDs/names are integration metadata only.
+
+### Current world model
+
+M3 intentionally implemented only:
 
 ```text
-Loren-native adapter
-direct vendor API
-MCP client/server
-future desktop/computer-use adapter
-future external runtime/service
+Project
+  -> aliases
+  -> Repository*
+
+Repository
+  -> Loren RepositoryId
+  -> ProjectId
+  -> integration locator (provider / external namespace / name)
 ```
 
-### MCP rule
+Project aliases are normalized canonical referents. Repository locators tell Loren where to fetch external state; they are not a cache of live GitHub truth.
 
-MCP is an integration protocol, not Loren's brain and not Loren's authorization model.
+Additional `Person`, `Task`, `Decision`, `Preference`, `Device`, or generic graph entities are deferred until a real product flow requires them.
 
-MCP tool definitions/results should be normalized into Loren action contracts. Provider-managed remote MCP must not be used for privileged actions if doing so would bypass Loren's Action Gateway or credential boundary.
+### Canonical persistence
 
-## Boundary 6 — Credentials and secrets
+v0.1 uses SQLite + EF Core in `Loren.Infrastructure`.
 
-Canonical memory stores opaque credential references only.
+- explicit checked-in EF migrations;
+- production host runs `MigrateAsync` at startup;
+- no `EnsureCreated` for production canonical state;
+- real SQLite migration/restart tests;
+- `Loren.Core` contains no EF/SQLite types;
+- portable export versioning is independent from EF schema versioning.
 
-Preferred execution flow:
+The current database file is `loren.db`, under the OS local application-data `Loren` directory unless `LOREN_DATA_DIRECTORY` overrides the directory.
+
+## Boundary 2 — Context preparation
+
+The application/host layer resolves canonical references before the brain runs.
+
+M3 prepared-context path:
+
+```text
+owner message + optional configured projectAlias
+    |
+IProjectCatalog.FindByAliasAsync
+    |
+    +--> unknown -> fail closed before brain
+    |
+ProjectSnapshot
+    |
+small system context with ProjectId / RepositoryId / locator
+    |
+AgentLoop
+```
+
+The prepared context explicitly distinguishes configured identity from live external facts. The model must use authorized tools to fetch current GitHub state.
+
+Runtime and brain adapters never receive `DbContext` or arbitrary database access.
+
+## Boundary 3 — Memory
+
+M4 adds durable knowledge behind ADR-003 source/lifecycle semantics.
+
+Required source classes:
+
+```text
+OWNER_EXPLICIT
+OWNER_CORRECTION
+VERIFIED_TOOL
+OWNER_APPROVED_INFERENCE
+MODEL_INFERENCE
+EXTERNAL_CONTENT
+```
+
+Owner correction supersedes prior current owner truth. Verified tool data is authoritative for observed external facts at verification time but cannot create owner policy. Model inference and external content cannot silently promote themselves into trusted owner state.
+
+Corrections are append/supersede, and ordinary memory deletion is separate from audit retention. See [`memory.md`](memory.md) and ADR-003.
+
+## Boundary 4 — Brain
+
+`IBrain` is replaceable compute. It may interpret intent, reason over supplied context, request actions, consume structured results, and return final output.
+
+It may not:
+
+- authorize itself;
+- directly mutate canonical state outside Loren-owned services;
+- receive raw privileged tool credentials as ordinary context;
+- define durable identity;
+- receive raw database access.
+
+Provider SDK/API types remain outside `Loren.Core`.
+
+## Boundary 5 — Runtime
+
+The runtime is deliberately small:
+
+```text
+prepared BrainContext
+-> IBrain
+-> final answer OR ActionRequest
+-> ActionGateway
+-> ActionResult
+-> append observation
+-> bounded repeat
+```
+
+Hard turn/action/cancellation limits belong to Loren and are testable with fake providers. The runtime does not own durable identity or persistence.
+
+## Boundary 6 — Action Gateway
+
+The Action Gateway remains the mandatory security boundary between model reasoning and external side effects.
+
+```text
+ActionRequest
+ -> schema/registration validation
+ -> policy evaluation
+ -> deny / approval / allow
+ -> controlled executor
+ -> postcondition verification for consequential writes
+ -> ActionResult + audit
+```
+
+No privileged integration may bypass it. M3 adds no GitHub write capability; Gate D must pass before the first real write.
+
+## Boundary 7 — Skills, MCP, and external APIs
+
+Loren owns the internal action contract. MCP/direct APIs/native adapters are execution mechanisms behind it.
+
+MCP is an integration protocol, not Loren's brain or authorization model. Provider-managed MCP must never become a path around ActionGateway or Loren credential boundaries.
+
+## Boundary 8 — Credentials
+
+Secrets live outside canonical memory/context.
 
 ```text
 brain/runtime
-    |
-ActionRequest
-    |
-Action Gateway
-    |
-authorized executor
-    |
-Secret Resolver
-    |
-external system
+ -> ActionRequest (no secret)
+ -> ActionGateway
+ -> controlled executor
+ -> Secret Resolver
+ -> external system
 ```
 
-Write-capable secrets should be readable only by the narrow executor boundary that needs them.
+Provider credentials are adapter configuration. Future write-capable tool secrets must be readable only by the narrow executor that needs them.
 
-Provider credentials are also adapter configuration, not canonical Loren memory. M0 demonstrated that provider keys can stay masked/outside action payloads while live tool calling still works.
+## Audit and deletion boundary
 
-## Boundary 7 — Events and proactivity
+Audit is append-oriented evidence; memory is owner-controlled knowledge. A memory forget operation does not silently delete audit history.
 
-v0.1 is user-driven. Later versions may ingest events such as:
+Audit retention/redaction/purge is an explicit separate operation. Sensitive payloads should be minimized/redacted so retained audit does not become a credential or private-content archive.
 
-```text
-schedule
-GitHub webhook
-calendar
-email
-server monitoring
-Home Assistant
-manual task
-```
+## Export/recovery boundary
 
-Events eventually normalize into an internal envelope, but an event never grants authorization by itself.
+Portable recovery uses a Loren-owned logical export with its own `format_version`, canonical IDs, and referential integrity. A raw SQLite copy may be a backup but is not the portable canonical contract.
 
-```text
-Event {
-  id
-  source
-  type
-  occurred_at
-  entity_refs
-  payload_ref
-  sensitivity
-}
-```
-
-Background/proactive execution requires the dedicated gates in `docs/plans/master-plan.md`.
-
-## Boundary 8 — Interfaces
-
-Interfaces are thin clients over the same Loren core.
-
-Expected progression:
-
-1. v0.1 web interface;
-2. mobile-friendly/PWA;
-3. optional messaging channels;
-4. push-to-talk voice;
-5. device nodes / ambient interfaces.
-
-Switching interface must not create separate memory, policy, or identity systems.
-
-## Data ownership rules
-
-1. Durable Loren state has a canonical owner-controlled store.
-2. Provider/runtime session state is integration metadata/cache, not canonical personal state.
-3. Secrets are referenced, not embedded in memories or prompts.
-4. Sensitive tool outputs need retention/redaction rules.
-5. Canonical state must have a versioned export/restore path.
-6. External/provider-specific identifiers never become Loren primary identity.
+First planned logical format: `format_version = 1`, with manifest + projects/repositories + future memory/permission/audit data. Raw secrets are excluded.
 
 ## Reliability principles
 
-### Bounded loops
+- **Bounded loops:** hard turn/action/cancellation limits.
+- **Fail closed:** ambiguous authorization/reference resolution does not execute.
+- **Check before act:** fetch current mutable state before important writes.
+- **Verify after act:** consequential writes confirm postconditions.
+- **Recoverable state:** provider/runtime failure or session deletion does not destroy canonical state.
+- **Idempotency:** consequential retries use operation identifiers where practical.
 
-Every agent run has hard cancellation/tool-call/turn/runtime limits.
+## Current accepted decisions
 
-### Idempotency
+- **ADR-001:** Loren-owned core with replaceable adapters.
+- **ADR-002:** .NET 10 / ASP.NET Core / Loren-owned bounded loop / provider-neutral `IBrain` / SQLite+EF Core / Blazor / xUnit baseline.
+- **ADR-003:** opaque canonical IDs, EF migration policy, Project/Repository boundary, memory source classes, append/supersede correction, memory-vs-audit deletion distinction, and logical export versioning.
 
-Consequential actions should use operation/idempotency identifiers where practical so retry does not duplicate effects.
+## Next decision gate
 
-### Check before act
+**Gate D — Action/credential policy** must pass before GitHub writes. It will settle approval binding/replay, write credential resolution/scope/redaction/rotation, and global read-only enforcement.
 
-Fetch current mutable state before important writes when stale context could make the action unsafe.
-
-### Verify after act
-
-Consequential writes must confirm explicit postconditions instead of assuming success.
-
-### Fail closed
-
-If Loren cannot determine authorization, it does not execute the action.
-
-### Recoverable state
-
-A model/provider/runtime failure must not destroy canonical Loren state. Export/wipe/restore is a v0.1 release requirement.
-
-## Current decisions
-
-- **ADR-001 — Accepted:** Loren-owned core with replaceable brain/runtime/tool adapters.
-- **ADR-002 — Accepted:** .NET 10 / ASP.NET Core / thin Loren agent loop / provider-neutral `IBrain` / MCP C# adapter / SQLite+EF Core / Blazor / xUnit for v0.1.
-- **M0 brain proof:** Ollama Cloud native `/api/chat`, `gpt-oss:120b`, live ActionGateway round trip and cancellation passed.
-
-## Remaining major decisions
-
-Resolve them only when they are about to become expensive to reverse:
-
-- exact credential store/auth method for GitHub writes;
-- canonical schema/deletion/export rules before memory/write workflows stabilize;
-- long-term canonical storage if SQLite stops being sufficient;
-- background scheduler/event model before private proactive work;
-- trusted-device model before mobile/voice;
-- standing-permission model before proactive autonomy;
-- additional provider routing when real usage justifies it.
-
-See `docs/plans/master-plan.md` for the version gates that control these decisions.
+Background execution, trusted devices/voice, and proactive autonomy remain later gates in `docs/plans/master-plan.md`.
