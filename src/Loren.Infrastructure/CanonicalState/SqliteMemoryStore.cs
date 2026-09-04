@@ -102,11 +102,13 @@ public sealed class SqliteMemoryStore : IMemoryStore
             .Where(memory =>
                 memory.ProjectId == projectId.Value
                 && memory.SupersededById == null)
-            .OrderBy(memory => memory.CreatedAt)
-            .ThenBy(memory => memory.Id)
             .ToArrayAsync(cancellationToken);
 
-        return rows.Select(Map).ToArray();
+        return rows
+            .OrderBy(memory => memory.CreatedAt)
+            .ThenBy(memory => memory.Id)
+            .Select(Map)
+            .ToArray();
     }
 
     private static MemoryRecord Map(MemoryRecordRow row) => new(
