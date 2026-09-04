@@ -2,9 +2,9 @@
 
 **Status:** Active planning baseline  
 **Current phase:** `v0.1 — Trustworthy Core development`  
-**Current milestone:** `M2 — Walking Skeleton`
+**Current milestone:** `M3 — Canonical Project/Repository State`
 
-This document is the top-level delivery plan for Loren. The roadmap is **capability-driven, not date-driven**. Versions advance only when their trust/usefulness exit gates pass.
+This is Loren's top-level delivery plan. The roadmap is **capability-driven, not date-driven**. Versions advance only when their trust/usefulness exit gates pass.
 
 ---
 
@@ -47,7 +47,7 @@ agent-loop implementation details
 MCP servers
 vendor APIs
 UI clients
-database engine (after migration)
+database engine after migration
 computer-use/device runtimes
 notification channels
 ```
@@ -67,7 +67,7 @@ notification channels
 
 ```text
 v0.0   architecture / feasibility        ✓ complete
-v0.1   trustworthy core                 <- current development / M2
+v0.1   trustworthy core                 <- current development / M3
 v0.2   useful project assistant
 v0.3   personal operations
 v0.4   voice + device presence
@@ -108,30 +108,22 @@ Blazor Web App
 xUnit
 ```
 
-M0 passed a trusted real-provider regression using native Ollama Cloud `/api/chat` with `gpt-oss:120b`:
+M0 proved provider/tool/MCP/persistence/host feasibility. M1 rebuilt production code behind Loren-owned interfaces. M2 then proved the real authenticated production read path end to end.
 
-```text
-real model
- -> ActionRequest(get_project_status)
- -> Loren ActionGateway
- -> structured ActionResult
- -> real model final response
- -> PASS
-```
+## Gate C — Canonical storage and memory schema [ACTIVE PREPARATION]
 
-The same trusted run passed provider cancellation, MCP, SQLite/EF recovery, and ASP.NET/Blazor host checks. Secrets remained masked. OpenAI remains an optional adapter; provider-specific billing/quota does not define Loren's architecture gate.
-
-## Gate C — Canonical storage and memory schema [before v0.1 write workflows stabilize]
-
-Must settle:
+Must settle before broad memory/write workflows stabilize:
 
 - canonical database schema/migration policy;
+- stable Loren ID rules;
 - durable-memory source/trust classes;
 - correction/supersession semantics;
 - export/restore versioning;
 - retention/deletion behavior for memory versus audit.
 
-A dedicated ADR is required if storage becomes more complex than the initial SQLite/EF Core choice.
+M3 is responsible for making the Project/Repository storage boundary concrete enough to close this gate before M4 expands memory.
+
+A dedicated ADR is required if storage becomes materially more complex than the accepted SQLite/EF Core baseline.
 
 ## Gate D — Action/credential policy [before first real external write]
 
@@ -146,52 +138,21 @@ Must settle:
 
 No write-capable integration may ship before this gate passes.
 
-## Gate E — Background execution [before scheduler/events become trusted]
+## Gate E — Background execution [before trusted scheduler/background operations]
 
-Required before v0.3 background operations or v0.5 proactive behavior:
-
-- persistent job model;
-- timezone/missed-run semantics;
-- bounded retry/backoff;
-- cancellation;
-- quotas;
-- notification policy;
-- task ownership and visibility;
-- safe restart/resume semantics.
+Must settle persistent job ownership/state, timezone/missed-run semantics, bounded retry/backoff, cancellation, quotas, notification policy, and safe restart/resume behavior.
 
 ## Gate F — Trusted devices and voice approval [before v0.4]
 
-Must settle:
-
-- trusted-device enrollment/revocation;
-- session/device identity;
-- voice privacy/data retention;
-- actions that can never rely on weak voice-only confirmation;
-- remote-access transport/authentication.
+Must settle trusted-device enrollment/revocation, session/device identity, voice privacy/retention, remote-access transport, and actions that can never rely on weak voice-only confirmation.
 
 ## Gate G — Proactive autonomy [before v0.5]
 
-Must settle:
-
-- standing-permission representation;
-- event trust model;
-- notification prioritization/rate limits;
-- background cost/tool/runtime quotas;
-- self-created task limits;
-- global pause and incident controls;
-- prompt-injection tests for event-driven workflows.
+Must settle standing permissions, event trust, notification/rate limits, quotas, self-created-task bounds, global pause, and event/prompt-injection testing.
 
 ## Gate H — v1 stable contract [before v1.0]
 
-Must settle and document:
-
-- canonical export/restore compatibility policy;
-- supported upgrade/migration path;
-- stable core action/brain/skill interfaces;
-- backup/recovery procedure;
-- secret rotation/revocation procedure;
-- operational monitoring and incident procedure;
-- minimum privacy/security baseline for daily personal data.
+Must settle export/restore compatibility, upgrade/migration path, stable core interfaces, backup/recovery, secret rotation/revocation, operational monitoring/incident procedure, and minimum privacy/security baseline.
 
 ---
 
@@ -199,26 +160,13 @@ Must settle and document:
 
 ## v0.0 — Architecture and feasibility [COMPLETE]
 
-### Goal
-
-Prove Loren has a coherent ownership boundary and an implementable v0.1 stack.
-
-### Completed milestones
+Completed:
 
 - M0.1 product vision and architecture baseline;
 - M0.2 agent/runtime landscape research;
-- M0.3 ADR-001 accepted: Loren-owned core/runtime boundary;
+- M0.3 ADR-001 accepted;
 - M0.4 ADR-002 provider-neutral technical validation;
 - M0.5 v0.1 plan and repository engineering/progress rules finalized.
-
-### Exit evidence
-
-- Gate A passed;
-- Gate B passed;
-- provider-neutral brain/tool round trip proven in a disposable spike;
-- live provider cancellation proven;
-- MCP/persistence/host feasibility proven;
-- no blocking architecture question remains for production scaffolding.
 
 **Transition completed:** `v0.0 -> v0.1 development` on 2026-09-03.
 
@@ -244,8 +192,8 @@ Create the smallest Loren that remembers project context, reads real GitHub stat
 ### Milestones
 
 - **M1 engineering foundation — COMPLETE**;
-- **M2 walking skeleton: owner -> brain -> Action Gateway -> GitHub read -> audit — ACTIVE**;
-- M3 canonical project/repository state;
+- **M2 walking skeleton: owner -> brain -> Action Gateway -> GitHub read -> audit — COMPLETE**;
+- **M3 canonical project/repository state — ACTIVE**;
 - M4 trusted durable memory + correction/retrieval;
 - M5 action/credential boundary + narrow GitHub writes;
 - M6 minimal daily-use UI;
@@ -254,11 +202,76 @@ Create the smallest Loren that remembers project context, reads real GitHub stat
 
 ### M1 completion evidence
 
-M1 established the first production scaffold with .NET SDK `10.0.400`, provider-neutral Core contracts, a bounded Runtime loop, deterministic xUnit/Microsoft Testing Platform tests, central dependency versions, development documentation, and CI gates for restore/build/test/format/secret/dependency/health checks.
+M1 established the production scaffold with .NET SDK `10.0.400`, provider-neutral Core contracts, bounded Runtime loop, deterministic tests, central dependency versions, development documentation, and CI gates for restore/build/test/format/secret/dependency/health checks.
 
-`Loren.Core` remains free of provider, MCP, EF Core, ASP.NET Core, and Blazor package dependencies. Production project count is deliberately smaller than the conceptual target and will expand only when real vertical slices justify new boundaries.
+### M2 completion evidence
 
-### Exit gate
+M2 completed on 2026-09-04.
+
+Main implementation commit:
+
+```text
+94ce6d1e74f2dfdf0584b8dbf8a4edbbb3774f7d
+```
+
+Main CI run `33840135772` passed restore/build/test/format/secret/dependency/auth smoke checks.
+
+Trusted exact-main workflow run `33840149005` proved:
+
+```text
+unauthenticated /api/run -> 401
+owner login -> authenticated cookie session
+authenticated /api/run
+ -> real Ollama gpt-oss:120b
+ -> ActionRequest(github.read_repository)
+ -> Loren ActionGateway / ReadOnlyActionPolicy
+ -> real GitHub GET rua-den/loren
+ -> structured ActionResult
+ -> Ollama final answer
+ -> correlated owner-visible audit
+```
+
+Observed result:
+
+```text
+runId:       5bb9cc341387430c82759d58309da85a
+turns:       2
+actionCount: 1
+final:       rua-den/loren / main
+```
+
+Audit passed `ActionRequested -> PolicyEvaluated -> ActionCompleted`, ending in `succeeded`. Owner/provider credentials were absent from the owner-visible response and the temporary development run route remained unavailable in Production.
+
+This closes the M2 architecture gate: the first owner-testable Loren preview is proven on the normal production owner path.
+
+### M3 active target
+
+Build only the minimum provider-independent world model required by v0.1:
+
+```text
+Owner
+Project
+Repository
+MemoryRecord
+PermissionRule
+AuditEvent
+```
+
+M3 starts with the canonical Project/Repository identity and persistence pieces only.
+
+Acceptance target:
+
+```text
+"wedding project"
+"web đám cưới"
+"wedding-online"
+ -> same Loren Project
+ -> Repository rua-den/wedding-online
+```
+
+The mapping must survive Loren restart and provider-session deletion.
+
+### v0.1 exit gate
 
 Do not tag v0.1 until:
 
@@ -286,190 +299,80 @@ Do not tag v0.1 until:
 
 ## v0.2 — Useful Project Assistant
 
-### Goal
+Goal: make the trusted v0.1 core useful for richer daily project work.
 
-Turn the trustworthy v0.1 core into something useful for daily project planning/research without yet expanding deeply into private personal systems.
+Candidate milestones/capabilities:
 
-### Candidate capabilities
-
-- public web research with provenance/citations;
-- controlled promotion of research into project memory/decisions;
-- persistent one-time reminders and lightweight scheduler;
-- richer Project/Decision/Procedure records only where needed;
-- project health summaries from GitHub;
-- reusable project operating procedures;
-- improved memory retrieval and conflict resolution;
+- safe public web retrieval with provenance and SSRF/private-network controls;
+- research -> sourced conclusion -> explicit trusted-memory promotion;
+- persistent reminders/light scheduler;
+- project decisions/procedures;
+- richer GitHub project health summaries;
+- improved memory retrieval/conflict handling;
 - cost/token/run visibility;
-- additional provider/local-model validation only when real use justifies it.
+- optional additional provider/local-model validation when useful.
 
-### Milestones
+Exit requires sourced research and persistent reminders to remain inspectable, bounded, cancellable, and unable to self-grant trusted permissions/memory.
 
-- M2.1 safe web retrieval boundary including SSRF/private-network controls;
-- M2.2 research -> sourced conclusion -> explicit memory promotion flow;
-- M2.3 persistent reminder scheduler with timezone/restart/cancel semantics;
-- M2.4 procedural/project decision memory;
-- M2.5 daily project workflow hardening and UX.
-
-### Exit gate
-
-v0.2 is complete when Loren can repeatedly:
-
-```text
-research a project question
--> cite current sources
--> distinguish source fact from memory
--> remember an approved conclusion
--> recall the decision later
-
-schedule a project reminder
--> survive restart
--> execute once at the correct local time
--> remain visible/cancellable/auditable
-```
-
-Additionally:
-
-- web content cannot grant tool permissions or trusted personal memory;
-- scheduler retries are bounded;
-- project workflow can be used daily without direct DB/admin manipulation.
-
-**Checkpoint before v0.3:** Gate E must pass for any background work that will touch private integrations.
+**Checkpoint before private background operations:** Gate E.
 
 ---
 
 ## v0.3 — Personal Operations
 
-### Goal
+Candidate milestones/capabilities:
 
-Expand Loren from project intelligence into a controlled personal digital operator.
+- personal-data classification and connector credential scopes;
+- Calendar;
+- Gmail read/search/draft before tightly gated send;
+- server/VPS read health then constrained actions;
+- filesystem integration;
+- cross-tool context minimization/redaction;
+- daily brief / personal ops UX.
 
-### Candidate capabilities
+Private data handling, connector failure, and consequential writes must remain within the same permission/audit boundaries established earlier.
 
-- Gmail read/search/draft first; sending remains tightly gated;
-- Google Calendar read/create/update;
-- server/VPS health and constrained operational actions;
-- richer filesystem integration;
-- notifications;
-- cross-tool project context;
-- project-aware/day-aware brief;
-- stronger credential scopes and integration health status.
-
-### Milestones
-
-- M3.1 personal-data classification and connector credential scopes;
-- M3.2 Calendar integration;
-- M3.3 Gmail integration;
-- M3.4 server/VPS read health path, then constrained write actions;
-- M3.5 cross-tool context minimization/redaction;
-- M3.6 daily brief / personal ops UX.
-
-### Exit gate
-
-- private data is sent to brain providers only according to data policy;
-- read/write scopes are separated where practical;
-- cross-tool answers preserve provenance;
-- sending/modifying external systems remains understandable and approval-bound;
-- background operations are visible and cancellable;
-- connector failure cannot corrupt canonical Loren state.
-
-**Checkpoint before v0.4:** Gate F must pass.
+**Checkpoint before v0.4:** Gate F.
 
 ---
 
 ## v0.4 — Voice and Device Presence
 
-### Goal
+Candidate milestones/capabilities:
 
-Make Loren conveniently available away from the desktop while preserving the same core identity, memory, and permission system.
-
-### Candidate capabilities
-
-- installable PWA/mobile-friendly UI;
+- trusted-device/session model;
+- mobile/PWA interface;
 - push-to-talk;
-- speech-to-text;
-- text-to-speech;
-- trusted device enrollment;
+- speech-to-text and TTS;
 - notification actions;
-- optional desktop/device node;
-- optional messaging channel adapter.
+- device revocation/lost-device testing;
+- optional desktop/device node.
 
-### Milestones
+Voice must never create a second memory/policy path or become sufficient authorization for high-risk actions.
 
-- M4.1 trusted-device/session model;
-- M4.2 push-to-talk voice path;
-- M4.3 TTS response path;
-- M4.4 mobile/PWA approval UX;
-- M4.5 device revocation and lost-device test;
-- M4.6 optional desktop/device-node capability boundary.
-
-### Exit gate
-
-- voice never creates a separate memory/policy path;
-- sensitive audio retention policy is explicit;
-- privileged approvals require sufficient device/user assurance;
-- lost/revoked devices lose access promptly;
-- critical actions are not authorized merely because a voice sounded like the owner.
-
-**Checkpoint before v0.5:** Gate G must pass.
+**Checkpoint before v0.5:** Gate G.
 
 ---
 
 ## v0.5 — Proactive Loren
 
-### Goal
+Candidate milestones/capabilities:
 
-Allow Loren to notice meaningful events and perform bounded background work under explicit standing policy.
+- normalized event ingestion;
+- proactive evaluator with no write authority by default;
+- notification prioritization/rate limiting;
+- tiny allowlisted standing permissions;
+- bounded recurring/background tasks;
+- active-task visibility and global pause/kill switch;
+- adversarial event/prompt-injection suite.
 
-### Candidate capabilities
-
-- event bus/envelope;
-- GitHub/webhook watchers;
-- calendar preparation;
-- server health triggers;
-- email-derived follow-up candidates;
-- recurring workflows;
-- background research;
-- proactive notifications;
-- policy-controlled standing actions;
-- global pause/kill switch.
-
-### Milestones
-
-- M5.1 normalized event ingestion;
-- M5.2 proactive evaluator with no write authority by default;
-- M5.3 notification prioritization/rate limiting;
-- M5.4 standing permissions for a tiny allowlisted action set;
-- M5.5 bounded recurring/background tasks;
-- M5.6 kill switch, incident mode, active-task visibility;
-- M5.7 adversarial event/prompt-injection suite.
-
-### Exit gate
-
-- event content cannot grant itself authorization;
-- background tasks have visible owner, state, quota, and cancellation;
-- false-positive notification rate is acceptable in real use;
-- standing permissions are inspectable and revocable;
-- global pause works even when a runtime/provider is unhealthy;
-- no recursive/self-created task pattern can grow without bounds.
+Background work must remain owned, visible, bounded, cancellable, and unable to recursively create unbounded work.
 
 ---
 
 ## v0.6+ — Daily-use hardening
 
-Do not pre-design these versions in detail. Use actual Loren usage to decide what deserves promotion.
-
-Likely themes:
-
-- better memory consolidation;
-- richer world model only from demonstrated needs;
-- additional brain providers/local models;
-- Home Assistant;
-- desktop/computer use;
-- more skills/integrations;
-- performance/cost optimization;
-- improved offline/private execution;
-- UX refinement;
-- packaging/deployment simplification.
+Do not pre-design deeply. Let actual use determine priorities: memory consolidation, more providers/local models, Home Assistant, computer use, more integrations, offline/private execution, cost/performance, UX, and packaging/deployment simplification.
 
 Each new high-risk capability gets its own ADR/gate rather than silently entering the core.
 
@@ -477,24 +380,11 @@ Each new high-risk capability gets its own ADR/gate rather than silently enterin
 
 ## v1.0 — Stable Personal Daily Driver
 
-v1.0 does **not** mean Loren has every Jarvis feature. It means the core product can be trusted as the owner's long-lived assistant and can evolve without casually losing state or bypassing security boundaries.
+v1.0 means Loren's core can be trusted as the owner's long-lived assistant and can evolve without casually losing state or bypassing security boundaries.
 
-### Minimum v1.0 properties
+Minimum properties include stable daily-use workflows, tested backup/export/restore/migration, upgrade continuity, stable brain/action/skill interfaces, secret rotation/revocation, reliable controls for trusted devices/background work, reconstructable audit, integration-failure isolation, replaceable model/provider, and documented privacy/security defaults.
 
-- daily-use workflows are demonstrably useful;
-- canonical state has tested backup/export/restore and migration procedures;
-- upgrades preserve identity/memory/policy;
-- core brain/action/skill contracts are stable enough for maintained adapters;
-- secret rotation/revocation is documented and tested;
-- trusted devices and background work have reliable controls;
-- audit/incident tooling can reconstruct consequential behavior;
-- external integrations can fail without destroying Loren's core state;
-- model/provider replacement is possible behind the brain boundary;
-- security/privacy defaults are documented rather than implicit.
-
-### v1.0 release gate
-
-Gate H must pass and Loren must have been used as a real daily driver long enough for failure modes to come from observed operation, not only synthetic tests.
+Gate H must pass before release.
 
 ---
 
@@ -505,12 +395,12 @@ For every milestone:
 1. define the user-visible or architecture behavior being proven;
 2. define acceptance tests before broad implementation;
 3. build the smallest vertical slice that proves it;
-4. keep provider/framework SDK types outside Loren.Core;
-5. add audit/observability with the capability, not months later;
-6. update ADRs when a previously open architectural choice becomes expensive to reverse;
+4. keep provider/framework SDK types outside `Loren.Core`;
+5. add audit/observability with the capability;
+6. update ADRs when a choice becomes expensive to reverse;
 7. do not add adjacent features merely because a framework makes them easy;
-8. finish with tests/build/lint and document any known gaps;
-9. synchronize `docs/status.md`, README EN/VI, and relevant plans/ADRs with implementation progress.
+8. finish with tests/build/format/static checks and document known gaps;
+9. synchronize `docs/status.md`, README EN/VI, roadmap, and relevant plans/ADRs with implementation progress.
 
 A milestone is complete only when its acceptance criteria pass on the main integration path.
 
@@ -535,27 +425,26 @@ Fix the boundary first, then continue.
 
 # 8. Current next action
 
-The project is currently at **v0.1 / M2 — Walking Skeleton**.
+The project is currently at **v0.1 / M3 — Canonical Project/Repository State**.
 
 ```text
-production IBrain adapter + fake brain
+stable Loren canonical IDs
         |
-github.read_repository action/executor
+Project + Repository domain model
         |
-Loren ActionGateway read path
+SQLite / EF Core persistence + migration
         |
-correlation IDs + minimal audit
+project aliases + deterministic resolver
         |
-one-owner auth + minimal UI
+restart/provider-session independence tests
         |
-        v
-M2 acceptance flow
+runtime prepared-context integration
         |
-        v
-"Loren, check repo rua-den/loren."
+M3 acceptance flow
         |
-        v
-FIRST OWNER-TESTABLE LOREN PREVIEW
+Gate C checkpoint
+        |
+M4 Trusted Memory
 ```
 
 Do not implement v0.2 capabilities before the v0.1 exit gate is satisfied.
