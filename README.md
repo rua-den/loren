@@ -119,10 +119,12 @@ Delivered:
 
 - typed `ActionAccessClass`: `READ`, `REVERSIBLE_WRITE`, `EXTERNAL_WRITE`, `PRIVILEGED_WRITE`;
 - trusted `ActionAuthorizationContext` carrying canonical Project/Repository target outside model-visible action arguments;
+- model-visible action arguments and trusted normalized target data are defensive immutable snapshots, preventing TOCTOU mutation between approval fingerprinting and executor use;
 - deterministic SHA-256 action-intent fingerprint over action/access/canonical target/owner/normalized target/model arguments;
 - Loren-owned `ApprovalId`, `ActionApproval`, and provider-neutral `IActionApprovalStore`;
 - `GateDActionPolicy` and an ActionGateway invariant requiring approval for every non-read action even if a permissive policy accidentally returns `Allow`;
-- exact one-time approval consume before executor invocation;
+- executor registration is checked before consuming approval, so host misconfiguration cannot burn an otherwise valid approval;
+- exact one-time approval consume immediately before executor invocation;
 - missing, expired, revoked, mismatched, unknown, or replayed approvals fail closed;
 - model-visible `approvalId` text has no authority;
 - SQLite `ActionApprovals` via migration `202609040003_AddActionApprovals`;
@@ -138,7 +140,10 @@ LOREN_ENABLE_WRITES=true -> eligible writes may reach approval evaluation
 Slice 1 still has no GitHub mutation executor
 ```
 
-Implementation head `15a2b2c4c853324a546a55d13da22d94d4ac5765` passed CI #172 / `33898878125`: zero-warning Ubuntu build, all tests, format, secret scan, dependency scan, web/auth smoke, and Windows integration.
+Validation:
+
+- base implementation head `15a2b2c4c853324a546a55d13da22d94d4ac5765`, CI #172 / `33898878125` — Ubuntu full gate + Windows integration **PASS**;
+- self-review hardening head `5ed9049eeedf3210f1df13a0c8735b67d7e4766e`, CI #186 / `33900018499` — immutable approved-intent snapshots + no approval burn without executor; Ubuntu full gate + Windows integration **PASS**.
 
 One important rule is intentional: approval is consumed before the first consequential executor attempt. An independent retry after failure or ambiguity needs fresh approval, preventing one approval from becoming a replay token.
 
