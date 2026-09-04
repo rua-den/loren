@@ -15,6 +15,8 @@ public sealed class CanonicalStateDbContext : DbContext
 
     internal DbSet<RepositoryRow> Repositories => Set<RepositoryRow>();
 
+    internal DbSet<MemoryRecordRow> MemoryRecords => Set<MemoryRecordRow>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         CanonicalStateModel.Configure(modelBuilder);
@@ -77,6 +79,38 @@ internal static class CanonicalStateModel
                 })
                 .IsUnique();
         });
+
+        modelBuilder.Entity<MemoryRecordRow>(entity =>
+        {
+            entity.ToTable("MemoryRecords");
+            entity.HasKey(memory => memory.Id);
+            entity.Property(memory => memory.SourceClass).HasMaxLength(64).IsRequired();
+            entity.Property(memory => memory.Content).IsRequired();
+            entity.Property(memory => memory.SourceReference).HasMaxLength(1000);
+            entity.Property(memory => memory.CreatedAt).IsRequired();
+            entity.Property(memory => memory.UpdatedAt).IsRequired();
+            entity.HasIndex(memory => new { memory.ProjectId, memory.SupersededById });
+            entity.HasIndex(memory => memory.RepositoryId);
+            entity.HasIndex(memory => memory.SupersededById);
+
+            entity
+                .HasOne<ProjectRow>()
+                .WithMany()
+                .HasForeignKey(memory => memory.ProjectId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity
+                .HasOne<RepositoryRow>()
+                .WithMany()
+                .HasForeignKey(memory => memory.RepositoryId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity
+                .HasOne<MemoryRecordRow>()
+                .WithMany()
+                .HasForeignKey(memory => memory.SupersededById)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
     }
 }
 
@@ -125,4 +159,25 @@ internal sealed class RepositoryRow
     public DateTimeOffset UpdatedAt { get; set; }
 
     public ProjectRow? Project { get; set; }
+}
+
+internal sealed class MemoryRecordRow
+{
+    public Guid Id { get; set; }
+
+    public string SourceClass { get; set; } = string.Empty;
+
+    public string Content { get; set; } = string.Empty;
+
+    public Guid? ProjectId { get; set; }
+
+    public Guid? RepositoryId { get; set; }
+
+    public string? SourceReference { get; set; }
+
+    public Guid? SupersededById { get; set; }
+
+    public DateTimeOffset CreatedAt { get; set; }
+
+    public DateTimeOffset UpdatedAt { get; set; }
 }

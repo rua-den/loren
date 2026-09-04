@@ -2,6 +2,7 @@ using Loren.Brain.Ollama;
 using Loren.Core.Actions;
 using Loren.Core.Audit;
 using Loren.Core.Brains;
+using Loren.Core.Memories;
 using Loren.Core.Projects;
 using Loren.Infrastructure.Audit;
 using Loren.Infrastructure.CanonicalState;
@@ -40,6 +41,7 @@ public static class LorenHostServices
         services.AddDbContext<CanonicalStateDbContext>(options =>
             options.UseSqlite(connectionStringBuilder.ConnectionString));
         services.AddScoped<IProjectCatalog, SqliteProjectCatalog>();
+        services.AddScoped<IMemoryStore, SqliteMemoryStore>();
         services.AddScoped<LorenProjectContextBuilder>();
 
         services.AddSingleton<InMemoryAuditSink>();

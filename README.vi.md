@@ -31,19 +31,13 @@ Loren là một hệ thống trí tuệ cá nhân sống lâu dài, có memory b
 - **M2:** Walking Skeleton hoàn tất; first owner-testable Loren preview đã được chứng minh.
 - **M3:** Canonical Project/Repository State hoàn tất.
 
+Gate C PR #17 đã pass exact-head CI #110 / run `33860095412` và merge tại `69223e8c4923510bb26fa50f77a3c44c1683b172`.
+
 Chi tiết chuẩn: [`docs/status.md`](docs/status.md).
 
 ## M3 đã chứng minh gì
 
-M3 Slice 1 merge qua PR #15 tại `00fbba08587ba8275c121fd7f9532a785f55314d`. M3 Slice 2 merge qua PR #16 tại `56fd988d3b74c754604355e3c97a5d3656675bbb`.
-
-Validation:
-
-- Slice 1 exact-head CI #99 / run `33842440251` — PASS;
-- Slice 2 final PR exact-head CI #108 / run `33843405386` — PASS;
-- Slice 2 post-merge main CI #109 / run `33843524467` — PASS.
-
-Canonical identity path:
+M3 tạo durable Project/Repository identity độc lập provider và prepared context cho runtime.
 
 ```text
 "wedding project"
@@ -60,32 +54,11 @@ canonical RepositoryId
 github locator: rua-den/wedding-online
 ```
 
-Runtime path:
-
-```text
-Owner request + optional exact Project alias
-        |
-        v
-IProjectCatalog
-        |
-        v
-SQLite / EF Core canonical state
-        |
-        v
-ProjectSnapshot
-        |
-        v
-small prepared BrainContext
-        |
-        v
-AgentLoop -> IBrain -> authorized tools
-```
-
-Alias không tồn tại fail trước khi model chạy. Runtime và brain adapter không nhận EF `DbContext`. Project/Repository identity được cấu hình là trusted canonical context, nhưng current external facts vẫn phải fetch qua authorized tools.
+Alias không tồn tại fail trước khi model chạy. Runtime và brain adapter không nhận EF `DbContext`. Project/Repository identity được cấu hình là trusted canonical context, còn current external facts vẫn phải lấy qua authorized tools.
 
 ## Gate C / ADR-003
 
-Trước khi bắt đầu durable memory code, Loren đã lock:
+Trước khi code durable memory, Loren đã lock:
 
 - opaque Loren-owned GUID IDs;
 - explicit EF Core migration policy;
@@ -93,7 +66,7 @@ Trước khi bắt đầu durable memory code, Loren đã lock:
 - memory source/trust classes;
 - append/supersede correction;
 - memory deletion tách khỏi audit retention;
-- logical export format versioning độc lập EF schema migrations.
+- logical export `format_version = 1` độc lập EF schema migrations.
 
 Các durable-memory source class bắt buộc:
 
@@ -108,30 +81,46 @@ EXTERNAL_CONTENT
 
 Xem [`ADR-003`](docs/decisions/003-canonical-state-and-memory-lifecycle.md) và [`docs/memory.md`](docs/memory.md).
 
-## Mục tiêu M4 hiện tại
+## M4 Slice 1 — owner-explicit memory persistence
 
-M4 xây durable memory trên đúng trust rules đó.
-
-Vertical flow đầu tiên:
+PR #18 hiện đã implement candidate storage slice đầu tiên của durable memory:
 
 ```text
-Owner: "Nhớ wedding-online là web đám cưới của tao."
+OWNER_EXPLICIT durable fact
         |
         v
-OWNER_EXPLICIT MemoryRecord
+MemoryRecord + Loren-owned MemoryRecordId
         |
-Project scope + provenance
+Project / Repository scope + provenance
         |
-SQLite persistence
+        v
+IMemoryStore
+        |
+SQLite / EF Core
         |
 restart
         |
-trusted retrieval
-        |
-small prepared memory context
+        v
+cùng memory ID + authority + scope
 ```
 
-Sau đó M4 phải chứng minh owner correction/supersession và `MODEL_INFERENCE` / `EXTERNAL_CONTENT` không thể tự biến thành owner truth hay policy.
+Candidate hiện có:
+
+- canonical `MemoryRecordId` và `MemoryRecord` trong `Loren.Core`;
+- đủ 6 source class của ADR-003;
+- Project/Repository scope, source reference, timestamps và supersession pointer;
+- EF-neutral `IMemoryStore` chỉ có add/get/current-project retrieval;
+- không có generic content update API;
+- migration `202609040002_AddMemoryRecords`;
+- SQLite `MemoryRecords` với FK tới Project/Repository và self-supersession;
+- fail-closed nếu Repository scope không thuộc Project scope;
+- real SQLite restart acceptance cho một record `OWNER_EXPLICIT`.
+
+Implementation CI #113 / run `33860641367` đã **PASS** restore, zero-warning build, tests, format, secret scan, dependency scan và web/auth smoke.
+
+PR #18 chưa được tính complete cho tới khi final exact-head CI trên head đã sync docs pass và PR được merge.
+
+Cố ý chưa làm trong Slice 1: correction/supersession mutation, prepared memory context cho runtime, memory write UI/API, forget/delete hay automatic model-driven memory promotion.
 
 ## Canonical storage
 
@@ -180,14 +169,12 @@ xUnit / Microsoft Testing Platform
 ## Tiếp theo
 
 ```text
-M4 Slice 1
-MemoryRecord + source authority model
- -> SQLite migration/persistence
- -> OWNER_EXPLICIT save + Project scope
- -> restart-safe retrieval
- -> correction/supersession
- -> poisoning tests
- -> prepared memory context
+PR #18 final exact-head CI
+ -> merge M4 Slice 1
+ -> M4 Slice 2 owner correction + supersession
+ -> M4 Slice 3 authority-aware prepared memory context
+ -> M4 Slice 4 forget/delete
+ -> M4 Slice 5 poisoning/trust acceptance
  -> M4 exit gate
 ```
 
