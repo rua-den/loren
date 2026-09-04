@@ -30,64 +30,61 @@ Completed:
 - **M1:** engineering foundation complete.
 - **M2:** Walking Skeleton complete.
 - **M3:** Canonical Project/Repository State complete.
-- **M4 Slice 1:** canonical OWNER_EXPLICIT memory persistence complete.
+- **M4 Slice 1:** OWNER_EXPLICIT durable persistence complete.
+- **M4 Slice 2:** owner correction + supersession complete.
 
 Detailed status: [`docs/status.md`](docs/status.md).
 
-## M4 Slice 1 — durable owner-explicit memory [COMPLETE]
-
-PR #18 merged at `78adc287f7ae3744352b7019e3b8a838a5de499e`.
-
-Validation:
-
-- implementation CI #113 / run `33860641367` — PASS;
-- final exact-head CI #117 / run `33860985267` — PASS;
-- post-merge main CI #118 / run `33861089270` — PASS.
-
-Slice 1 established:
+## M4 memory path today
 
 ```text
 OWNER_EXPLICIT durable fact
- -> Loren-owned MemoryRecordId / MemoryRecord
+ -> canonical MemoryRecord / MemoryRecordId
  -> Project / Repository scope + provenance
- -> EF-neutral IMemoryStore
- -> SQLite / EF Core migration
- -> restart
- -> same memory ID + authority + scope
-```
+ -> SQLite / EF Core
+ -> restart-safe retrieval
 
-The canonical store uses migration `202609040002_AddMemoryRecords`. Repository-scoped memory fails closed if the Repository does not belong to the supplied Project. There is deliberately no generic content-update API.
-
-## M4 Slice 2 — owner correction + supersession
-
-PR #19 currently implements explicit correction semantics:
-
-```text
-old current memory
- -> CorrectAsync(oldId, OWNER_CORRECTION)
- -> append new correction
+owner correction
+ -> OWNER_CORRECTION replacement
  -> old.SupersededById = new.Id
- -> one SQLite transaction
- -> current query returns new record only
- -> old -> new history remains reconstructable
+ -> one transaction
+ -> current retrieval returns correction only
+
+current Project request
+ -> current memory retrieval
+ -> authority-aware filtering + hard bounds
+ -> prepared Loren memory package
+ -> BrainContext
 ```
 
-The correction boundary requires:
+### Slice 1 [COMPLETE]
 
-- `OWNER_CORRECTION` source authority;
-- a new canonical MemoryRecordId;
-- an existing/current target;
-- identical Project/Repository scope;
-- non-regressing lifecycle timestamp;
-- no duplicate correction ID.
+PR #18 merged at `78adc287f7ae3744352b7019e3b8a838a5de499e` after final CI #117 / run `33860985267`; post-merge main CI #118 / run `33861089270` also passed.
 
-Old content is not rewritten. Invalid model-source, changed-scope, or stale-target corrections fail without partial inserts.
+### Slice 2 [COMPLETE]
 
-Real SQLite tests prove the correction chain survives restart and default current retrieval excludes the superseded record. Implementation CI #119 / run `33861345949` is **PASS** across restore, zero-warning build, tests, format, secret scan, dependency scan, and web/auth smoke.
+PR #19 merged at `201b83eff0c6c3143856e348b4c9f029cc14a8b1`. Implementation CI #119 / run `33861345949` and final exact-head CI #123 / run `33861630472` passed.
 
-PR #19 is not complete until the documentation-synchronized final exact-head CI passes and the PR merges.
+Correction is explicit append + supersede. Old content is preserved, stale/scope-changing/non-owner correction attempts fail closed, and no generic destructive memory-update API exists.
 
-## Gate C / durable-memory authority classes
+### Slice 3 [IMPLEMENTED / PR #20 FINAL GATE]
+
+PR #20 adds application-owned prepared memory context:
+
+- `OWNER_CORRECTION`, `OWNER_EXPLICIT`, `OWNER_APPROVED_INFERENCE`, and `VERIFIED_TOOL` can enter the default prepared model context;
+- `MODEL_INFERENCE` and `EXTERNAL_CONTENT` are excluded by default;
+- superseded records are excluded before preparation;
+- authority ordering is deterministic;
+- record count and total content characters are hard-bounded before model execution;
+- MemoryRecordId, scope, provenance/source reference, and timestamps remain inspectable;
+- memory payload is explicitly data, not action authorization or a policy override;
+- verified-tool facts are not treated as automatically current external state.
+
+Real SQLite + fake-brain tests prove correction reaches the brain while superseded and poison-marker records do not. Implementation CI #127 / run `33864695658` at `179a203d6c3d11ff85eb8529d4107ae2edc7f720` is **PASS** across restore, zero-warning build, all tests, format, secret scan, dependency scan, and web/auth smoke.
+
+PR #20 still needs the documentation-synchronized final exact-head CI before merge.
+
+## Durable-memory source classes
 
 ```text
 OWNER_EXPLICIT
@@ -98,7 +95,7 @@ MODEL_INFERENCE
 EXTERNAL_CONTENT
 ```
 
-ADR-003 also locks append/supersede correction, memory deletion separate from audit retention, and logical export `format_version = 1` independently from EF migrations.
+ADR-003 locks append/supersede correction, memory deletion separate from audit retention, and logical export `format_version = 1` independently from EF migrations.
 
 ## Canonical storage
 
@@ -134,9 +131,8 @@ Do not commit real secrets. Use HTTPS or a trusted TLS-terminating reverse proxy
 ## Next
 
 ```text
-PR #19 final exact-head CI
- -> merge M4 Slice 2
- -> M4 Slice 3 authority-aware prepared memory context
+PR #20 final exact-head CI
+ -> merge M4 Slice 3
  -> M4 Slice 4 forget/delete
  -> M4 Slice 5 poisoning/trust acceptance
  -> M4 exit gate
