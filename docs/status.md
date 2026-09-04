@@ -105,17 +105,19 @@ Delivered:
 
 - `ActionAccessClass`: `READ`, `REVERSIBLE_WRITE`, `EXTERNAL_WRITE`, `PRIVILEGED_WRITE`, with legacy `IsReadOnly` compatibility;
 - trusted `ActionAuthorizationContext` carrying canonical `ProjectId`, `RepositoryId`, repository locator, owner principal reference, and normalized target outside model-visible action arguments;
+- model-visible `ActionRequest.Arguments` and trusted normalized target dictionaries are defensively copied into immutable/frozen snapshots so approved intent cannot be changed between fingerprinting and executor use;
 - deterministic SHA-256 `ActionIntentFingerprint` binding action/access class, canonical target, owner principal, normalized target fields, and sorted model arguments;
 - Loren-owned `ApprovalId`, `ActionApproval`, lifecycle/status types, and EF-neutral `IActionApprovalStore`;
 - `GateDActionPolicy`: reads allowed, privileged writes denied, missing trusted canonical context denied, global read-only denied, eligible writes require approval;
 - `ActionGateway` independently requires approval for every non-read action even if a permissive policy accidentally returns `Allow`;
-- exact fingerprint recomputation + atomic approval consume before executor invocation;
+- executor registration is confirmed before approval consumption, so a host misconfiguration cannot burn a valid approval without an executor attempt;
+- exact fingerprint recomputation + atomic approval consume immediately before executor invocation;
 - missing/expired/revoked/mismatched/replayed approval fails closed;
 - model-visible text such as an `approvalId` argument cannot substitute for trusted `ActionExecutionRequest.ApprovalId`;
 - `ApprovalEvaluated` audit event without secret payloads;
 - SQLite `ActionApprovals` persistence via migration `202609040003_AddActionApprovals`;
 - atomic compare-and-consume so concurrent attempts have exactly one winner;
-- restart, expiry, revocation, mismatch, replay, concurrent-consume, policy-bypass, and fake-model-approval acceptance tests;
+- restart, expiry, revocation, mismatch, replay, concurrent-consume, policy-bypass, fake-model-approval, mutable-input TOCTOU, and missing-executor acceptance tests;
 - permanent canonical migration-drift regression test comparing the EF migration snapshot with the current design-time model;
 - production host uses `GateDActionPolicy`, scoped approval persistence/gateway/runtime composition, and fail-closed `LOREN_ENABLE_WRITES` semantics.
 
@@ -132,10 +134,10 @@ Important non-replay rule: approval is consumed before the first consequential e
 Implementation validation:
 - earlier CI runs correctly exposed CA1859 and then an EF migration-model drift;
 - the migration-drift diagnostic isolated the mismatch to `ActionApprovals.RevokedAtUnixMs` and the EF model metadata was corrected rather than suppressing the warning;
-- implementation head `15a2b2c4c853324a546a55d13da22d94d4ac5765`;
-- CI #172 / `33898878125` — zero-warning Ubuntu build, all tests, format, secret scan, dependency scan, web/auth smoke **PASS**; Windows integration **PASS**.
+- base implementation head `15a2b2c4c853324a546a55d13da22d94d4ac5765`, CI #172 / `33898878125` — Ubuntu full gate + Windows integration **PASS**;
+- self-review hardening head `5ed9049eeedf3210f1df13a0c8735b67d7e4766e`, CI #186 / `33900018499` — immutable approved-intent snapshots + no approval burn without executor; Ubuntu full gate + Windows integration **PASS**.
 
-PR #25 must still pass its final exact-head CI after documentation synchronization before merge. Slice 1 is complete when this changeset is present on `main`.
+PR #25 must still pass its final exact-head CI after this documentation synchronization before merge. Slice 1 is complete when this changeset is present on `main`.
 
 ## M5 Slice 2 — credential boundary [NEXT]
 
