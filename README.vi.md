@@ -19,22 +19,88 @@ Loren là một hệ thống trí tuệ cá nhân sống lâu dài, có memory b
 
 **Cập nhật:** 2026-09-04  
 **Phase:** `v0.1 — Trustworthy Core development`  
-**Milestone hiện tại:** `M2 — Walking Skeleton`
+**Milestone hiện tại:** `M3 — Canonical State`
 
-Đã hoàn tất hoặc đã implement:
+Đã hoàn tất:
 
-- **Gate A / ADR-001:** Loren sở hữu canonical identity/state/policy/action authorization.
-- **Gate B / ADR-002:** stack v0.1 provider-neutral đã accept; M0 hoàn tất.
-- **M1:** production engineering foundation hoàn tất.
-- **M2 Slice 1:** read-only ActionGateway + structured `github.read_repository` + Loren-owned run/action IDs + audit.
-- **M2 Slice 2:** production `OllamaBrain : IBrain` với typed action schema, observation replay, cancellation và provider-secret isolation.
-- **M2 Slice 3:** ASP.NET host production compose đầy đủ và deterministic production-component E2E.
-- **M2 Slice 4:** trusted exact-main live backend proof đã PASS qua Ollama Cloud thật và GitHub read thật.
-- **M2 Slice 5:** one-owner cookie auth, `/api/run` được bảo vệ, owner console tối thiểu và correlated audit hiển thị cho owner đã được implement.
+- **Gate A / ADR-001:** Loren-owned core/runtime boundary đã accept.
+- **Gate B / ADR-002:** stack v0.1 provider-neutral đã accept.
+- **M0:** technical feasibility proofs hoàn tất.
+- **M1:** engineering foundation hoàn tất.
+- **M2:** **Walking Skeleton hoàn tất.**
 
-Về hình dạng sản phẩm, M2 giờ đã có bản owner có thể tự dùng/test. Exit gate còn một lần trusted live proof cuối chạy qua **production owner path có authentication**; pass xong sẽ chuyển milestone active sang M3.
+Trusted exact-main production proof của M2 đã PASS ở run `33840149005` trên commit `94ce6d1e74f2dfdf0584b8dbf8a4edbbb3774f7d`:
+
+```text
+unauthenticated /api/run -> 401
+owner login -> 200 + cookie session
+authenticated /api/run
+ -> Ollama gpt-oss:120b
+ -> github.read_repository
+ -> real GitHub GET rua-den/loren
+ -> Ollama final answer
+ -> correlated owner-visible audit
+```
+
+Kết quả thật:
+
+```text
+runId:       5bb9cc341387430c82759d58309da85a
+turns:       2
+actionCount: 1
+final:       Repository rua-den/loren
+             Default branch: main
+```
+
+Audit đã PASS:
+
+```text
+ActionRequested -> PolicyEvaluated -> ActionCompleted
+requested       -> allow           -> succeeded
+```
+
+Workflow cũng kiểm tra owner/provider credential không xuất hiện trong response owner thấy được và `/internal/dev/run` vẫn trả `404` ở Production.
+
+**First owner-testable Loren preview: đã đạt.**
 
 Chi tiết chuẩn: [`docs/status.md`](docs/status.md).
+
+## Mục tiêu M3 hiện tại
+
+M3 đưa Project/Repository của Loren thành canonical state độc lập provider.
+
+```text
+cách owner gọi project / alias
+        |
+        v
+canonical Loren Project ID
+        |
+        v
+canonical Repository record
+        |
+        +--> integration metadata: GitHub owner/repo
+        |
+        v
+prepared runtime context / authoritative tool use
+```
+
+Acceptance target:
+
+```text
+"wedding project"
+"web đám cưới"
+"wedding-online"
+        |
+        v
+cùng một Loren Project
+        |
+        v
+rua-den/wedding-online
+```
+
+Mapping này phải sống qua restart và không phụ thuộc provider conversation/session.
+
+M3 cố ý giữ world model nhỏ. Chưa thêm generic graph hay các entity `Person`, `Task`, `Decision`, `Preference` nếu chưa có flow thật cần chúng.
 
 ## Stack v0.1 đã accept
 
@@ -52,71 +118,7 @@ Blazor Web App
 xUnit / Microsoft Testing Platform
 ```
 
-## Production path M2 hiện tại
-
-```text
-Owner browser
-        |
-        v
-/login -> one-owner cookie session
-        |
-        v
-protected owner console
-        |
-        v
-POST /api/run
-        |
-        v
-LorenRunService
-        |
-        v
-AgentLoop -> IBrain -> Ollama
-        |
-        v
-ActionRequest
-        |
-        v
-ActionGateway
-  -> ReadOnlyActionPolicy
-  -> Audit
-        |
-        v
-GitHubReadRepositoryExecutor
-        |
-        v
-real public GitHub GET
-        |
-        v
-structured result -> final answer -> owner-visible audit
-```
-
-Các invariant quan trọng đã implement/chứng minh:
-
-- mọi action đều phải đi qua Loren ActionGateway;
-- model không thể chọn trusted Loren run/action IDs;
-- action chưa đăng ký hoặc không read-only fail closed;
-- owner credential và provider credential không được đưa vào model-visible tool context;
-- owner console và `/api/run` bắt buộc authentication;
-- request `/api/*` chưa login fail bằng HTTP `401`;
-- owner session cookie là `HttpOnly`, `SameSite=Strict`;
-- transport Ollama và GitHub tách riêng;
-- `github.read_repository` không có GitHub write credential path;
-- route tạm `/internal/dev/run` mặc định không tồn tại và không phải normal owner path;
-- trusted validation có secret chỉ chạy sau exact-current-main guard.
-
-M2 chưa được phép có GitHub write path.
-
-## Chạy owner preview local
-
-Set secret trong process environment:
-
-```bash
-export LOREN_OWNER_PASSWORD='choose-a-local-owner-password'
-export OLLAMA_API_KEY='your-provider-secret'
-dotnet run --project src/Loren.Web/Loren.Web.csproj
-```
-
-PowerShell:
+## Chạy owner preview hiện tại local
 
 ```powershell
 $env:LOREN_OWNER_PASSWORD='choose-a-local-owner-password'
@@ -124,7 +126,7 @@ $env:OLLAMA_API_KEY='your-provider-secret'
 dotnet run --project src/Loren.Web/Loren.Web.csproj
 ```
 
-Sau đó mở root URL do ASP.NET Core in ra, login rồi chạy câu đã prefill:
+Sau đó mở root URL do ASP.NET Core in ra, login và chạy:
 
 ```text
 Loren, check repo rua-den/loren.
@@ -135,18 +137,19 @@ Không commit secret thật. Nếu expose host ra ngoài localhost thì phải d
 ## Tiếp theo
 
 ```text
-owner preview PR CI
- -> merge main
- -> trusted exact-main owner-authenticated live proof
- -> M2 COMPLETE / FIRST OWNER-TESTABLE LOREN PREVIEW
- -> M3 Canonical State
+M3 canonical IDs + Project/Repository schema
+ -> SQLite / EF Core persistence
+ -> alias resolution + restart tests
+ -> canonical Project/Repository context
+ -> Gate C checkpoint
+ -> M4 Trusted Memory
 ```
 
 ## Lộ trình version
 
 ```text
 v0.0  architecture / feasibility        ✓ hoàn tất
-v0.1  trustworthy core                 <- hiện tại / M2
+v0.1  trustworthy core                 <- hiện tại / M3
 v0.2  useful project assistant
 v0.3  personal operations
 v0.4  voice + device presence
