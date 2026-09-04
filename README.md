@@ -28,47 +28,66 @@ Completed:
 - **Gate C / ADR-003:** canonical state + memory lifecycle rules accepted.
 - **M0:** technical feasibility proofs complete.
 - **M1:** engineering foundation complete.
-- **M2:** Walking Skeleton complete; first owner-testable Loren preview proven.
+- **M2:** Walking Skeleton complete.
 - **M3:** Canonical Project/Repository State complete.
-
-Gate C PR #17 passed exact-head CI #110 / run `33860095412` and merged at `69223e8c4923510bb26fa50f77a3c44c1683b172`.
+- **M4 Slice 1:** canonical OWNER_EXPLICIT memory persistence complete.
 
 Detailed status: [`docs/status.md`](docs/status.md).
 
-## What M3 proved
+## M4 Slice 1 — durable owner-explicit memory [COMPLETE]
 
-M3 established durable provider-independent Project/Repository identity and a prepared runtime context.
+PR #18 merged at `78adc287f7ae3744352b7019e3b8a838a5de499e`.
+
+Validation:
+
+- implementation CI #113 / run `33860641367` — PASS;
+- final exact-head CI #117 / run `33860985267` — PASS;
+- post-merge main CI #118 / run `33861089270` — PASS.
+
+Slice 1 established:
 
 ```text
-"wedding project"
-"web đám cưới"
-"wedding-online"
-        |
-        v
-same Loren ProjectId
-        |
-        v
-canonical RepositoryId
-        |
-        v
-github locator: rua-den/wedding-online
+OWNER_EXPLICIT durable fact
+ -> Loren-owned MemoryRecordId / MemoryRecord
+ -> Project / Repository scope + provenance
+ -> EF-neutral IMemoryStore
+ -> SQLite / EF Core migration
+ -> restart
+ -> same memory ID + authority + scope
 ```
 
-Unknown aliases fail before model execution. Runtime and brain adapters never receive EF `DbContext`. Configured Project/Repository identity is trusted canonical context, while current external facts still require authorized tools.
+The canonical store uses migration `202609040002_AddMemoryRecords`. Repository-scoped memory fails closed if the Repository does not belong to the supplied Project. There is deliberately no generic content-update API.
 
-## Gate C / ADR-003
+## M4 Slice 2 — owner correction + supersession
 
-Before durable memory implementation, Loren locked:
+PR #19 currently implements explicit correction semantics:
 
-- opaque Loren-owned GUID IDs;
-- explicit EF Core migration policy;
-- Project/Repository canonical schema boundaries;
-- memory source/trust classes;
-- append/supersede corrections;
-- memory deletion versus audit retention;
-- logical export `format_version = 1` independent from EF schema migrations.
+```text
+old current memory
+ -> CorrectAsync(oldId, OWNER_CORRECTION)
+ -> append new correction
+ -> old.SupersededById = new.Id
+ -> one SQLite transaction
+ -> current query returns new record only
+ -> old -> new history remains reconstructable
+```
 
-Required durable-memory source classes:
+The correction boundary requires:
+
+- `OWNER_CORRECTION` source authority;
+- a new canonical MemoryRecordId;
+- an existing/current target;
+- identical Project/Repository scope;
+- non-regressing lifecycle timestamp;
+- no duplicate correction ID.
+
+Old content is not rewritten. Invalid model-source, changed-scope, or stale-target corrections fail without partial inserts.
+
+Real SQLite tests prove the correction chain survives restart and default current retrieval excludes the superseded record. Implementation CI #119 / run `33861345949` is **PASS** across restore, zero-warning build, tests, format, secret scan, dependency scan, and web/auth smoke.
+
+PR #19 is not complete until the documentation-synchronized final exact-head CI passes and the PR merges.
+
+## Gate C / durable-memory authority classes
 
 ```text
 OWNER_EXPLICIT
@@ -79,48 +98,7 @@ MODEL_INFERENCE
 EXTERNAL_CONTENT
 ```
 
-See [`ADR-003`](docs/decisions/003-canonical-state-and-memory-lifecycle.md) and [`docs/memory.md`](docs/memory.md).
-
-## M4 Slice 1 — owner-explicit memory persistence
-
-PR #18 currently implements the first durable-memory storage slice:
-
-```text
-OWNER_EXPLICIT durable fact
-        |
-        v
-MemoryRecord + Loren-owned MemoryRecordId
-        |
-Project / Repository scope + provenance
-        |
-        v
-IMemoryStore
-        |
-SQLite / EF Core
-        |
-restart
-        |
-        v
-same memory ID + authority + scope
-```
-
-Candidate capability includes:
-
-- canonical `MemoryRecordId` and `MemoryRecord` in `Loren.Core`;
-- all six ADR-003 source classes;
-- Project/Repository scope, source reference, timestamps, and supersession pointer;
-- EF-neutral `IMemoryStore` with only add/get/current-project retrieval;
-- no generic content update API;
-- migration `202609040002_AddMemoryRecords`;
-- SQLite `MemoryRecords` persistence with Project/Repository/self-supersession foreign keys;
-- fail-closed Project/Repository scope validation;
-- real SQLite restart acceptance for an `OWNER_EXPLICIT` record.
-
-Implementation CI #113 / run `33860641367` is **PASS** across restore, zero-warning build, tests, format, secret scan, dependency scan, and web/auth smoke.
-
-PR #18 is not considered complete until the final documentation-synchronized exact-head CI passes and the PR merges.
-
-Deliberately not in Slice 1: correction/supersession mutation, runtime prepared memory context, memory write UI/API, forget/delete, or automatic model-driven memory promotion.
+ADR-003 also locks append/supersede correction, memory deletion separate from audit retention, and logical export `format_version = 1` independently from EF migrations.
 
 ## Canonical storage
 
@@ -151,27 +129,13 @@ $env:OLLAMA_API_KEY='your-provider-secret'
 dotnet run --project src/Loren.Web/Loren.Web.csproj
 ```
 
-Do not commit real secrets. Use HTTPS or a trusted TLS-terminating reverse proxy when exposing the host beyond localhost. More details: [`docs/development.md`](docs/development.md).
-
-## Accepted v0.1 stack
-
-```text
-C# 14 / .NET 10 LTS
-ASP.NET Core
-small Loren-owned bounded agent loop
-provider-neutral IBrain
-MCP C# SDK behind Loren action contracts
-SQLite + EF Core
-Blazor Web App
-xUnit / Microsoft Testing Platform
-```
+Do not commit real secrets. Use HTTPS or a trusted TLS-terminating reverse proxy when exposing the host beyond localhost.
 
 ## Next
 
 ```text
-PR #18 final exact-head CI
- -> merge M4 Slice 1
- -> M4 Slice 2 owner correction + supersession
+PR #19 final exact-head CI
+ -> merge M4 Slice 2
  -> M4 Slice 3 authority-aware prepared memory context
  -> M4 Slice 4 forget/delete
  -> M4 Slice 5 poisoning/trust acceptance
@@ -193,21 +157,14 @@ v0.6+ real-use hardening
 v1.0  stable personal daily driver
 ```
 
-Versions advance by exit gates, not dates or code volume.
-
 ## Documentation
 
 - [`docs/status.md`](docs/status.md) — authoritative current progress
 - [`docs/development.md`](docs/development.md) — build/test/configuration guidance
-- [`docs/vision.md`](docs/vision.md) — product vision
 - [`docs/architecture.md`](docs/architecture.md) — active system boundaries
 - [`docs/plans/master-plan.md`](docs/plans/master-plan.md) — version milestones and gates
 - [`docs/plans/v0.1.md`](docs/plans/v0.1.md) — detailed v0.1 implementation plan
-- [`docs/decisions/001-agent-runtime-strategy.md`](docs/decisions/001-agent-runtime-strategy.md)
-- [`docs/decisions/002-v0.1-technology-stack.md`](docs/decisions/002-v0.1-technology-stack.md)
 - [`docs/decisions/003-canonical-state-and-memory-lifecycle.md`](docs/decisions/003-canonical-state-and-memory-lifecycle.md)
 - [`docs/memory.md`](docs/memory.md)
-- [`docs/permissions.md`](docs/permissions.md)
-- [`docs/security.md`](docs/security.md)
 
 This repository is the source of truth for Loren's product decisions, architecture, delivery plans, implementation, progress, and release history.
