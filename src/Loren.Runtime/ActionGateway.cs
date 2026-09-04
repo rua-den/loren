@@ -133,6 +133,23 @@ public sealed class ActionGateway : IActionGateway
                 cancellationToken);
         }
 
+        if (!_executors.TryGetValue(request.Name, out IActionExecutor? executor))
+        {
+            const string reason = "No executor is registered for the action.";
+            await AppendAuditAsync(
+                execution,
+                AuditEventKind.ActionCompleted,
+                "failed",
+                reason,
+                cancellationToken);
+
+            return new ActionResult(
+                request.Name,
+                false,
+                new Dictionary<string, string>(),
+                reason);
+        }
+
         bool requiresApproval =
             definition.AccessClass is not ActionAccessClass.Read
             || decision.Kind is PolicyDecisionKind.RequireApproval;
@@ -149,23 +166,6 @@ public sealed class ActionGateway : IActionGateway
             {
                 return approvalFailure;
             }
-        }
-
-        if (!_executors.TryGetValue(request.Name, out IActionExecutor? executor))
-        {
-            const string reason = "No executor is registered for the action.";
-            await AppendAuditAsync(
-                execution,
-                AuditEventKind.ActionCompleted,
-                "failed",
-                reason,
-                cancellationToken);
-
-            return new ActionResult(
-                request.Name,
-                false,
-                new Dictionary<string, string>(),
-                reason);
         }
 
         ActionResult result;
