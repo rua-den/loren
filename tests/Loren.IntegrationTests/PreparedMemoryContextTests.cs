@@ -212,10 +212,10 @@ public sealed class PreparedMemoryContextTests
             projectId,
             cancellationToken);
 
-        Assert.Equal(1, prepared.Included.Count);
-        Assert.Equal("OWNER_CORRECTION", prepared.Included[0].SourceClass);
-        Assert.Equal(40, prepared.Included[0].Content.Length);
-        Assert.EndsWith("…", prepared.Included[0].Content, StringComparison.Ordinal);
+        LorenMemoryContext included = Assert.Single(prepared.Included);
+        Assert.Equal("OWNER_CORRECTION", included.SourceClass);
+        Assert.Equal(40, included.Content.Length);
+        Assert.EndsWith("…", included.Content, StringComparison.Ordinal);
         Assert.Equal(1, prepared.ExcludedUntrustedCount);
         Assert.Equal(2, prepared.ExcludedByBoundsCount);
         Assert.DoesNotContain("UNTRUSTED_EXTERNAL_CONTENT", prepared.SystemContext, StringComparison.Ordinal);
