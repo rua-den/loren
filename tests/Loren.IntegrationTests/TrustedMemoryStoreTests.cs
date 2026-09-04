@@ -17,7 +17,7 @@ public sealed class TrustedMemoryStoreTests
             Path.GetTempPath(),
             $"loren-m4-memory-{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDirectory);
-        string connectionString = $"Data Source={Path.Combine(tempDirectory, "loren.db")}";
+        string connectionString = $"Data Source={Path.Combine(tempDirectory, "loren.db")};Pooling=False";
 
         ProjectId projectId = ProjectId.New();
         RepositoryId repositoryId = RepositoryId.New();
@@ -111,7 +111,7 @@ public sealed class TrustedMemoryStoreTests
             Path.GetTempPath(),
             $"loren-m4-memory-scope-{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDirectory);
-        string connectionString = $"Data Source={Path.Combine(tempDirectory, "loren.db")}";
+        string connectionString = $"Data Source={Path.Combine(tempDirectory, "loren.db")};Pooling=False";
         DateTimeOffset now = new(2026, 9, 4, 9, 55, 0, TimeSpan.Zero);
 
         ProjectId firstProjectId = ProjectId.New();
