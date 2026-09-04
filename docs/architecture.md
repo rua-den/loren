@@ -1,6 +1,8 @@
 # Loren Architecture
 
-**Status:** Active baseline. ADR-001, ADR-002, and ADR-003 are accepted.
+**Status:** Active baseline. ADR-001, ADR-002, and ADR-003 are accepted.  
+**Completed milestone:** M4 Trusted Durable Memory.  
+**Next decision gate:** Gate D before M5 external writes.
 
 ## Architectural objective
 
@@ -17,14 +19,14 @@ Owner Web UI
 Loren.Web
   auth/session
   request/API surface
-  canonical context preparation
+  canonical project + memory context preparation
     |
-    +-------> IProjectCatalog
+    +-------> IProjectCatalog / IMemoryStore
     |             |
     |             v
     |       Loren.Infrastructure
     |       SQLite + EF Core
-    |       canonical state
+    |       canonical Project/Repository/Memory
     |
     v
 small prepared BrainContext
@@ -77,7 +79,7 @@ Repository
   -> integration locator (provider / external namespace / name)
 ```
 
-Project aliases are normalized canonical referents. Repository locators tell Loren where to fetch external state; they are not a cache of live GitHub truth.
+M4 adds durable `MemoryRecord` state scoped to canonical Project/Repository identity.
 
 Additional `Person`, `Task`, `Decision`, `Preference`, `Device`, or generic graph entities are deferred until a real product flow requires them.
 
@@ -96,12 +98,12 @@ The current database file is `loren.db`, under the OS local application-data `Lo
 
 ## Boundary 2 — Context preparation
 
-The application/host layer resolves canonical references before the brain runs.
+The application/host layer resolves canonical references and prepares bounded data before the brain runs.
 
-M3 prepared-context path:
+Project path:
 
 ```text
-owner message + optional configured projectAlias
+owner message + optional projectAlias
     |
 IProjectCatalog.FindByAliasAsync
     |
@@ -109,18 +111,29 @@ IProjectCatalog.FindByAliasAsync
     |
 ProjectSnapshot
     |
-small system context with ProjectId / RepositoryId / locator
-    |
-AgentLoop
+prepared Project/Repository system context
 ```
 
-The prepared context explicitly distinguishes configured identity from live external facts. The model must use authorized tools to fetch current GitHub state.
+Memory path:
+
+```text
+canonical ProjectId
+    |
+IMemoryStore current records
+    |
+    +--> superseded removed
+    +--> trust/provenance eligibility
+    +--> deterministic authority ordering
+    +--> hard record/content/provenance bounds
+    |
+prepared durable-memory system context
+```
+
+Prepared project context distinguishes configured identity from live external facts. Prepared memory context retains canonical IDs, scope, source class, provenance, and timestamps while framing the payload as inert data.
 
 Runtime and brain adapters never receive `DbContext` or arbitrary database access.
 
-## Boundary 3 — Memory
-
-M4 adds durable knowledge behind ADR-003 source/lifecycle semantics.
+## Boundary 3 — Memory [M4 COMPLETE]
 
 Required source classes:
 
@@ -133,9 +146,46 @@ MODEL_INFERENCE
 EXTERNAL_CONTENT
 ```
 
-Owner correction supersedes prior current owner truth. Verified tool data is authoritative for observed external facts at verification time but cannot create owner policy. Model inference and external content cannot silently promote themselves into trusted owner state.
+### Durable write/correction behavior
 
-Corrections are append/supersede, and ordinary memory deletion is separate from audit retention. See [`memory.md`](memory.md) and ADR-003.
+- owner-explicit durable memory survives restart;
+- owner correction uses append + supersede rather than destructive rewrite;
+- correction requires `OWNER_CORRECTION`, new canonical ID, current target, identical scope, and valid lifecycle ordering;
+- model inference/external content cannot use the owner-correction boundary.
+
+### Prepared retrieval behavior
+
+Default trusted prepared context:
+
+- includes `OWNER_CORRECTION`, `OWNER_EXPLICIT`, `OWNER_APPROVED_INFERENCE`, `VERIFIED_TOOL` when provenance semantics are valid;
+- excludes `MODEL_INFERENCE` and `EXTERNAL_CONTENT`;
+- excludes superseded records;
+- bounds record count, content characters, and provenance/source-reference text before brain execution;
+- keeps provenance and trust class inspectable.
+
+The full serialized memory payload — content, provenance/source reference, IDs, scope and timestamps — is data, not instruction, permission, policy, or action authorization.
+
+`VERIFIED_TOOL` is authoritative only for the verified external fact at its source/time. It cannot create owner preference/policy/approval and does not automatically represent current mutable state.
+
+### Forget behavior
+
+`ForgetAsync(currentMemoryRecordId)` physically purges the full linear correction chain in one SQLite transaction after validating current state, scope, and expected supersession edges.
+
+For:
+
+```text
+A -> B -> C(current)
+```
+
+forgetting C deletes A -> B -> C so older corrected claims cannot resurrect. Restart tests prove forgotten claims remain absent while unrelated memories survive.
+
+Memory forgetting remains separate from audit retention.
+
+### Runtime mutation boundary
+
+The normal `LorenRunService` path currently reads prepared durable memory but does not silently perform `AddAsync`, `CorrectAsync`, or `ForgetAsync`. M4 adversarial acceptance locks this behavior before future owner-facing memory mutation UX is introduced.
+
+See [`memory.md`](memory.md) and ADR-003.
 
 ## Boundary 4 — Brain
 
@@ -147,7 +197,8 @@ It may not:
 - directly mutate canonical state outside Loren-owned services;
 - receive raw privileged tool credentials as ordinary context;
 - define durable identity;
-- receive raw database access.
+- receive raw database access;
+- treat memory payload text/provenance as self-authorizing instructions.
 
 Provider SDK/API types remain outside `Loren.Core`.
 
@@ -181,7 +232,9 @@ ActionRequest
  -> ActionResult + audit
 ```
 
-No privileged integration may bypass it. M3 adds no GitHub write capability; Gate D must pass before the first real write.
+No privileged integration may bypass it.
+
+The current production path has trusted GitHub read capability only. **Gate D must pass before the first real write.**
 
 ## Boundary 7 — Skills, MCP, and external APIs
 
@@ -204,6 +257,8 @@ brain/runtime
 
 Provider credentials are adapter configuration. Future write-capable tool secrets must be readable only by the narrow executor that needs them.
 
+**Gate D is the next architecture decision gate** and must lock write credential storage/resolution, read/write separation, approval binding/replay behavior, redaction, rotation/revocation, global read-only/kill behavior, post-write verification, and write audit expectations.
+
 ## Audit and deletion boundary
 
 Audit is append-oriented evidence; memory is owner-controlled knowledge. A memory forget operation does not silently delete audit history.
@@ -214,7 +269,7 @@ Audit retention/redaction/purge is an explicit separate operation. Sensitive pay
 
 Portable recovery uses a Loren-owned logical export with its own `format_version`, canonical IDs, and referential integrity. A raw SQLite copy may be a backup but is not the portable canonical contract.
 
-First planned logical format: `format_version = 1`, with manifest + projects/repositories + future memory/permission/audit data. Raw secrets are excluded.
+First planned logical format: `format_version = 1`, with manifest + projects/repositories + memory/permission/audit data. Raw secrets are excluded. M7 will implement and prove export -> wipe -> restore.
 
 ## Reliability principles
 
@@ -224,6 +279,7 @@ First planned logical format: `format_version = 1`, with manifest + projects/rep
 - **Verify after act:** consequential writes confirm postconditions.
 - **Recoverable state:** provider/runtime failure or session deletion does not destroy canonical state.
 - **Idempotency:** consequential retries use operation identifiers where practical.
+- **Memory provenance:** low-authority content cannot self-promote by spoofing text fields.
 
 ## Current accepted decisions
 
@@ -233,6 +289,6 @@ First planned logical format: `format_version = 1`, with manifest + projects/rep
 
 ## Next decision gate
 
-**Gate D — Action/credential policy** must pass before GitHub writes. It will settle approval binding/replay, write credential resolution/scope/redaction/rotation, and global read-only enforcement.
+**Gate D — Action/Credential Policy** must pass before GitHub writes. It will settle write-action contracts, approval binding/non-replay, write credential resolution/scope/redaction/rotation, global read-only enforcement, post-write verification, and correlated audit.
 
 Background execution, trusted devices/voice, and proactive autonomy remain later gates in `docs/plans/master-plan.md`.
