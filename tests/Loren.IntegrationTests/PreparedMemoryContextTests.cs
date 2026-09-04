@@ -332,6 +332,11 @@ public sealed class PreparedMemoryContextTests
             CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
+        public Task ForgetAsync(
+            MemoryRecordId currentMemoryRecordId,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
         public Task<MemoryRecord?> GetAsync(
             MemoryRecordId memoryRecordId,
             CancellationToken cancellationToken = default) =>
