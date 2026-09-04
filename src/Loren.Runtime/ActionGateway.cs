@@ -16,48 +16,16 @@ public sealed class ActionGateway : IActionGateway
         IEnumerable<ActionDefinition> definitions,
         IEnumerable<IActionExecutor> executors,
         IActionPolicy policy,
-        IAuditSink audit)
-        : this(
-            definitions,
-            executors,
-            policy,
-            audit,
-            null,
-            TimeProvider.System)
-    {
-    }
-
-    public ActionGateway(
-        IEnumerable<ActionDefinition> definitions,
-        IEnumerable<IActionExecutor> executors,
-        IActionPolicy policy,
         IAuditSink audit,
-        IActionApprovalStore approvalStore,
+        IActionApprovalStore? approvalStore = null,
         TimeProvider? timeProvider = null)
-        : this(
-            definitions,
-            executors,
-            policy,
-            audit,
-            approvalStore ?? throw new ArgumentNullException(nameof(approvalStore)),
-            timeProvider ?? TimeProvider.System)
-    {
-    }
-
-    private ActionGateway(
-        IEnumerable<ActionDefinition> definitions,
-        IEnumerable<IActionExecutor> executors,
-        IActionPolicy policy,
-        IAuditSink audit,
-        IActionApprovalStore? approvalStore,
-        TimeProvider timeProvider)
     {
         ArgumentNullException.ThrowIfNull(definitions);
         ArgumentNullException.ThrowIfNull(executors);
         _policy = policy ?? throw new ArgumentNullException(nameof(policy));
         _audit = audit ?? throw new ArgumentNullException(nameof(audit));
         _approvalStore = approvalStore;
-        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
+        _timeProvider = timeProvider ?? TimeProvider.System;
 
         _definitions = definitions.ToDictionary(
             definition => definition.Name,
