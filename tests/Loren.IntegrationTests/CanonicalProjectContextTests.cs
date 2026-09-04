@@ -19,7 +19,7 @@ public sealed class CanonicalProjectContextTests
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         string tempDirectory = CreateTempDirectory();
-        string connectionString = $"Data Source={Path.Combine(tempDirectory, "loren.db")}";
+        string connectionString = $"Data Source={Path.Combine(tempDirectory, "loren.db")};Pooling=False";
         ProjectSnapshot snapshot = CreateWeddingSnapshot();
 
         try
@@ -65,7 +65,7 @@ public sealed class CanonicalProjectContextTests
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         string tempDirectory = CreateTempDirectory();
-        string connectionString = $"Data Source={Path.Combine(tempDirectory, "loren.db")}";
+        string connectionString = $"Data Source={Path.Combine(tempDirectory, "loren.db")};Pooling=False";
         ProjectSnapshot snapshot = CreateWeddingSnapshot();
 
         try
