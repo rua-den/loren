@@ -7,6 +7,13 @@ namespace Loren.Infrastructure.CanonicalState.Migrations;
 [Migration("202609040001_InitialCanonicalState")]
 public sealed class InitialCanonicalState : Migration
 {
+    private static readonly string[] RepositoryExternalIdentityColumns =
+    [
+        "Provider",
+        "ExternalNamespace",
+        "ExternalName",
+    ];
+
     protected override void Up(MigrationBuilder migrationBuilder)
     {
         migrationBuilder.CreateTable(
@@ -79,7 +86,7 @@ public sealed class InitialCanonicalState : Migration
         migrationBuilder.CreateIndex(
             name: "IX_Repositories_Provider_ExternalNamespace_ExternalName",
             table: "Repositories",
-            columns: new[] { "Provider", "ExternalNamespace", "ExternalName" },
+            columns: RepositoryExternalIdentityColumns,
             unique: true);
     }
 
