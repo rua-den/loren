@@ -25,7 +25,7 @@ internal static class OwnerPages
 <body>
   <main>
     <h1>Loren</h1>
-    <p>Owner-only preview. Sign in to access the M2 request console.</p>
+    <p>Owner-only preview. Sign in to access the Loren request console.</p>
     <form id="login-form">
       <label for="password">Owner password</label>
       <input id="password" name="password" type="password" autocomplete="current-password" required autofocus />
@@ -72,7 +72,7 @@ internal static class OwnerPages
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Loren — M2 Owner Console</title>
+  <title>Loren — M3 Owner Console</title>
   <style>
     :root { color-scheme: light dark; font-family: Inter, system-ui, sans-serif; }
     body { margin: 0; background: #0f172a; color: #f8fafc; }
@@ -82,10 +82,14 @@ internal static class OwnerPages
     main { width: min(1100px, calc(100% - 32px)); margin: 28px auto 48px; display: grid; gap: 20px; }
     section { border: 1px solid #334155; border-radius: 16px; background: #111827; padding: 20px; }
     h2 { margin-top: 0; font-size: 18px; }
-    textarea, button { box-sizing: border-box; border-radius: 10px; border: 1px solid #475569; padding: 12px 14px; font: inherit; }
-    textarea { width: 100%; min-height: 100px; resize: vertical; background: #0f172a; color: #f8fafc; }
+    label { display: block; margin: 0 0 8px; font-weight: 600; }
+    input, textarea, button { box-sizing: border-box; border-radius: 10px; border: 1px solid #475569; padding: 12px 14px; font: inherit; }
+    input, textarea { width: 100%; background: #0f172a; color: #f8fafc; }
+    input { margin-bottom: 14px; }
+    textarea { min-height: 100px; resize: vertical; }
     button { cursor: pointer; background: #f8fafc; color: #0f172a; font-weight: 700; }
     button:disabled { opacity: .55; cursor: wait; }
+    .hint { margin: -6px 0 14px; color: #94a3b8; font-size: 13px; }
     .actions { display: flex; gap: 10px; align-items: center; margin-top: 12px; }
     .status { color: #94a3b8; }
     pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.55; }
@@ -99,13 +103,17 @@ internal static class OwnerPages
 </head>
 <body>
   <header>
-    <h1>Loren owner console · v0.1 M2</h1>
+    <h1>Loren owner console · v0.1 M3</h1>
     <button id="logout" type="button">Sign out</button>
   </header>
   <main>
     <section>
       <h2>Request</h2>
-      <textarea id="message">Loren, check repo rua-den/loren.</textarea>
+      <label for="project-alias">Project alias</label>
+      <input id="project-alias" placeholder="Optional exact configured alias, e.g. wedding-online" />
+      <p class="hint">When set, Loren resolves this alias to canonical Project/Repository state before the model runs.</p>
+      <label for="message">Message</label>
+      <textarea id="message">Loren, check the configured project's repository.</textarea>
       <div class="actions">
         <button id="send" type="button">Run Loren</button>
         <span id="status" class="status">Ready</span>
@@ -138,6 +146,7 @@ internal static class OwnerPages
   </main>
 
   <script>
+    const projectAlias = document.getElementById('project-alias');
     const message = document.getElementById('message');
     const send = document.getElementById('send');
     const logout = document.getElementById('logout');
@@ -170,10 +179,14 @@ internal static class OwnerPages
       audit.replaceChildren();
 
       try {
+        const alias = projectAlias.value.trim();
         const response = await fetch('/api/run', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: text })
+          body: JSON.stringify({
+            message: text,
+            projectAlias: alias || null
+          })
         });
 
         if (response.status === 401) {
@@ -191,6 +204,14 @@ internal static class OwnerPages
         addMeta('runId', result.runId);
         addMeta('turns', result.turns);
         addMeta('actions', result.actionCount);
+
+        if (result.project) {
+          addMeta('project', `${result.project.name} (${result.project.projectId})`);
+          const repositories = result.project.repositories
+            .map(repository => `${repository.provider}:${repository.externalFullName}`)
+            .join(', ');
+          addMeta('repositories', repositories || 'none');
+        }
 
         if (!result.audit.length) {
           const row = document.createElement('tr');
