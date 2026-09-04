@@ -19,63 +19,71 @@ public sealed class SqliteProjectCatalog : IProjectCatalog
     {
         ArgumentNullException.ThrowIfNull(snapshot);
 
+        _dbContext.ChangeTracker.Clear();
+
         await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
-
-        ProjectRow? projectRow = await _dbContext.Projects
-            .SingleOrDefaultAsync(
-                project => project.Id == snapshot.Project.Id.Value,
-                cancellationToken);
-
-        if (projectRow is null)
+        try
         {
-            projectRow = new ProjectRow
+            ProjectRow? projectRow = await _dbContext.Projects
+                .SingleOrDefaultAsync(
+                    project => project.Id == snapshot.Project.Id.Value,
+                    cancellationToken);
+
+            if (projectRow is null)
             {
-                Id = snapshot.Project.Id.Value,
-            };
-            _dbContext.Projects.Add(projectRow);
-        }
-
-        projectRow.Name = snapshot.Project.Name;
-        projectRow.CreatedAt = snapshot.Project.CreatedAt;
-        projectRow.UpdatedAt = snapshot.Project.UpdatedAt;
-
-        await _dbContext.ProjectAliases
-            .Where(alias => alias.ProjectId == snapshot.Project.Id.Value)
-            .ExecuteDeleteAsync(cancellationToken);
-
-        await _dbContext.Repositories
-            .Where(repository => repository.ProjectId == snapshot.Project.Id.Value)
-            .ExecuteDeleteAsync(cancellationToken);
-
-        foreach (string alias in snapshot.Project.Aliases)
-        {
-            _dbContext.ProjectAliases.Add(
-                new ProjectAliasRow
+                projectRow = new ProjectRow
                 {
-                    Alias = alias,
-                    NormalizedAlias = ProjectAlias.Normalize(alias),
-                    ProjectId = snapshot.Project.Id.Value,
-                });
-        }
+                    Id = snapshot.Project.Id.Value,
+                };
+                _dbContext.Projects.Add(projectRow);
+            }
 
-        foreach (CanonicalRepository repository in snapshot.Repositories)
+            projectRow.Name = snapshot.Project.Name;
+            projectRow.CreatedAt = snapshot.Project.CreatedAt;
+            projectRow.UpdatedAt = snapshot.Project.UpdatedAt;
+
+            await _dbContext.ProjectAliases
+                .Where(alias => alias.ProjectId == snapshot.Project.Id.Value)
+                .ExecuteDeleteAsync(cancellationToken);
+
+            await _dbContext.Repositories
+                .Where(repository => repository.ProjectId == snapshot.Project.Id.Value)
+                .ExecuteDeleteAsync(cancellationToken);
+
+            foreach (string alias in snapshot.Project.Aliases)
+            {
+                _dbContext.ProjectAliases.Add(
+                    new ProjectAliasRow
+                    {
+                        Alias = alias,
+                        NormalizedAlias = ProjectAlias.Normalize(alias),
+                        ProjectId = snapshot.Project.Id.Value,
+                    });
+            }
+
+            foreach (CanonicalRepository repository in snapshot.Repositories)
+            {
+                _dbContext.Repositories.Add(
+                    new RepositoryRow
+                    {
+                        Id = repository.Id.Value,
+                        ProjectId = repository.ProjectId.Value,
+                        Name = repository.Name,
+                        Provider = repository.Locator.Provider,
+                        ExternalNamespace = repository.Locator.ExternalNamespace,
+                        ExternalName = repository.Locator.ExternalName,
+                        CreatedAt = repository.CreatedAt,
+                        UpdatedAt = repository.UpdatedAt,
+                    });
+            }
+
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+        }
+        finally
         {
-            _dbContext.Repositories.Add(
-                new RepositoryRow
-                {
-                    Id = repository.Id.Value,
-                    ProjectId = repository.ProjectId.Value,
-                    Name = repository.Name,
-                    Provider = repository.Locator.Provider,
-                    ExternalNamespace = repository.Locator.ExternalNamespace,
-                    ExternalName = repository.Locator.ExternalName,
-                    CreatedAt = repository.CreatedAt,
-                    UpdatedAt = repository.UpdatedAt,
-                });
+            _dbContext.ChangeTracker.Clear();
         }
-
-        await _dbContext.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
     }
 
     public async Task<ProjectSnapshot?> GetAsync(
