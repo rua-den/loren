@@ -17,12 +17,12 @@ Loren là một hệ thống trí tuệ cá nhân sống lâu dài, có memory b
 
 ## Trạng thái hiện tại
 
-**Cập nhật:** 2026-09-04  
+**Cập nhật:** 2026-09-05  
 **Phase:** `v0.1 — Trustworthy Core development`  
 **Milestone đã hoàn tất:** `M4 — Trusted Durable Memory`  
 **Decision gates đã pass:** `Gate A`, `Gate B`, `Gate C`, `Gate D / ADR-004`  
 **Milestone hiện tại:** `M5 — Action/Credential Boundary + Narrow GitHub Writes`  
-**Target hiện tại:** `M5 Slice 2 — write credential resolver + redaction/revocation sau khi Slice 1 merge`
+**Target hiện tại:** `Chốt exact-head gate của PR #25, sau đó M5 Slice 2 — write credential resolver + redaction/revocation`
 
 Đã hoàn tất:
 
@@ -36,7 +36,7 @@ Loren là một hệ thống trí tuệ cá nhân sống lâu dài, có memory b
 - M3 — Canonical Project/Repository State.
 - M4 — Trusted Durable Memory.
 
-Chi tiết chuẩn: [`docs/status.md`](docs/status.md).
+Chi tiết chuẩn: [`docs/status.md`](docs/status.md). Checkpoint để mở thread mới: [`docs/handoff.md`](docs/handoff.md).
 
 ## M4 đã chứng minh gì
 
@@ -147,6 +147,18 @@ Validation:
 
 Một rule chủ ý: approval được consume **trước** first consequential executor attempt. Nếu attempt fail/mơ hồ và muốn retry độc lập thì phải approval mới; một approval không biến thành replay token.
 
+### Trạng thái handoff của PR #25
+
+```text
+state: OPEN / mergeable / chưa merge
+base main: b8649cb563e30af845a0b383103797632bed79a4
+last code-changing validated head: 5ed9049eeedf3210f1df13a0c8735b67d7e4766e
+latest green code CI: #186 / 33900018499
+sau code head này branch chỉ đang có các commit đồng bộ documentation
+```
+
+Trước khi merge: review `docs/architecture.md` theo execution order đã harden, freeze PR head, bắt buộc final exact-head Ubuntu + Windows CI xanh, self-review final diff, squash-merge bằng expected head SHA, rồi verify post-merge main CI. **Chưa được start Slice 2 trước khi hoàn tất chuỗi này.**
+
 ## Tiếp theo — M5 Slice 2 credential boundary
 
 Trước khi thêm real GitHub mutation executor đầu tiên, Slice 2 phải chứng minh:
@@ -217,6 +229,7 @@ v1.0  stable personal daily driver
 ## Tài liệu
 
 - [`docs/status.md`](docs/status.md) — tiến độ chuẩn hiện tại
+- [`docs/handoff.md`](docs/handoff.md) — checkpoint ngắn để tiếp tục ở thread mới
 - [`docs/development.md`](docs/development.md) — build/test/configuration
 - [`docs/architecture.md`](docs/architecture.md) — system boundaries
 - [`docs/permissions.md`](docs/permissions.md) — permission/approval baseline hiện hành
