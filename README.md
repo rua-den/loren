@@ -22,7 +22,8 @@ Loren is a long-lived personal intelligence system with persistent memory, expli
 **Completed milestone:** `M4 — Trusted Durable Memory`  
 **Passed decision gates:** `Gate A`, `Gate B`, `Gate C`, `Gate D / ADR-004`  
 **Current milestone:** `M5 — Action/Credential Boundary + Narrow GitHub Writes`  
-**Current target:** `Finish PR #25 exact-head gate, then M5 Slice 2 — write credential resolver + redaction/revocation`
+**Completed M5 slice:** `Slice 1 — typed policy + one-time approval + global read-only`  
+**Current target:** `M5 Slice 2 — write credential resolver + secret redaction/revocation`
 
 Completed:
 
@@ -35,6 +36,7 @@ Completed:
 - M2 — Walking Skeleton.
 - M3 — Canonical Project/Repository State.
 - M4 — Trusted Durable Memory.
+- M5 Slice 1 — policy/approval/read-only foundation.
 
 Detailed status: [`docs/status.md`](docs/status.md). Fresh-thread continuation checkpoint: [`docs/handoff.md`](docs/handoff.md).
 
@@ -111,20 +113,28 @@ secret-management actions
 production deployment
 ```
 
-## M5 Slice 1 — policy + one-time approval foundation
+## M5 Slice 1 — policy + one-time approval foundation [COMPLETE]
 
-PR #25 implements the Gate D policy/approval/read-only foundation while deliberately registering **no real GitHub mutation executor**.
+PR #25 merged to `main` at `caa65fbbd7c3828b68aa198dad625e73e9c096b4`.
+
+Final evidence:
+
+```text
+frozen PR head: c9bfb9f82b70963c196a689d4b0be2feb9bfedb5
+PR CI #194 / 33973579862: Ubuntu full gate PASS + Windows integration PASS
+post-merge main CI #195 / 33973694524: Ubuntu full gate PASS + Windows integration PASS
+```
 
 Delivered:
 
 - typed `ActionAccessClass`: `READ`, `REVERSIBLE_WRITE`, `EXTERNAL_WRITE`, `PRIVILEGED_WRITE`;
 - trusted `ActionAuthorizationContext` carrying canonical Project/Repository target outside model-visible action arguments;
-- model-visible action arguments and trusted normalized target data are defensive immutable snapshots, preventing TOCTOU mutation between approval fingerprinting and executor use;
+- model-visible action arguments and trusted normalized-target data are defensive immutable snapshots, preventing TOCTOU mutation between approval fingerprinting and executor use;
 - deterministic SHA-256 action-intent fingerprint over action/access/canonical target/owner/normalized target/model arguments;
 - Loren-owned `ApprovalId`, `ActionApproval`, and provider-neutral `IActionApprovalStore`;
 - `GateDActionPolicy` and an ActionGateway invariant requiring approval for every non-read action even if a permissive policy accidentally returns `Allow`;
 - executor registration is checked before consuming approval, so host misconfiguration cannot burn an otherwise valid approval;
-- exact one-time approval consume immediately before executor invocation;
+- exact one-time approval consume immediately before the first consequential executor attempt;
 - missing, expired, revoked, mismatched, unknown, or replayed approvals fail closed;
 - model-visible `approvalId` text has no authority;
 - SQLite `ActionApprovals` via migration `202609040003_AddActionApprovals`;
@@ -137,38 +147,23 @@ Safe default:
 ```text
 LOREN_ENABLE_WRITES missing/false/malformed -> read-only
 LOREN_ENABLE_WRITES=true -> eligible writes may reach approval evaluation
-Slice 1 still has no GitHub mutation executor
+production still has no GitHub mutation executor
 ```
-
-Validation:
-
-- base implementation head `15a2b2c4c853324a546a55d13da22d94d4ac5765`, CI #172 / `33898878125` — Ubuntu full gate + Windows integration **PASS**;
-- self-review hardening head `5ed9049eeedf3210f1df13a0c8735b67d7e4766e`, CI #186 / `33900018499` — immutable approved-intent snapshots + no approval burn without executor; Ubuntu full gate + Windows integration **PASS**.
 
 One important rule is intentional: approval is consumed before the first consequential executor attempt. An independent retry after failure or ambiguity needs fresh approval, preventing one approval from becoming a replay token.
 
-### PR #25 handoff state
-
-```text
-state: OPEN / mergeable / not merged
-base main: b8649cb563e30af845a0b383103797632bed79a4
-last code-changing validated head: 5ed9049eeedf3210f1df13a0c8735b67d7e4766e
-latest green code CI: #186 / 33900018499
-documentation synchronization commits follow that validated code head
-```
-
-Before merge: review `docs/architecture.md` against the hardened execution order, freeze the resulting PR head, require final exact-head Ubuntu + Windows CI, self-review the final diff, squash-merge with the expected head SHA, then verify post-merge main CI. Do **not** start Slice 2 before that is complete.
-
-## Next — M5 Slice 2 credential boundary
+## Current — M5 Slice 2 credential boundary
 
 Before the first real GitHub mutation executor is added, Slice 2 must prove:
 
 - a write-specific credential resolver abstraction;
+- an opaque write credential purpose/reference separate from the secret value;
 - secret values exist only inside the controlled executor boundary;
 - read/write credential purposes remain logically separated;
 - missing/revoked credentials fail closed with no broader-token fallback;
 - revocation overrides already-approved intent;
-- secret redaction across logs, exceptions, audit, action results, and brain context.
+- secret redaction across logs, exceptions, audit, action results, and brain context;
+- deterministic acceptance tests without a live mutation.
 
 Only after Slices 1–2 are green on `main` does Loren proceed to verified create-branch, controlled file/commit, and open-PR slices.
 
@@ -201,7 +196,7 @@ $env:LOREN_ENABLE_WRITES='false'
 dotnet run --project src/Loren.Web/Loren.Web.csproj
 ```
 
-Do not commit real secrets. `LOREN_ENABLE_WRITES=false` is the recommended current posture; setting it true does not create a mutation capability by itself in Slice 1.
+Do not commit real secrets. `LOREN_ENABLE_WRITES=false` is the recommended current posture; setting it true does not create a mutation capability by itself because no production mutation executor exists yet.
 
 ## Test
 
