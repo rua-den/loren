@@ -1,13 +1,13 @@
 # Loren Project Status
 
-**Last updated:** 2026-09-04  
+**Last updated:** 2026-09-05  
 **Current version phase:** `v0.1 — Trustworthy Core development`  
 **Current decision gates:** `Gate A — PASSED`, `Gate B — PASSED`, `Gate C — PASSED`, `Gate D — PASSED via ADR-004`  
 **Completed milestone:** `M4 — Trusted Durable Memory`  
 **Current milestone:** `M5 — Action/Credential Boundary + Narrow GitHub Writes`  
-**Current execution target:** `M5 Slice 2 — write credential resolver + secret redaction/revocation after Slice 1 merges`
+**Current execution target:** `Finish PR #25 exact-head gate, then M5 Slice 2 — write credential resolver + secret redaction/revocation`
 
-This file is the authoritative progress ledger for the repository. `README.md` and `README.vi.md` summarize it.
+This file is the authoritative progress ledger for the repository. `README.md` and `README.vi.md` summarize it. For fresh-thread continuation, read [`handoff.md`](handoff.md) immediately after this file.
 
 Gate D authorizes M5 implementation only. M5 Slice 1 builds the deterministic policy/approval/read-only foundation but intentionally registers **no real GitHub mutation executor**.
 
@@ -97,7 +97,7 @@ production deployment
 
 # Current milestone — M5 Action/Credential Boundary + Narrow GitHub Writes
 
-## M5 Slice 1 — policy + one-time approval foundation [COMPLETE IN PR #25 CHANGESET]
+## M5 Slice 1 — policy + one-time approval foundation [COMPLETE IN PR #25 CHANGESET / MERGE GATE PENDING]
 
 PR #25 implements the first Gate D runtime boundary without enabling a real external mutation.
 
@@ -137,9 +137,22 @@ Implementation validation:
 - base implementation head `15a2b2c4c853324a546a55d13da22d94d4ac5765`, CI #172 / `33898878125` — Ubuntu full gate + Windows integration **PASS**;
 - self-review hardening head `5ed9049eeedf3210f1df13a0c8735b67d7e4766e`, CI #186 / `33900018499` — immutable approved-intent snapshots + no approval burn without executor; Ubuntu full gate + Windows integration **PASS**.
 
-PR #25 must still pass its final exact-head CI after this documentation synchronization before merge. Slice 1 is complete when this changeset is present on `main`.
+Current PR state at the thread handoff:
 
-## M5 Slice 2 — credential boundary [NEXT]
+```text
+PR #25: OPEN / mergeable / not merged
+branch: feat/m5-policy-approval-slice1
+base main: b8649cb563e30af845a0b383103797632bed79a4
+last code-changing validated head: 5ed9049eeedf3210f1df13a0c8735b67d7e4766e
+latest green code CI: #186 / 33900018499
+current branch also contains documentation-only synchronization commits after that validated code head
+```
+
+**Pending before merge:** one final documentation/architecture consistency review, freeze the resulting PR head, then require a final exact-head PR CI with both Ubuntu full gate and Windows integration green. Do not start Slice 2 before PR #25 is merged and post-merge main CI is verified.
+
+Fresh-thread continuation checklist: [`handoff.md`](handoff.md).
+
+## M5 Slice 2 — credential boundary [NEXT AFTER PR #25 MERGE]
 
 Next target:
 
