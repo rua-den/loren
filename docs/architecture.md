@@ -47,6 +47,7 @@ ActionGateway
   -> action registration/schema
   -> GateDActionPolicy
   -> global read-only
+  -> verify executor registration
   -> exact intent fingerprint
   -> approval validation / atomic consume
   -> audit
@@ -282,6 +283,8 @@ Hard turn/action/cancellation limits belong to Loren and are testable with fake 
 
 The Action Gateway remains the mandatory security boundary between model reasoning and external side effects.
 
+Model-visible arguments and trusted normalized-target data are frozen into defensive immutable snapshots before policy/approval evaluation, so the intent approved and fingerprinted cannot be changed before executor invocation.
+
 Current Slice 1 non-read path:
 
 ```text
@@ -291,12 +294,15 @@ ActionRequest
  -> GateDActionPolicy
  -> deny if global read-only
  -> deny PRIVILEGED_WRITE
- -> require approval for eligible write
- -> ActionIntentFingerprint recomputed from trusted + proposed data
+ -> verify executor registration
+ -> require approval for every eligible non-read action
+ -> ActionIntentFingerprint recomputed from frozen trusted + proposed data
  -> trusted ApprovalId required
  -> IActionApprovalStore.ConsumeAsync
- -> executor only after successful consume
+ -> first consequential executor attempt only after successful consume
 ```
+
+The executor-registration check deliberately occurs before approval consumption so host misconfiguration cannot burn a valid one-time approval. Approval consumption remains immediately before the first consequential executor attempt.
 
 Defense in depth: ActionGateway independently requires approval for **every non-read `ActionAccessClass`**, even if a custom/permissive `IActionPolicy` mistakenly returns `Allow`.
 
@@ -393,11 +399,11 @@ Target path:
 
 ```text
 brain/runtime
- -> ActionRequest (no secret)
- -> canonical target + policy
- -> owner approval validate/consume
- -> global read-only passed
- -> controlled executor
+ -> ActionRequest (no secret) + trusted canonical target
+ -> policy + global read-only
+ -> verify executor registration
+ -> exact owner approval validate/consume
+ -> controlled executor boundary
  -> write-specific Secret Resolver
  -> external system
 ```
