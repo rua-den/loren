@@ -4,6 +4,6 @@ public interface IActionPolicy
 {
     Task<PolicyDecision> EvaluateAsync(
         ActionDefinition definition,
-        ActionRequest request,
+        ActionExecutionRequest execution,
         CancellationToken cancellationToken);
 }

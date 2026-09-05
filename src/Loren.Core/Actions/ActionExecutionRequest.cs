@@ -17,4 +17,6 @@ public readonly record struct ActionId(Guid Value)
 public sealed record ActionExecutionRequest(
     RunId RunId,
     ActionId ActionId,
-    ActionRequest Request);
+    ActionRequest Request,
+    ActionAuthorizationContext? AuthorizationContext = null,
+    ApprovalId? ApprovalId = null);

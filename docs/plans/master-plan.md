@@ -4,7 +4,8 @@
 **Current phase:** `v0.1 — Trustworthy Core development`  
 **Completed milestone:** `M4 — Trusted Durable Memory`  
 **Passed decision gates:** `Gate A`, `Gate B`, `Gate C`, `Gate D`  
-**Current milestone:** `M5 — Action/Credential Boundary + Narrow GitHub Writes`
+**Current milestone:** `M5 — Action/Credential Boundary + Narrow GitHub Writes`  
+**Current execution:** `M5 Slice 2 — credential resolver + redaction/revocation after Slice 1 merges`
 
 This is Loren's top-level delivery plan. The roadmap is **capability-driven, not date-driven**. Versions advance only when their trust/usefulness exit gates pass.
 
@@ -124,7 +125,8 @@ Gate C authorized M4 Trusted Durable Memory. M4 completed without authorizing ex
 
 ## Gate D — Action/approval/credential policy [PASSED]
 
-**Decision:** ADR-004 — Accepted on 2026-09-04.
+**Decision:** ADR-004 — Accepted on 2026-09-04.  
+**Evidence:** PR #24 merged at `b8649cb563e30af845a0b383103797632bed79a4`; exact-head CI #164 / `33896004193` passed Ubuntu full gate + Windows integration.
 
 Gate D locks:
 
@@ -146,8 +148,7 @@ Allowed M5 v0.1 write scope after foundations are tested:
 
 ```text
 create non-default branch
-create/update file via controlled commit path on non-default branch
-create commit/update ref only as required by that path
+controlled file/commit path on non-default branch
 open pull request
 ```
 
@@ -245,36 +246,64 @@ Credential isolation and the production-only owner surface were also verified.
 
 ### M4 completion evidence
 
-M4 completed on 2026-09-04 across five capability slices plus Windows hardening:
-
-```text
-OWNER_EXPLICIT persistence
- -> owner correction / append+supersede
- -> authority-aware bounded prepared memory
- -> owner forget / full correction-chain purge
- -> poisoning/provenance trust-boundary acceptance
- -> Windows temp-SQLite integration hardening
-```
+M4 completed across five capability slices plus Windows hardening:
 
 - PR #18 — final CI #117 / `33860985267`.
 - PR #19 — final CI #123 / `33861630472`.
 - PR #20 — final CI #131 / `33864946328`.
 - PR #21 — final CI #137 / `33865716479`.
 - PR #22 — merge `41396bf0f78b109d0af8f562039ce5f5cf1ad787`; final CI #148 / `33870438763`, main CI #149 / `33870545850`.
-- PR #23 — merge `1cdd849126310745652d87f1d100c34aed624079`; PR CI #162 / `33893832128`, main CI #163 / `33894104116`; Ubuntu full gate + Windows integration passed; owner local Windows full integration suite passed.
+- PR #23 — merge `1cdd849126310745652d87f1d100c34aed624079`; PR CI #162 / `33893832128`, main CI #163 / `33894104116`; Ubuntu full gate + Windows integration passed; owner local Windows integration suite passed.
+
+### M5 Slice 1 — policy/approval foundation [IMPLEMENTED / PR #25 MERGE GATE]
+
+PR #25 adds the first executable Gate D boundary while intentionally keeping the GitHub integration read-only.
+
+Delivered:
+
+```text
+ActionAccessClass
+-> trusted canonical ActionAuthorizationContext
+-> deterministic exact action-intent fingerprint
+-> Loren-owned ApprovalId / ActionApproval
+-> persistent IActionApprovalStore
+-> GateDActionPolicy
+-> ActionGateway defense-in-depth non-read approval requirement
+-> atomic one-time consume
+-> replay/expiry/revoke/mismatch rejection
+-> fail-closed LOREN_ENABLE_WRITES
+-> migration-drift regression test
+```
+
+Security behavior:
+
+- model-generated action arguments cannot manufacture trusted approval;
+- non-read execution cannot bypass approval by swapping in a permissive policy;
+- approval binds exact canonical target + normalized intent;
+- approval is consumed before the consequential executor attempt;
+- independent retry after ambiguity needs a new approval;
+- `PRIVILEGED_WRITE` remains denied;
+- Slice 1 registers no real GitHub mutation executor and no write credential resolver.
+
+Implementation validation:
+
+- head `15a2b2c4c853324a546a55d13da22d94d4ac5765`;
+- CI #172 / `33898878125` — zero-warning Ubuntu build, all tests, format, secret/dependency scans, web/auth smoke, and Windows integration **PASS**.
+
+A permanent migration-drift test was added after CI exposed an EF model/migration mismatch; the actual metadata mismatch was fixed rather than suppressing `PendingModelChangesWarning`.
 
 ### M5 current implementation sequence
 
 ```text
-Slice 1  typed action policy context + one-time approval + global read-only
-Slice 2  write credential resolver + secret redaction/revocation
+Slice 1  typed action policy + one-time approval + global read-only  ✓ implemented / PR #25 merge gate
+Slice 2  write credential resolver + secret redaction/revocation    <- next
 Slice 3  create non-default GitHub branch + verify exact ref/SHA
 Slice 4  controlled file/commit path + verify
 Slice 5  open pull request + verify
 Slice 6  replay/revocation/injection/audit E2E
 ```
 
-No real GitHub mutation is enabled until Slices 1–2 are green.
+No real GitHub mutation is enabled until Slices 1–2 are green on `main`.
 
 ### v0.1 exit gate
 
@@ -384,10 +413,13 @@ M4 Trusted Durable Memory             ✓ complete
 Gate D Action/Approval/Credential     ✓ passed / ADR-004
         |
         v
-M5 Slice 1 policy + approval + kill   <- now
+M5 Slice 1 policy + approval + kill   ✓ implemented / PR #25 merge gate
         |
         v
-M5 credential boundary + verified writes
+M5 Slice 2 credential boundary        <- next
+        |
+        v
+M5 verified GitHub writes
         |
         v
 M6 UI -> M7 Recovery -> M8 E2E -> v0.1 release gate

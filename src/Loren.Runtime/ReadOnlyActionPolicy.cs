@@ -6,16 +6,16 @@ public sealed class ReadOnlyActionPolicy : IActionPolicy
 {
     public Task<PolicyDecision> EvaluateAsync(
         ActionDefinition definition,
-        ActionRequest request,
+        ActionExecutionRequest execution,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(definition);
-        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(execution);
         cancellationToken.ThrowIfCancellationRequested();
 
         PolicyDecision decision = definition.IsReadOnly
-            ? PolicyDecision.Allow("M2 read-only action is allowed.")
-            : PolicyDecision.Deny("M2 permits read-only actions only.");
+            ? PolicyDecision.Allow("Read-only action is allowed.")
+            : PolicyDecision.Deny("Read-only policy permits read actions only.");
 
         return Task.FromResult(decision);
     }

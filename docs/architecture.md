@@ -2,7 +2,8 @@
 
 **Status:** Active baseline. ADR-001, ADR-002, ADR-003, and ADR-004 are accepted.  
 **Completed milestone:** M4 Trusted Durable Memory.  
-**Current milestone:** M5 Action/Credential Boundary + Narrow GitHub Writes.
+**Current milestone:** M5 Action/Credential Boundary + Narrow GitHub Writes.  
+**Current implementation target:** M5 Slice 2 credential resolver/redaction after Slice 1 merges.
 
 ## Architectural objective
 
@@ -20,15 +21,13 @@ Loren.Web
   auth/session
   request/API surface
   canonical project + memory context preparation
-  owner approval surface (M5)
     |
-    +-------> IProjectCatalog / IMemoryStore
+    +-------> IProjectCatalog / IMemoryStore / IActionApprovalStore
     |             |
     |             v
     |       Loren.Infrastructure
     |       SQLite + EF Core
-    |       canonical Project/Repository/Memory
-    |       approval state (M5)
+    |       Project / Repository / Memory / ActionApproval
     |
     v
 small prepared BrainContext
@@ -39,25 +38,28 @@ Loren.Runtime / AgentLoop
     +-------> IBrain -> Ollama/OpenAI/future provider
     |
     v
-ActionRequest
+model-visible ActionRequest
+    |
+    +---- trusted Loren-owned ActionAuthorizationContext + ApprovalId
     |
     v
 ActionGateway
-  -> canonical target resolution
-  -> policy
-  -> approval validation / consume
+  -> action registration/schema
+  -> GateDActionPolicy
+  -> global read-only
+  -> verify executor registration
+  -> exact intent fingerprint
+  -> approval validation / atomic consume
   -> audit
-  -> global read-only enforcement
     |
     v
 controlled executor boundary
-  -> write-specific credential resolver
-  -> GitHub / MCP / direct APIs
-  -> post-write verification read
-    |
-    v
-structured verified result
+  -> M5 Slice 2 write-specific credential resolver
+  -> later narrow GitHub writes
+  -> independent post-write verification
 ```
+
+M5 Slice 1 stops before real mutation. The production action set still contains the existing GitHub read path only.
 
 ## Boundary 1 — Loren-owned canonical state
 
@@ -91,9 +93,16 @@ MemoryRecord
   -> optional Project/Repository scope
   -> source class + provenance
   -> correction/supersession lifecycle
+
+ActionApproval
+  -> Loren ApprovalId
+  -> trusted owner principal reference
+  -> canonical ProjectId + RepositoryId
+  -> action identity + exact intent fingerprint
+  -> approved / expires / consumed / revoked lifecycle
 ```
 
-M5 adds Loren-owned approval state for exact action intent. Approval is not a generic person/user graph entity and does not make model/session IDs durable canonical identity.
+Approval state is security state, not model conversation state and not a generic user/person graph. Model/session IDs do not become Loren durable identity.
 
 Additional `Person`, `Task`, `Decision`, `Preference`, `Device`, or generic graph entities remain deferred until a real product flow requires them.
 
@@ -108,9 +117,19 @@ v0.1 uses SQLite + EF Core in `Loren.Infrastructure`.
 - `Loren.Core` contains no EF/SQLite types;
 - portable export versioning is independent from EF schema versioning.
 
-The current database file is `loren.db`, under the OS local application-data `Loren` directory unless `LOREN_DATA_DIRECTORY` overrides the directory.
+Current migrations include:
 
-Temp SQLite integration databases disable connection pooling so Windows cleanup semantics are deterministic. Production pooling behavior is unchanged. CI now keeps Ubuntu full gates plus a Windows integration job.
+```text
+202609040001_InitialCanonicalState
+202609040002_AddMemoryRecords
+202609040003_AddActionApprovals
+```
+
+The database file is `loren.db`, under the OS local application-data `Loren` directory unless `LOREN_DATA_DIRECTORY` overrides the directory.
+
+Temporary SQLite integration databases disable connection pooling so Windows file cleanup is deterministic. Production pooling behavior is unchanged. CI keeps the Ubuntu full gate plus a Windows integration job.
+
+A permanent migration-drift test compares the EF migration snapshot with the current design-time model. This prevents canonical schema changes from silently diverging from checked-in migration metadata.
 
 ## Boundary 2 — Context preparation
 
@@ -199,7 +218,7 @@ Memory forgetting remains separate from audit retention.
 
 ### Runtime mutation boundary
 
-The normal `LorenRunService` path reads prepared durable memory but does not silently perform `AddAsync`, `CorrectAsync`, or `ForgetAsync`. M4 adversarial acceptance locks this behavior before future owner-facing memory mutation UX is introduced.
+The normal `LorenRunService` path reads prepared durable memory but does not silently perform `AddAsync`, `CorrectAsync`, or `ForgetAsync`.
 
 See [`memory.md`](memory.md) and ADR-003.
 
@@ -221,6 +240,29 @@ It may not:
 
 Provider SDK/API types remain outside `Loren.Core`.
 
+### Model-visible action request is intentionally untrusted
+
+`ActionRequest` remains the brain-facing proposal:
+
+```text
+name
+arguments
+```
+
+It does **not** carry trusted canonical authority or trusted approval. If model output includes a field named `approvalId`, that string remains ordinary untrusted action data.
+
+Trusted execution metadata is attached separately by Loren through `ActionExecutionRequest`:
+
+```text
+RunId
+ActionId
+ActionRequest
+ActionAuthorizationContext?   <- Loren-owned trusted context
+ApprovalId?                   <- Loren-owned trusted reference
+```
+
+This separation prevents model arguments from becoming an authorization channel.
+
 ## Boundary 5 — Runtime
 
 The runtime remains deliberately small:
@@ -235,36 +277,38 @@ prepared BrainContext
 -> bounded repeat
 ```
 
-Hard turn/action/cancellation limits belong to Loren and are testable with fake providers. The runtime does not own durable identity, approval semantics, credential values, or persistence.
+Hard turn/action/cancellation limits belong to Loren and are testable with fake providers. Runtime/provider code does not own canonical identity, approval authority, credential values, or persistence.
 
-## Boundary 6 — Action Gateway [GATE D ACCEPTED]
+## Boundary 6 — Action Gateway [M5 SLICE 1 IMPLEMENTED]
 
 The Action Gateway remains the mandatory security boundary between model reasoning and external side effects.
 
-ADR-004 requires the write-capable path to become:
+Model-visible arguments and trusted normalized-target data are frozen into defensive immutable snapshots before policy/approval evaluation, so the intent approved and fingerprinted cannot be changed before executor invocation.
+
+Current Slice 1 non-read path:
 
 ```text
 ActionRequest
- -> action schema/registration validation
- -> resolve canonical Project/Repository target
- -> normalize security-relevant parameters
- -> typed access/risk policy evaluation
- -> deny OR require approval
- -> validate exact Loren approval
- -> atomically consume approval once
- -> enforce global read-only
- -> resolve write-specific credential behind executor boundary
- -> controlled executor
- -> independent post-write read verification
- -> structured verified ActionResult
- -> correlated redacted audit
+ -> registered ActionDefinition
+ -> trusted ActionAuthorizationContext required
+ -> GateDActionPolicy
+ -> deny if global read-only
+ -> deny PRIVILEGED_WRITE
+ -> verify executor registration
+ -> require approval for every eligible non-read action
+ -> ActionIntentFingerprint recomputed from frozen trusted + proposed data
+ -> trusted ApprovalId required
+ -> IActionApprovalStore.ConsumeAsync
+ -> first consequential executor attempt only after successful consume
 ```
 
-No privileged integration may bypass it.
+The executor-registration check deliberately occurs before approval consumption so host misconfiguration cannot burn a valid one-time approval. Approval consumption remains immediately before the first consequential executor attempt.
+
+Defense in depth: ActionGateway independently requires approval for **every non-read `ActionAccessClass`**, even if a custom/permissive `IActionPolicy` mistakenly returns `Allow`.
 
 ### Action classification
 
-M5 must distinguish at least:
+Implemented classifications:
 
 ```text
 READ
@@ -273,124 +317,112 @@ EXTERNAL_WRITE
 PRIVILEGED_WRITE
 ```
 
-`IsReadOnly` may remain for compatibility but is not enough as the long-term authorization contract.
+Legacy `IsReadOnly` remains for compatibility and maps to the typed classification; it is no longer the sole authorization semantic.
 
-### Canonical target resolution
+### Trusted canonical authorization context
 
-A free-form model-provided repository string does not grant authority. Before write policy, Loren binds the request to:
+`ActionAuthorizationContext` carries:
 
 ```text
 ProjectId
 RepositoryId
-provider/external repository locator snapshot
-target branch/ref/path/base/head
-default-branch status
-normalized security-relevant parameters
+RepositoryLocator
+OwnerPrincipalReference
+NormalizedTarget
 ```
 
-Unknown or mismatched scope fails before credential resolution.
+The exact intent fingerprint also covers model-provided action arguments, sorted deterministically. Changes in canonical target, target parameters, action arguments, action identity, access class, or trusted owner principal change the fingerprint and invalidate an old approval.
 
-### v0.1 write allowlist
-
-After M5 foundations are green, only:
-
-```text
-create non-default branch
-create/update file via controlled commit path on a non-default branch
-create commit/update ref only as required by that path
-open pull request
-```
-
-remain eligible.
-
-The following are not registered as supported v0.1 write capabilities:
-
-```text
-direct default-branch write
-merge PR
-force push/history rewrite
-delete repository/branch/data
-repository admin/security changes
-secret-management actions
-production deployment
-```
-
-## Boundary 7 — Approval [ADR-004]
+## Boundary 7 — Approval [M5 SLICE 1 IMPLEMENTED]
 
 Authentication is not approval.
 
-Every first-version real GitHub mutation requires an explicit Loren-owned approval artifact created from an authenticated owner action.
+Every eventual first-version real GitHub mutation requires an explicit Loren-owned approval artifact created by an authenticated-owner path.
 
-Approval binds at least:
+Current approval state includes:
 
 ```text
 ApprovalId
-trusted owner/session principal binding
-action identity
+owner principal reference
+action name
 ProjectId + RepositoryId
-normalized target/resource
-security-relevant parameter digest
-issued/approved timestamp
-expiry or task boundary
-one-time consumption state
-optional prerequisite snapshot/digest
+intent fingerprint
+ApprovedAt
+ExpiresAt
+ConsumedAt?
+RevokedAt?
 ```
 
-Material changes to repository, branch, path, content digest, PR base/head, or other security-relevant parameters require a new approval.
+`IActionApprovalStore` is a Core contract. `SqliteActionApprovalStore` is the current Infrastructure implementation.
 
-Approval is atomically consumed before the first consequential executor attempt. Consumed, expired, mismatched, unknown, revoked, or replayed approval fails closed.
+### One-time consume and replay resistance
 
-Independent retry after ambiguous failure requires fresh approval unless a bounded executor retry is provably the same single attempt and cannot duplicate the external side effect.
+Approval is atomically consumed before the consequential executor attempt. Consumption checks owner/action/canonical scope/fingerprint/expiry/revocation and only updates a still-unconsumed, still-unrevoked record.
 
-Model output, memory, repository content, issue/PR text, or tool output cannot create, consume, expand, or revoke owner approval.
+Consequences:
 
-## Boundary 8 — Global read-only
+- exact first use can proceed;
+- replay is denied;
+- changed target/arguments are denied;
+- expired/revoked approval is denied;
+- concurrent attempts have exactly one successful consumer;
+- an independent retry after executor failure/ambiguity requires a fresh approval.
 
-Before any real write executor ships, Loren must have a host-controlled fail-closed global read-only posture.
+This last rule intentionally favors non-replay over transparent retries until M5 write executors have explicit duplicate-safe/idempotent semantics.
+
+## Boundary 8 — Global read-only [M5 SLICE 1 IMPLEMENTED]
+
+The host now has a fail-closed write posture configured by:
 
 ```text
-write-enable absent/invalid -> read-only
-read-only -> no write executor invocation
-read-only -> no write credential resolution
-read actions remain available
+LOREN_ENABLE_WRITES
 ```
 
-The model cannot toggle this posture through an ordinary action.
+Semantics:
 
-The policy/audit path records when a write is denied by read-only mode.
+```text
+missing -> read-only
+false -> read-only
+malformed/other value -> read-only
+true -> policy may evaluate eligible writes
+```
 
-## Boundary 9 — Credentials [ADR-004]
+The model cannot toggle this through an action. Read-only denial occurs before approval consumption/executor invocation.
 
-Secrets live outside canonical memory/context.
+Slice 1 still registers no mutation action/executor, so `LOREN_ENABLE_WRITES=true` alone does not create an external write capability.
+
+## Boundary 9 — Credentials [M5 SLICE 2 NEXT]
+
+Secrets remain outside canonical memory/context.
+
+Target path:
 
 ```text
 brain/runtime
- -> ActionRequest (no secret)
- -> canonical target + policy
- -> owner approval validate/consume
- -> global read-only check
- -> controlled executor
+ -> ActionRequest (no secret) + trusted canonical target
+ -> policy + global read-only
+ -> verify executor registration
+ -> exact owner approval validate/consume
+ -> controlled executor boundary
  -> write-specific Secret Resolver
  -> external system
 ```
 
-Write credential values never enter:
+M5 Slice 2 must prove:
 
-- `BrainContext`;
-- model-visible action parameters;
-- canonical Project/Repository/Memory state;
-- audit payloads;
-- owner-visible structured results.
+- opaque write credential purpose/reference outside secret implementation;
+- secret value materialized only within controlled executor boundary;
+- read/write purpose separation;
+- missing/revoked credentials fail closed;
+- revocation overrides prior approval;
+- no fallback to broader credentials;
+- secret redaction across logs/exceptions/audit/action results/brain context.
 
-Only an opaque credential purpose/reference may cross application boundaries. Missing/revoked credential resolution fails closed. Loren never silently falls back to a broader credential.
+No real GitHub mutation executor is enabled before this boundary is green on `main`.
 
-Read/write credential purposes remain logically separated even if local development temporarily maps them to one physical token.
+## Boundary 10 — Post-write verification [PLANNED M5 WRITE SLICES]
 
-Credential revocation takes precedence over prior approval.
-
-## Boundary 10 — Post-write verification
-
-A successful API response is not enough to report a consequential write as successful.
+A successful API response will not be enough to report a consequential write as successful.
 
 Examples:
 
@@ -418,11 +450,37 @@ Loren owns the internal action contract. MCP/direct APIs/native adapters are exe
 
 MCP is an integration protocol, not Loren's brain or authorization model. Provider-managed MCP must never become a path around ActionGateway, approval, global read-only, canonical target resolution, or Loren credential boundaries.
 
+### v0.1 mutation allowlist
+
+After M5 Slice 2 and each action-specific acceptance gate, only:
+
+```text
+create non-default branch
+controlled file/commit path on a non-default branch
+open pull request
+```
+
+may be registered as v0.1 mutations.
+
+Not supported:
+
+```text
+direct default-branch write
+merge PR
+force push/history rewrite
+delete repository/branch/data
+repository admin/security changes
+secret-management actions
+production deployment
+```
+
 ## Audit and deletion boundary
 
 Audit is append-oriented evidence; memory is owner-controlled knowledge. A memory forget operation does not silently delete audit history.
 
-For consequential writes, audit must reconstruct:
+M5 Slice 1 adds `ApprovalEvaluated` to action audit sequencing. Approval audit records outcome/reference semantics, not credential values.
+
+Future consequential write audit must reconstruct:
 
 ```text
 run/request correlation
@@ -453,13 +511,14 @@ First planned logical format: `format_version = 1`, with manifest + projects/rep
 - **Fail closed:** ambiguous authorization/reference/approval/credential resolution does not execute.
 - **Canonical before act:** resolve Loren-owned target identity before policy.
 - **One-time approval:** consumed approvals do not replay.
-- **Global read-only:** privileged writes can be stopped before credential resolution.
+- **Global read-only:** writes can be stopped before approval consumption/executor/credential resolution.
 - **Check before act:** fetch current mutable state before important writes.
 - **Verify after act:** consequential writes confirm postconditions.
 - **Recoverable state:** provider/runtime failure or session deletion does not destroy canonical state.
 - **Idempotency:** executor retries are bounded and duplicate-safe or require new approval.
 - **Memory provenance:** low-authority content cannot self-promote by spoofing text fields.
 - **Credential revocation:** stale approval never resurrects a revoked secret.
+- **Migration fidelity:** canonical EF model and checked-in migration snapshot must remain drift-free.
 
 ## Current accepted decisions
 
@@ -475,14 +534,14 @@ First planned logical format: `format_version = 1`, with manifest + projects/rep
 Execution order:
 
 ```text
-Slice 1 typed action policy + one-time approval + global read-only
-Slice 2 write credential resolver + redaction/revocation
+Slice 1 typed action policy + one-time approval + global read-only   ✓ implemented / PR #25 merge gate
+Slice 2 write credential resolver + redaction/revocation             <- next
 Slice 3 create non-default branch + verify
 Slice 4 controlled file/commit path + verify
 Slice 5 open PR + verify
 Slice 6 adversarial replay/revocation/injection/audit E2E
 ```
 
-No real GitHub mutation is enabled until the policy/approval/read-only/credential foundations are green.
+No real GitHub mutation is enabled until the policy/approval/read-only/credential foundations are green on `main`.
 
 Background execution, trusted devices/voice, and proactive autonomy remain later gates in `docs/plans/master-plan.md`.

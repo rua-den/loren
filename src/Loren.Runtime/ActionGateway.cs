@@ -9,17 +9,23 @@ public sealed class ActionGateway : IActionGateway
     private readonly Dictionary<string, IActionExecutor> _executors;
     private readonly IActionPolicy _policy;
     private readonly IAuditSink _audit;
+    private readonly IActionApprovalStore? _approvalStore;
+    private readonly TimeProvider _timeProvider;
 
     public ActionGateway(
         IEnumerable<ActionDefinition> definitions,
         IEnumerable<IActionExecutor> executors,
         IActionPolicy policy,
-        IAuditSink audit)
+        IAuditSink audit,
+        IActionApprovalStore? approvalStore = null,
+        TimeProvider? timeProvider = null)
     {
         ArgumentNullException.ThrowIfNull(definitions);
         ArgumentNullException.ThrowIfNull(executors);
         _policy = policy ?? throw new ArgumentNullException(nameof(policy));
         _audit = audit ?? throw new ArgumentNullException(nameof(audit));
+        _approvalStore = approvalStore;
+        _timeProvider = timeProvider ?? TimeProvider.System;
 
         _definitions = definitions.ToDictionary(
             definition => definition.Name,
@@ -73,7 +79,7 @@ public sealed class ActionGateway : IActionGateway
         {
             decision = await _policy.EvaluateAsync(
                 definition,
-                request,
+                execution,
                 cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -118,23 +124,13 @@ public sealed class ActionGateway : IActionGateway
             decision.Reason,
             cancellationToken);
 
-        if (decision.Kind is not PolicyDecisionKind.Allow)
+        if (decision.Kind is PolicyDecisionKind.Deny)
         {
-            await AppendAuditAsync(
+            return await DenyAsync(
                 execution,
-                AuditEventKind.ActionCompleted,
-                "denied",
                 decision.Reason,
+                new Dictionary<string, string> { ["policy"] = "deny" },
                 cancellationToken);
-
-            return new ActionResult(
-                request.Name,
-                false,
-                new Dictionary<string, string>
-                {
-                    ["policy"] = decision.Kind.ToString().ToLowerInvariant(),
-                },
-                decision.Reason);
         }
 
         if (!_executors.TryGetValue(request.Name, out IActionExecutor? executor))
@@ -152,6 +148,24 @@ public sealed class ActionGateway : IActionGateway
                 false,
                 new Dictionary<string, string>(),
                 reason);
+        }
+
+        bool requiresApproval =
+            definition.AccessClass is not ActionAccessClass.Read
+            || decision.Kind is PolicyDecisionKind.RequireApproval;
+
+        if (requiresApproval)
+        {
+            ActionResult? approvalFailure = await ValidateAndConsumeApprovalAsync(
+                definition,
+                execution,
+                decision,
+                cancellationToken);
+
+            if (approvalFailure is not null)
+            {
+                return approvalFailure;
+            }
         }
 
         ActionResult result;
@@ -184,6 +198,169 @@ public sealed class ActionGateway : IActionGateway
             cancellationToken);
 
         return result;
+    }
+
+    private async Task<ActionResult?> ValidateAndConsumeApprovalAsync(
+        ActionDefinition definition,
+        ActionExecutionRequest execution,
+        PolicyDecision decision,
+        CancellationToken cancellationToken)
+    {
+        if (_approvalStore is null)
+        {
+            const string reason = "Write approval store is not configured.";
+            await AppendAuditAsync(
+                execution,
+                AuditEventKind.ApprovalEvaluated,
+                "missing",
+                reason,
+                cancellationToken);
+            return await DenyAsync(
+                execution,
+                reason,
+                new Dictionary<string, string>
+                {
+                    ["policy"] = decision.Kind.ToString().ToLowerInvariant(),
+                    ["approval"] = "missing",
+                },
+                cancellationToken);
+        }
+
+        if (execution.AuthorizationContext is null)
+        {
+            const string reason = "Trusted canonical authorization context is required for approval.";
+            await AppendAuditAsync(
+                execution,
+                AuditEventKind.ApprovalEvaluated,
+                "mismatch",
+                reason,
+                cancellationToken);
+            return await DenyAsync(
+                execution,
+                reason,
+                new Dictionary<string, string>
+                {
+                    ["policy"] = decision.Kind.ToString().ToLowerInvariant(),
+                    ["approval"] = "mismatch",
+                },
+                cancellationToken);
+        }
+
+        if (execution.ApprovalId is null)
+        {
+            const string reason = "Exact owner approval is required for this action.";
+            await AppendAuditAsync(
+                execution,
+                AuditEventKind.ApprovalEvaluated,
+                "missing",
+                reason,
+                cancellationToken);
+            return await DenyAsync(
+                execution,
+                reason,
+                new Dictionary<string, string>
+                {
+                    ["policy"] = decision.Kind.ToString().ToLowerInvariant(),
+                    ["approval"] = "missing",
+                },
+                cancellationToken);
+        }
+
+        ActionAuthorizationContext authorizationContext = execution.AuthorizationContext;
+        string fingerprint = ActionIntentFingerprint.Compute(
+            definition,
+            execution.Request,
+            authorizationContext);
+        ApprovalConsumptionRequest consumptionRequest = new(
+            execution.ApprovalId.Value,
+            authorizationContext.OwnerPrincipalReference,
+            definition.Name,
+            authorizationContext.ProjectId,
+            authorizationContext.RepositoryId,
+            fingerprint,
+            _timeProvider.GetUtcNow());
+
+        ApprovalConsumptionResult consumption;
+        try
+        {
+            consumption = await _approvalStore.ConsumeAsync(
+                consumptionRequest,
+                cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            await AppendCancellationAuditAsync(
+                execution,
+                AuditEventKind.ApprovalEvaluated,
+                "Approval validation was cancelled.");
+            await AppendCancellationAuditAsync(
+                execution,
+                AuditEventKind.ActionCompleted,
+                "Action was cancelled before approval consumption completed.");
+            throw;
+        }
+        catch (Exception exception)
+        {
+            string reason = $"Approval validation failed with {exception.GetType().Name}.";
+            await AppendAuditAsync(
+                execution,
+                AuditEventKind.ApprovalEvaluated,
+                "error",
+                reason,
+                cancellationToken);
+            return await DenyAsync(
+                execution,
+                reason,
+                new Dictionary<string, string>
+                {
+                    ["policy"] = decision.Kind.ToString().ToLowerInvariant(),
+                    ["approval"] = "error",
+                },
+                cancellationToken);
+        }
+
+        string approvalOutcome = consumption.Status.ToString().ToLowerInvariant();
+        await AppendAuditAsync(
+            execution,
+            AuditEventKind.ApprovalEvaluated,
+            approvalOutcome,
+            $"Approval {execution.ApprovalId.Value} — {consumption.Reason}",
+            cancellationToken);
+
+        if (!consumption.IsConsumed)
+        {
+            return await DenyAsync(
+                execution,
+                consumption.Reason,
+                new Dictionary<string, string>
+                {
+                    ["policy"] = decision.Kind.ToString().ToLowerInvariant(),
+                    ["approval"] = approvalOutcome,
+                },
+                cancellationToken);
+        }
+
+        return null;
+    }
+
+    private async Task<ActionResult> DenyAsync(
+        ActionExecutionRequest execution,
+        string reason,
+        IReadOnlyDictionary<string, string> data,
+        CancellationToken cancellationToken)
+    {
+        await AppendAuditAsync(
+            execution,
+            AuditEventKind.ActionCompleted,
+            "denied",
+            reason,
+            cancellationToken);
+
+        return new ActionResult(
+            execution.Request.Name,
+            false,
+            data,
+            reason);
     }
 
     private Task AppendCancellationAuditAsync(

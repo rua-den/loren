@@ -17,12 +17,12 @@ Loren là một hệ thống trí tuệ cá nhân sống lâu dài, có memory b
 
 ## Trạng thái hiện tại
 
-**Cập nhật:** 2026-09-04  
+**Cập nhật:** 2026-09-05  
 **Phase:** `v0.1 — Trustworthy Core development`  
 **Milestone đã hoàn tất:** `M4 — Trusted Durable Memory`  
 **Decision gates đã pass:** `Gate A`, `Gate B`, `Gate C`, `Gate D / ADR-004`  
 **Milestone hiện tại:** `M5 — Action/Credential Boundary + Narrow GitHub Writes`  
-**Đang làm:** `M5 Slice 1 — typed write policy + one-time approval + global read-only`
+**Target hiện tại:** `Chốt exact-head gate của PR #25, sau đó M5 Slice 2 — write credential resolver + redaction/revocation`
 
 Đã hoàn tất:
 
@@ -36,7 +36,7 @@ Loren là một hệ thống trí tuệ cá nhân sống lâu dài, có memory b
 - M3 — Canonical Project/Repository State.
 - M4 — Trusted Durable Memory.
 
-Chi tiết chuẩn: [`docs/status.md`](docs/status.md).
+Chi tiết chuẩn: [`docs/status.md`](docs/status.md). Checkpoint để mở thread mới: [`docs/handoff.md`](docs/handoff.md).
 
 ## M4 đã chứng minh gì
 
@@ -68,92 +68,34 @@ adversarial content
  -> provenance vẫn chỉ là data, không phải action authorization
 ```
 
-M4 được merge qua PR #18–#22. PR #23 sau đó fix lỗi SQLite temp-file cleanup riêng trên Windows bằng cách tắt pooling **chỉ cho temp integration database** và thêm permanent `windows-latest` integration CI job.
-
-Baseline mới nhất đã verify:
-
-- main commit sau Windows hardening: `1cdd849126310745652d87f1d100c34aed624079`;
-- PR CI #162 / `33893832128`: Ubuntu full gate + Windows integration — PASS;
-- post-merge main CI #163 / `33894104116`: Ubuntu full gate + Windows integration — PASS;
-- owner chạy local toàn bộ Windows integration suite — PASS.
+M4 được merge qua PR #18–#22. PR #23 sau đó harden SQLite integration trên Windows và thêm permanent `windows-latest` integration job. PR #23 merge tại `1cdd849126310745652d87f1d100c34aed624079`; PR CI #162 / `33893832128`, main CI #163 / `33894104116`, và local Windows integration suite của owner đều pass.
 
 ## Gate D / ADR-004 [PASSED]
 
-Gate D khóa trust boundary đầu tiên cho write trước khi bất kỳ real write executor nào tồn tại.
+PR #24 merge vào `main` tại `b8649cb563e30af845a0b383103797632bed79a4`. Exact-head CI #164 / `33896004193` pass Ubuntu full gate và Windows integration.
 
-### Mọi GitHub write thật ở phiên bản đầu đều cần owner approval rõ ràng
-
-Authentication chỉ chứng minh owner identity; **không phải write approval**.
-
-Approval là artifact do Loren sở hữu, bind vào exact normalized intent:
+Gate D khóa trust boundary đầu tiên cho write:
 
 ```text
-ApprovalId
-owner/session binding
-action identity
-ProjectId + RepositoryId
-normalized target/resource
-security-relevant parameter digest
-approved timestamp
-expiry/task boundary
-one-time consumption state
-optional prerequisite digest
+brain request write
+ -> resolve canonical target
+ -> deterministic policy
+ -> exact Loren-owned owner approval
+ -> atomic one-time consume / chống replay
+ -> host-controlled global read-only
+ -> write-specific credential resolver
+ -> controlled executor
+ -> independent post-write verification
+ -> correlated redacted audit
 ```
 
-Nếu thay đổi repo, branch, path, content digest, PR base/head hoặc action intent quan trọng thì phải approval mới.
+Authentication chỉ chứng minh owner identity; **không phải write approval**. Mọi GitHub mutation thật ở phiên bản đầu đều cần explicit owner approval. Model/external content không thể tự tạo/broaden approval, chọn credential, tắt read-only hay tự tuyên bố write đã verify.
 
-Approval được consume atomically đúng một lần. Approval đã consume, expired, mismatch, unknown, revoked hoặc replay đều fail closed.
-
-### Canonical target trước authorization
-
-Chuỗi repo do model đưa ra không tạo authority. Write policy phải resolve request về canonical Project/Repository của Loren và normalized security-relevant target parameters trước khi authorize.
-
-### Global read-only mặc định an toàn
-
-Trước khi có write executor, Loren phải có host-controlled global read-only posture.
-
-```text
-write-enable thiếu/sai -> read-only
-read-only -> không gọi write executor
-read-only -> không resolve write credential
-read action vẫn dùng được
-```
-
-Model không được toggle trạng thái này qua ordinary action.
-
-### Credential nằm sau executor boundary
-
-Write credential value không bao giờ đi vào:
-
-- `BrainContext`;
-- model-visible action parameters;
-- canonical state;
-- durable memory;
-- audit payload;
-- owner-visible result.
-
-Chỉ opaque credential purpose/reference được đi qua application boundary. Credential thiếu/revoked thì fail closed. Credential revocation thắng approval đã cấp trước đó. Read/write credential purpose luôn được tách logic.
-
-### External write chỉ thành công sau verification
-
-API trả success chưa đủ.
-
-```text
-create branch -> fetch ref -> confirm exact SHA
-file/commit write -> fetch commit/ref/file state -> confirm expected identity
-open PR -> fetch PR -> confirm repo/base/head/state/PR identity
-```
-
-Verification mơ hồ thì không được báo success.
-
-### v0.1 write allowlist
-
-Chỉ được bật sau khi M5 foundations xanh:
+Mutation scope v0.1 chỉ được bật sau khi M5 foundations cần thiết xanh:
 
 ```text
 create non-default branch
-create/update file qua controlled commit path trên non-default branch
-create commit/update ref chỉ khi path đó cần
+controlled file/commit path trên non-default branch
 open pull request
 ```
 
@@ -169,31 +111,66 @@ secret-management actions
 production deployment
 ```
 
-## M5 implementation sequence
+## M5 Slice 1 — policy + one-time approval foundation
+
+PR #25 implement policy/approval/read-only foundation của Gate D nhưng **cố ý chưa register GitHub mutation executor thật**.
+
+Đã có:
+
+- typed `ActionAccessClass`: `READ`, `REVERSIBLE_WRITE`, `EXTERNAL_WRITE`, `PRIVILEGED_WRITE`;
+- trusted `ActionAuthorizationContext` mang canonical Project/Repository target ở ngoài model-visible action arguments;
+- model-visible action arguments và trusted normalized target được defensive-copy thành immutable snapshot, chặn TOCTOU kiểu approval fingerprint thấy A nhưng executor lại thấy B;
+- deterministic SHA-256 action-intent fingerprint bind action/access/canonical target/owner/normalized target/model arguments;
+- Loren-owned `ApprovalId`, `ActionApproval`, provider-neutral `IActionApprovalStore`;
+- `GateDActionPolicy` và invariant trong ActionGateway bắt mọi non-read action phải có approval ngay cả khi permissive policy lỡ trả `Allow`;
+- kiểm tra executor đã register **trước khi consume approval**, tránh burn approval chỉ vì host misconfiguration;
+- exact one-time approval consume ngay trước executor;
+- approval missing, expired, revoked, mismatch, unknown hoặc replay đều fail closed;
+- text `approvalId` do model nhét vào argument không có authority;
+- SQLite `ActionApprovals` qua migration `202609040003_AddActionApprovals`;
+- atomic compare-and-consume, concurrent attempt chỉ đúng một winner;
+- host config `LOREN_ENABLE_WRITES` fail-closed;
+- permanent EF migration-drift regression test.
+
+Safe default:
 
 ```text
-Slice 1  typed action policy context + one-time approval + global read-only
-Slice 2  write credential resolver + redaction/revocation
-Slice 3  create non-default GitHub branch + verify exact ref/SHA
-Slice 4  controlled file/commit path + verify
-Slice 5  open pull request + verify
-Slice 6  replay/revocation/injection/audit E2E
+LOREN_ENABLE_WRITES thiếu/false/sai -> read-only
+LOREN_ENABLE_WRITES=true -> eligible write mới có thể đi tới approval evaluation
+Slice 1 vẫn không có GitHub mutation executor
 ```
 
-Slice 1 **không bật GitHub mutation thật**. Không mutation nào được bật trước khi policy/approval/read-only/credential foundations đã có test xanh.
+Validation:
 
-## Durable-memory source classes
+- base implementation head `15a2b2c4c853324a546a55d13da22d94d4ac5765`, CI #172 / `33898878125` — Ubuntu full gate + Windows integration **PASS**;
+- self-review hardening head `5ed9049eeedf3210f1df13a0c8735b67d7e4766e`, CI #186 / `33900018499` — immutable approved-intent snapshot + không burn approval khi thiếu executor; Ubuntu full gate + Windows integration **PASS**.
+
+Một rule chủ ý: approval được consume **trước** first consequential executor attempt. Nếu attempt fail/mơ hồ và muốn retry độc lập thì phải approval mới; một approval không biến thành replay token.
+
+### Trạng thái handoff của PR #25
 
 ```text
-OWNER_EXPLICIT
-OWNER_CORRECTION
-VERIFIED_TOOL
-OWNER_APPROVED_INFERENCE
-MODEL_INFERENCE
-EXTERNAL_CONTENT
+state: OPEN / mergeable / chưa merge
+base main: b8649cb563e30af845a0b383103797632bed79a4
+last code-changing validated head: 5ed9049eeedf3210f1df13a0c8735b67d7e4766e
+latest green code CI: #186 / 33900018499
+sau code head này branch chỉ đang có các commit đồng bộ documentation
 ```
 
-ADR-003 giữ authority theo ngữ cảnh, không gom thành một confidence score duy nhất.
+Trước khi merge: review `docs/architecture.md` theo execution order đã harden, freeze PR head, bắt buộc final exact-head Ubuntu + Windows CI xanh, self-review final diff, squash-merge bằng expected head SHA, rồi verify post-merge main CI. **Chưa được start Slice 2 trước khi hoàn tất chuỗi này.**
+
+## Tiếp theo — M5 Slice 2 credential boundary
+
+Trước khi thêm real GitHub mutation executor đầu tiên, Slice 2 phải chứng minh:
+
+- write-specific credential resolver abstraction;
+- secret value chỉ tồn tại trong controlled executor boundary;
+- read/write credential purpose được tách logic;
+- credential thiếu/revoked fail closed, không fallback sang token rộng hơn;
+- revocation thắng intent đã approval trước đó;
+- secret bị redact khỏi log, exception, audit, action result và brain context.
+
+Chỉ sau khi Slice 1–2 xanh trên `main` Loren mới sang verified create-branch, controlled file/commit và open-PR slices.
 
 ## Canonical storage
 
@@ -204,13 +181,14 @@ override: LOREN_DATA_DIRECTORY
 migrations: tự chạy khi host start
 ```
 
-Database mới hiện chưa có Project cấu hình sẵn; owner-facing Project CRUD/configuration và memory-management UI vẫn deferred sang phần UI v0.1 sau.
+Database mới hiện chưa có Project cấu hình sẵn; Project CRUD/configuration, memory management và approval UX vẫn là phần UI v0.1 sau.
 
 ## Chạy local
 
 ```powershell
 $env:LOREN_OWNER_PASSWORD='choose-a-local-owner-password'
 $env:OLLAMA_API_KEY='your-provider-secret'
+$env:LOREN_ENABLE_WRITES='false'
 dotnet run --project src/Loren.Web/Loren.Web.csproj
 ```
 
@@ -219,10 +197,11 @@ Bash:
 ```bash
 export LOREN_OWNER_PASSWORD='choose-a-local-owner-password'
 export OLLAMA_API_KEY='your-provider-secret'
+export LOREN_ENABLE_WRITES='false'
 dotnet run --project src/Loren.Web/Loren.Web.csproj
 ```
 
-Không commit secret thật.
+Không commit secret thật. Hiện nên để `LOREN_ENABLE_WRITES=false`; set true cũng **không tự tạo mutation capability** trong Slice 1.
 
 ## Test
 
@@ -232,7 +211,7 @@ dotnet build Loren.slnx --configuration Release --no-restore
 dotnet test Loren.slnx --configuration Release --no-build --no-restore
 ```
 
-Windows giờ là first-class integration-test CI platform bên cạnh Ubuntu full gate.
+Windows là first-class integration-test CI platform bên cạnh Ubuntu full gate.
 
 ## Lộ trình version
 
@@ -250,6 +229,7 @@ v1.0  stable personal daily driver
 ## Tài liệu
 
 - [`docs/status.md`](docs/status.md) — tiến độ chuẩn hiện tại
+- [`docs/handoff.md`](docs/handoff.md) — checkpoint ngắn để tiếp tục ở thread mới
 - [`docs/development.md`](docs/development.md) — build/test/configuration
 - [`docs/architecture.md`](docs/architecture.md) — system boundaries
 - [`docs/permissions.md`](docs/permissions.md) — permission/approval baseline hiện hành

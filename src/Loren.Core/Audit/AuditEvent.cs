@@ -6,6 +6,7 @@ public enum AuditEventKind
 {
     ActionRequested,
     PolicyEvaluated,
+    ApprovalEvaluated,
     ActionCompleted,
 }
 

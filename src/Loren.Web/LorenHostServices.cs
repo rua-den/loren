@@ -42,6 +42,7 @@ public static class LorenHostServices
             options.UseSqlite(connectionStringBuilder.ConnectionString));
         services.AddScoped<IProjectCatalog, SqliteProjectCatalog>();
         services.AddScoped<IMemoryStore, SqliteMemoryStore>();
+        services.AddScoped<IActionApprovalStore, SqliteActionApprovalStore>();
         services.AddSingleton(new LorenMemoryContextOptions());
         services.AddScoped<LorenMemoryContextBuilder>();
         services.AddScoped<LorenProjectContextBuilder>();
@@ -49,7 +50,14 @@ public static class LorenHostServices
         services.AddSingleton<InMemoryAuditSink>();
         services.AddSingleton<IAuditSink>(provider =>
             provider.GetRequiredService<InMemoryAuditSink>());
-        services.AddSingleton<IActionPolicy, ReadOnlyActionPolicy>();
+
+        bool writesEnabled = string.Equals(
+            configuration["LOREN_ENABLE_WRITES"],
+            "true",
+            StringComparison.OrdinalIgnoreCase);
+        services.AddSingleton<IWriteSafetyState>(
+            new FixedWriteSafetyState(isReadOnly: !writesEnabled));
+        services.AddSingleton<IActionPolicy, GateDActionPolicy>();
 
         services.AddSingleton<IActionExecutor>(provider =>
         {
@@ -77,14 +85,15 @@ public static class LorenHostServices
                 apiKey);
         });
 
-        services.AddSingleton<IActionGateway>(provider =>
+        services.AddScoped<IActionGateway>(provider =>
             new ActionGateway(
                 [GitHubActions.ReadRepository],
                 provider.GetServices<IActionExecutor>(),
                 provider.GetRequiredService<IActionPolicy>(),
-                provider.GetRequiredService<IAuditSink>()));
+                provider.GetRequiredService<IAuditSink>(),
+                provider.GetRequiredService<IActionApprovalStore>()));
 
-        services.AddSingleton(provider =>
+        services.AddScoped(provider =>
             new AgentLoop(
                 provider.GetRequiredService<IBrain>(),
                 provider.GetRequiredService<IActionGateway>(),

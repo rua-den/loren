@@ -17,6 +17,8 @@ public sealed class CanonicalStateDbContext : DbContext
 
     internal DbSet<MemoryRecordRow> MemoryRecords => Set<MemoryRecordRow>();
 
+    internal DbSet<ActionApprovalRow> ActionApprovals => Set<ActionApprovalRow>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         CanonicalStateModel.Configure(modelBuilder);
@@ -111,6 +113,34 @@ internal static class CanonicalStateModel
                 .HasForeignKey(memory => memory.SupersededById)
                 .OnDelete(DeleteBehavior.Restrict);
         });
+
+        modelBuilder.Entity<ActionApprovalRow>(entity =>
+        {
+            entity.ToTable("ActionApprovals");
+            entity.HasKey(approval => approval.Id);
+            entity.Property(approval => approval.OwnerPrincipalReference).HasMaxLength(256).IsRequired();
+            entity.Property(approval => approval.ActionName).HasMaxLength(200).IsRequired();
+            entity.Property(approval => approval.IntentFingerprint).HasMaxLength(128).IsRequired();
+            entity.Property(approval => approval.ApprovedAtUnixMs).IsRequired();
+            entity.Property(approval => approval.ExpiresAtUnixMs).IsRequired();
+            entity.Property(approval => approval.ConsumedAtUnixMs).IsRequired(false);
+            entity.Property(approval => approval.RevokedAtUnixMs).IsRequired(false);
+            entity.HasIndex(approval => approval.ProjectId);
+            entity.HasIndex(approval => approval.RepositoryId);
+            entity.HasIndex(approval => new { approval.ProjectId, approval.RepositoryId, approval.ConsumedAtUnixMs });
+
+            entity
+                .HasOne<ProjectRow>()
+                .WithMany()
+                .HasForeignKey(approval => approval.ProjectId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity
+                .HasOne<RepositoryRow>()
+                .WithMany()
+                .HasForeignKey(approval => approval.RepositoryId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
     }
 }
 
@@ -180,4 +210,27 @@ internal sealed class MemoryRecordRow
     public DateTimeOffset CreatedAt { get; set; }
 
     public DateTimeOffset UpdatedAt { get; set; }
+}
+
+internal sealed class ActionApprovalRow
+{
+    public Guid Id { get; set; }
+
+    public string OwnerPrincipalReference { get; set; } = string.Empty;
+
+    public string ActionName { get; set; } = string.Empty;
+
+    public Guid ProjectId { get; set; }
+
+    public Guid RepositoryId { get; set; }
+
+    public string IntentFingerprint { get; set; } = string.Empty;
+
+    public long ApprovedAtUnixMs { get; set; }
+
+    public long ExpiresAtUnixMs { get; set; }
+
+    public long? ConsumedAtUnixMs { get; set; }
+
+    public long? RevokedAtUnixMs { get; set; }
 }
