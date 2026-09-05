@@ -22,7 +22,8 @@ Loren là một hệ thống trí tuệ cá nhân sống lâu dài, có memory b
 **Milestone đã hoàn tất:** `M4 — Trusted Durable Memory`  
 **Decision gates đã pass:** `Gate A`, `Gate B`, `Gate C`, `Gate D / ADR-004`  
 **Milestone hiện tại:** `M5 — Action/Credential Boundary + Narrow GitHub Writes`  
-**Target hiện tại:** `Chốt exact-head gate của PR #25, sau đó M5 Slice 2 — write credential resolver + redaction/revocation`
+**M5 slice đã hoàn tất:** `Slice 1 — typed policy + one-time approval + global read-only`  
+**Target hiện tại:** `M5 Slice 2 — write credential resolver + secret redaction/revocation`
 
 Đã hoàn tất:
 
@@ -35,6 +36,7 @@ Loren là một hệ thống trí tuệ cá nhân sống lâu dài, có memory b
 - M2 — Walking Skeleton.
 - M3 — Canonical Project/Repository State.
 - M4 — Trusted Durable Memory.
+- M5 Slice 1 — policy/approval/read-only foundation.
 
 Chi tiết chuẩn: [`docs/status.md`](docs/status.md). Checkpoint để mở thread mới: [`docs/handoff.md`](docs/handoff.md).
 
@@ -111,9 +113,17 @@ secret-management actions
 production deployment
 ```
 
-## M5 Slice 1 — policy + one-time approval foundation
+## M5 Slice 1 — policy + one-time approval foundation [HOÀN TẤT]
 
-PR #25 implement policy/approval/read-only foundation của Gate D nhưng **cố ý chưa register GitHub mutation executor thật**.
+PR #25 đã squash-merge vào `main` tại `caa65fbbd7c3828b68aa198dad625e73e9c096b4`.
+
+Evidence cuối:
+
+```text
+frozen PR head: c9bfb9f82b70963c196a689d4b0be2feb9bfedb5
+PR CI #194 / 33973579862: Ubuntu full gate PASS + Windows integration PASS
+post-merge main CI #195 / 33973694524: Ubuntu full gate PASS + Windows integration PASS
+```
 
 Đã có:
 
@@ -124,7 +134,7 @@ PR #25 implement policy/approval/read-only foundation của Gate D nhưng **cố
 - Loren-owned `ApprovalId`, `ActionApproval`, provider-neutral `IActionApprovalStore`;
 - `GateDActionPolicy` và invariant trong ActionGateway bắt mọi non-read action phải có approval ngay cả khi permissive policy lỡ trả `Allow`;
 - kiểm tra executor đã register **trước khi consume approval**, tránh burn approval chỉ vì host misconfiguration;
-- exact one-time approval consume ngay trước executor;
+- exact one-time approval consume ngay trước first consequential executor attempt;
 - approval missing, expired, revoked, mismatch, unknown hoặc replay đều fail closed;
 - text `approvalId` do model nhét vào argument không có authority;
 - SQLite `ActionApprovals` qua migration `202609040003_AddActionApprovals`;
@@ -137,38 +147,23 @@ Safe default:
 ```text
 LOREN_ENABLE_WRITES thiếu/false/sai -> read-only
 LOREN_ENABLE_WRITES=true -> eligible write mới có thể đi tới approval evaluation
-Slice 1 vẫn không có GitHub mutation executor
+production hiện vẫn không có GitHub mutation executor
 ```
-
-Validation:
-
-- base implementation head `15a2b2c4c853324a546a55d13da22d94d4ac5765`, CI #172 / `33898878125` — Ubuntu full gate + Windows integration **PASS**;
-- self-review hardening head `5ed9049eeedf3210f1df13a0c8735b67d7e4766e`, CI #186 / `33900018499` — immutable approved-intent snapshot + không burn approval khi thiếu executor; Ubuntu full gate + Windows integration **PASS**.
 
 Một rule chủ ý: approval được consume **trước** first consequential executor attempt. Nếu attempt fail/mơ hồ và muốn retry độc lập thì phải approval mới; một approval không biến thành replay token.
 
-### Trạng thái handoff của PR #25
-
-```text
-state: OPEN / mergeable / chưa merge
-base main: b8649cb563e30af845a0b383103797632bed79a4
-last code-changing validated head: 5ed9049eeedf3210f1df13a0c8735b67d7e4766e
-latest green code CI: #186 / 33900018499
-sau code head này branch chỉ đang có các commit đồng bộ documentation
-```
-
-Trước khi merge: review `docs/architecture.md` theo execution order đã harden, freeze PR head, bắt buộc final exact-head Ubuntu + Windows CI xanh, self-review final diff, squash-merge bằng expected head SHA, rồi verify post-merge main CI. **Chưa được start Slice 2 trước khi hoàn tất chuỗi này.**
-
-## Tiếp theo — M5 Slice 2 credential boundary
+## Hiện tại — M5 Slice 2 credential boundary
 
 Trước khi thêm real GitHub mutation executor đầu tiên, Slice 2 phải chứng minh:
 
 - write-specific credential resolver abstraction;
+- opaque write credential purpose/reference tách khỏi secret value;
 - secret value chỉ tồn tại trong controlled executor boundary;
 - read/write credential purpose được tách logic;
 - credential thiếu/revoked fail closed, không fallback sang token rộng hơn;
 - revocation thắng intent đã approval trước đó;
-- secret bị redact khỏi log, exception, audit, action result và brain context.
+- secret bị redact khỏi log, exception, audit, action result và brain context;
+- acceptance tests deterministic, không cần live mutation.
 
 Chỉ sau khi Slice 1–2 xanh trên `main` Loren mới sang verified create-branch, controlled file/commit và open-PR slices.
 
@@ -201,7 +196,7 @@ export LOREN_ENABLE_WRITES='false'
 dotnet run --project src/Loren.Web/Loren.Web.csproj
 ```
 
-Không commit secret thật. Hiện nên để `LOREN_ENABLE_WRITES=false`; set true cũng **không tự tạo mutation capability** trong Slice 1.
+Không commit secret thật. Hiện nên để `LOREN_ENABLE_WRITES=false`; set true cũng **không tự tạo mutation capability** vì production chưa có mutation executor.
 
 ## Test
 
