@@ -17,12 +17,12 @@ Loren is a long-lived personal intelligence system with persistent memory, expli
 
 ## Current status
 
-**Last updated:** 2026-09-04  
+**Last updated:** 2026-09-05  
 **Phase:** `v0.1 — Trustworthy Core development`  
 **Completed milestone:** `M4 — Trusted Durable Memory`  
 **Passed decision gates:** `Gate A`, `Gate B`, `Gate C`, `Gate D / ADR-004`  
 **Current milestone:** `M5 — Action/Credential Boundary + Narrow GitHub Writes`  
-**Current target:** `M5 Slice 2 — write credential resolver + redaction/revocation after Slice 1 merges`
+**Current target:** `Finish PR #25 exact-head gate, then M5 Slice 2 — write credential resolver + redaction/revocation`
 
 Completed:
 
@@ -36,7 +36,7 @@ Completed:
 - M3 — Canonical Project/Repository State.
 - M4 — Trusted Durable Memory.
 
-Detailed status: [`docs/status.md`](docs/status.md).
+Detailed status: [`docs/status.md`](docs/status.md). Fresh-thread continuation checkpoint: [`docs/handoff.md`](docs/handoff.md).
 
 ## What M4 proved
 
@@ -147,6 +147,18 @@ Validation:
 
 One important rule is intentional: approval is consumed before the first consequential executor attempt. An independent retry after failure or ambiguity needs fresh approval, preventing one approval from becoming a replay token.
 
+### PR #25 handoff state
+
+```text
+state: OPEN / mergeable / not merged
+base main: b8649cb563e30af845a0b383103797632bed79a4
+last code-changing validated head: 5ed9049eeedf3210f1df13a0c8735b67d7e4766e
+latest green code CI: #186 / 33900018499
+documentation synchronization commits follow that validated code head
+```
+
+Before merge: review `docs/architecture.md` against the hardened execution order, freeze the resulting PR head, require final exact-head Ubuntu + Windows CI, self-review the final diff, squash-merge with the expected head SHA, then verify post-merge main CI. Do **not** start Slice 2 before that is complete.
+
 ## Next — M5 Slice 2 credential boundary
 
 Before the first real GitHub mutation executor is added, Slice 2 must prove:
@@ -217,6 +229,7 @@ v1.0  stable personal daily driver
 ## Documentation
 
 - [`docs/status.md`](docs/status.md) — authoritative current progress
+- [`docs/handoff.md`](docs/handoff.md) — compact continuation checkpoint for a fresh thread
 - [`docs/development.md`](docs/development.md) — build/test/configuration guidance
 - [`docs/architecture.md`](docs/architecture.md) — active system boundaries
 - [`docs/permissions.md`](docs/permissions.md) — active permission/approval baseline
