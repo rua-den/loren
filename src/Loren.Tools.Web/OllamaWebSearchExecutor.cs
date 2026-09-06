@@ -187,7 +187,7 @@ public sealed class OllamaWebSearchExecutor : IActionExecutor
             return trimmed;
         }
 
-        return string.Concat(trimmed.AsSpan(0, maxCharacters - 1), "…");
+        return trimmed[..(maxCharacters - 1)] + "…";
     }
 
     private static async Task<byte[]> ReadBoundedBodyAsync(
@@ -220,7 +220,7 @@ public sealed class OllamaWebSearchExecutor : IActionExecutor
                 throw new WebSearchResponseTooLargeException();
             }
 
-            output.Write(buffer, 0, bytesRead);
+            output.Write(buffer.AsSpan(0, bytesRead));
         }
 
         return output.ToArray();
@@ -229,7 +229,9 @@ public sealed class OllamaWebSearchExecutor : IActionExecutor
     private static ActionResult Failure(string actionName, string error) =>
         new(actionName, false, new Dictionary<string, string>(), error);
 
-    private sealed class WebSearchResponseTooLargeException : Exception;
+    private sealed class WebSearchResponseTooLargeException : Exception
+    {
+    }
 }
 
 public sealed record OllamaWebSearchOptions(
