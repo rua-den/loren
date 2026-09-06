@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Net.Sockets;
 
@@ -8,7 +9,7 @@ internal static class PublicWebUrlPolicy
     public static bool TryNormalize(
         string? value,
         int maxCharacters,
-        out Uri? normalizedUri)
+        [NotNullWhen(true)] out Uri? normalizedUri)
     {
         normalizedUri = null;
         if (string.IsNullOrWhiteSpace(value))
