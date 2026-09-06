@@ -59,7 +59,7 @@ public sealed class LorenRunService
 
         AgentRunResult result = await _agentLoop.RunAsync(
             preparedContext.BrainContext,
-            [GitHubActions.ReadRepository, WebActions.Search],
+            [GitHubActions.ReadRepository, WebActions.Search, WebActions.Fetch],
             cancellationToken);
 
         LorenAuditEntry[] auditEntries = _audit
