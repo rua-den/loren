@@ -163,14 +163,19 @@ public sealed class CanonicalProjectContextTests
             cancellationToken.ThrowIfCancellationRequested();
             CallCount++;
 
-            Assert.Equal(2, context.Inputs.Count);
-            BrainMessage systemMessage = Assert.IsType<BrainMessage>(context.Inputs[0]);
-            Assert.Equal(BrainRole.System, systemMessage.Role);
-            Assert.Contains(expectedProjectId, systemMessage.Content, StringComparison.Ordinal);
-            Assert.Contains("rua-den/wedding-online", systemMessage.Content, StringComparison.Ordinal);
-            Assert.Contains("not live external state", systemMessage.Content, StringComparison.Ordinal);
+            Assert.Equal(3, context.Inputs.Count);
 
-            BrainMessage userMessage = Assert.IsType<BrainMessage>(context.Inputs[1]);
+            BrainMessage identityMessage = Assert.IsType<BrainMessage>(context.Inputs[0]);
+            Assert.Equal(BrainRole.System, identityMessage.Role);
+            Assert.Contains("You are Loren", identityMessage.Content, StringComparison.Ordinal);
+
+            BrainMessage projectMessage = Assert.IsType<BrainMessage>(context.Inputs[1]);
+            Assert.Equal(BrainRole.System, projectMessage.Role);
+            Assert.Contains(expectedProjectId, projectMessage.Content, StringComparison.Ordinal);
+            Assert.Contains("rua-den/wedding-online", projectMessage.Content, StringComparison.Ordinal);
+            Assert.Contains("not live external state", projectMessage.Content, StringComparison.Ordinal);
+
+            BrainMessage userMessage = Assert.IsType<BrainMessage>(context.Inputs[2]);
             Assert.Equal(BrainRole.User, userMessage.Role);
             Assert.Equal("Which repository belongs to this project?", userMessage.Content);
             Assert.Contains(availableActions, action => action.Name == "github.read_repository");
