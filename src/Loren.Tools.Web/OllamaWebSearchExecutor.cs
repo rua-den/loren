@@ -98,7 +98,8 @@ public sealed class OllamaWebSearchExecutor : IActionExecutor
                     break;
                 }
 
-                if (!TryReadSource(item, out WebSearchSource? source))
+                WebSearchSource? source = ReadSource(item);
+                if (source is null)
                 {
                     continue;
                 }
@@ -133,20 +134,24 @@ public sealed class OllamaWebSearchExecutor : IActionExecutor
         }
     }
 
-    private bool TryReadSource(JsonElement item, out WebSearchSource? source)
+    private WebSearchSource? ReadSource(JsonElement item)
     {
-        source = null;
-        if (item.ValueKind is not JsonValueKind.Object
-            || !TryReadNonEmptyString(item, "title", out string? title)
-            || !TryReadNonEmptyString(item, "url", out string? url))
+        if (item.ValueKind is not JsonValueKind.Object)
         {
-            return false;
+            return null;
+        }
+
+        string? title = ReadNonEmptyString(item, "title");
+        string? url = ReadNonEmptyString(item, "url");
+        if (title is null || url is null)
+        {
+            return null;
         }
 
         if (!Uri.TryCreate(url, UriKind.Absolute, out Uri? parsedUrl)
             || parsedUrl.Scheme is not ("http" or "https"))
         {
-            return false;
+            return null;
         }
 
         string content = item.TryGetProperty("content", out JsonElement contentElement)
@@ -154,29 +159,25 @@ public sealed class OllamaWebSearchExecutor : IActionExecutor
             ? contentElement.GetString() ?? string.Empty
             : string.Empty;
 
-        source = new WebSearchSource(
+        return new WebSearchSource(
             Truncate(title, _options.MaxTitleCharacters),
             Truncate(parsedUrl.AbsoluteUri, _options.MaxUrlCharacters),
             Truncate(content, _options.MaxContentCharactersPerResult));
-        return true;
     }
 
-    private static bool TryReadNonEmptyString(
+    private static string? ReadNonEmptyString(
         JsonElement item,
-        string propertyName,
-        out string? value)
+        string propertyName)
     {
-        value = null;
         if (!item.TryGetProperty(propertyName, out JsonElement element)
             || element.ValueKind is not JsonValueKind.String
             || element.GetString() is not string text
             || string.IsNullOrWhiteSpace(text))
         {
-            return false;
+            return null;
         }
 
-        value = text.Trim();
-        return true;
+        return text.Trim();
     }
 
     private static string Truncate(string value, int maxCharacters)
