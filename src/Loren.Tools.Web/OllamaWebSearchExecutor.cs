@@ -154,6 +154,12 @@ public sealed class OllamaWebSearchExecutor : IActionExecutor
             return null;
         }
 
+        string absoluteUrl = parsedUrl.AbsoluteUri;
+        if (absoluteUrl.Length > _options.MaxUrlCharacters)
+        {
+            return null;
+        }
+
         string content = item.TryGetProperty("content", out JsonElement contentElement)
             && contentElement.ValueKind is JsonValueKind.String
             ? contentElement.GetString() ?? string.Empty
@@ -161,7 +167,7 @@ public sealed class OllamaWebSearchExecutor : IActionExecutor
 
         return new WebSearchSource(
             Truncate(title, _options.MaxTitleCharacters),
-            Truncate(parsedUrl.AbsoluteUri, _options.MaxUrlCharacters),
+            absoluteUrl,
             Truncate(content, _options.MaxContentCharactersPerResult));
     }
 
