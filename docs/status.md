@@ -1,16 +1,16 @@
 # Loren Project Status
 
-**Last updated:** 2026-09-05  
+**Last updated:** 2026-09-06  
 **Current version phase:** `v0.1 — Trustworthy Core development`  
 **Current decision gates:** `Gate A — PASSED`, `Gate B — PASSED`, `Gate C — PASSED`, `Gate D — PASSED via ADR-004`  
 **Completed milestone:** `M4 — Trusted Durable Memory`  
 **Current milestone:** `M5 — Action/Credential Boundary + Narrow GitHub Writes`  
-**Completed M5 slice:** `Slice 1 — typed action policy + one-time approval + global read-only`  
-**Current execution target:** `M5 Slice 2 — write credential resolver + secret redaction/revocation`
+**Completed M5 slices:** `Slice 1 — typed action policy + one-time approval + global read-only`, `Slice 2 — write credential isolation/revocation/redaction`  
+**Current execution target:** `M5 Slice 3 — explicit-owner verified create-non-default-branch checkpoint`
 
 This file is the authoritative progress ledger for the repository. `README.md` and `README.vi.md` summarize it. For fresh-thread continuation, read [`handoff.md`](handoff.md) immediately after this file.
 
-Gate D authorizes M5 implementation only. M5 Slice 1 is now merged and green on `main`, but Loren still registers **no real GitHub mutation executor**. Slice 2 must close the credential/redaction/revocation boundary before the first real write is added.
+Gate D authorizes M5 implementation only. Slices 1–2 are merged and green on `main`. Slice 3 is the first deliberately narrow real GitHub mutation capability: create a non-default branch from an exact approved source commit SHA and report success only after an independent ref/SHA readback matches.
 
 ---
 
@@ -61,7 +61,7 @@ Gate D locks the first write-capable trust contract:
 - audit must reconstruct request -> policy -> approval -> credential purpose -> execution -> verification without secrets;
 - model/external content cannot create approval, expand scope, change read-only mode, choose credentials, or declare verification success.
 
-Allowed M5 v0.1 mutation scope after the required foundations are green:
+Allowed M5 v0.1 mutation scope:
 
 ```text
 create non-default branch
@@ -122,58 +122,101 @@ Delivered:
 - permanent canonical migration-drift regression test comparing the EF migration snapshot with the current design-time model;
 - production host uses `GateDActionPolicy`, scoped approval persistence/gateway/runtime composition, and fail-closed `LOREN_ENABLE_WRITES` semantics.
 
-Safe-default host behavior remains:
-
-```text
-LOREN_ENABLE_WRITES missing/false/malformed -> read-only
-LOREN_ENABLE_WRITES=true -> policy may evaluate eligible writes
-but production still registers no real GitHub mutation executor
-```
-
 Important non-replay rule: approval is consumed before the first consequential executor attempt. An independent retry after failure/ambiguity requires fresh approval.
 
-## M5 Slice 2 — credential boundary [ACTIVE / NEXT IMPLEMENTATION]
+## M5 Slice 2 — credential boundary [COMPLETE]
 
-Goal: prove a write secret can be selected and materialized only inside Loren's controlled executor boundary, with revocation and redaction strong enough that the secret never becomes model/context/audit/result data.
-
-Required delivery:
-
-- write-specific credential resolver abstraction owned behind Loren contracts;
-- host/env-backed secret implementation suitable for local v0.1;
-- opaque credential purpose/reference separated from secret value;
-- secret value materialized only inside the controlled executor boundary;
-- read/write credential purposes stay logically separated;
-- missing/revoked credential fails closed and never falls back to a broader token;
-- credential revocation overrides an already-approved intent;
-- redaction acceptance covers request, exceptions, logs, audit, action results, and brain context;
-- deterministic tests do not require a live model or live GitHub mutation;
-- no real GitHub mutation executor is enabled until the Slice 2 boundary is green on `main`.
-
-Proposed narrow execution shape:
+PR #26 merged to `main` at:
 
 ```text
-model ActionRequest + Loren trusted target
- -> GateDActionPolicy / global read-only
- -> verify executor registration
- -> exact one-time owner approval consume
- -> controlled write executor boundary
- -> resolve opaque write credential purpose
- -> missing/revoked => fail closed before external mutation
- -> materialize secret only for external client call
- -> redact all outward/error/audit surfaces
+f7fb36bae324dbd7bb8d12e02daf3fe0dd98e7da
 ```
 
-## M5 Slice 3+ — narrow verified GitHub writes
-
-Only after Slices 1–2 are green on `main`:
+Validation evidence:
 
 ```text
-create branch -> verify ref/SHA
-controlled file/commit path -> verify commit/ref/content identity
-open PR -> verify repo/base/head/state/PR identity
+frozen PR head: e9e2b07378e1435e62e6090829619603ac7df42b
+PR CI #201 / 34027113298: Ubuntu full gate PASS, Windows integration PASS
+post-merge main CI #202 / 34027255592: Ubuntu full gate PASS, Windows integration PASS
 ```
 
-Each real write requires matching one-time owner approval, controlled write credential resolution, independent post-write verification, and correlated redacted audit.
+Delivered:
+
+- provider-neutral `CredentialPurpose`, `CredentialReference`, resolution status, and secret-bearing `CredentialLease` with no public secret property;
+- exact environment binding for the dedicated GitHub write identity `github.write / github.write.local-v0.1`;
+- local v0.1 host contract `GITHUB_WRITE_TOKEN` plus `LOREN_GITHUB_WRITE_CREDENTIAL_REVOKED`;
+- no fallback to `OLLAMA_API_KEY`, read credentials, or broader credential identities;
+- missing, revoked, malformed revocation state, and unconfigured purpose/reference fail closed;
+- `CredentialBoundActionExecutor` materializes the secret only inside the consequential executor callback;
+- executor results and exceptions are redacted before returning to gateway/audit/brain boundaries;
+- resolver exception detail is not propagated;
+- acceptance tests prove secret values do not escape into result/audit/brain serialization;
+- Slice 2 production composition registered the resolver while intentionally registering no mutation executor until Slice 3.
+
+## M5 Slice 3 — verified create-non-default-branch checkpoint [CURRENT]
+
+The first real write slice is intentionally narrow. Its capability contract is:
+
+```text
+authenticated owner
+ -> explicit “Approve & create branch” request
+ -> resolve canonical Project + GitHub Repository
+ -> freeze exact branch + 40-char source commit SHA
+ -> create exact 5-minute one-time ActionApproval
+ -> ActionGateway policy + fingerprint + atomic consume
+ -> trusted-execution-only write executor
+ -> resolve github.write credential
+ -> GET repository/default-branch preflight
+ -> reject default branch / unsafe Git ref
+ -> POST git/refs
+ -> GET exact created ref
+ -> require verified SHA == approved source SHA
+ -> redacted ActionResult + correlated audit
+```
+
+Slice 3 implementation includes:
+
+- `ITrustedActionExecutor`: non-read actions must receive Loren-owned `ActionExecutionRequest`, not only model-visible `ActionRequest`;
+- `ActionGateway` refuses a non-read legacy executor before approval consumption;
+- `CredentialBoundActionExecutor` refuses direct untrusted invocation and materializes credentials only for trusted execution;
+- `github.create_branch` typed as `REVERSIBLE_WRITE`;
+- canonical repository locator comes from Loren state, never from model/request-controlled owner/repo strings at execution time;
+- exact branch + source SHA are duplicated into trusted normalized target and action arguments, fingerprinted, then re-compared at executor boundary;
+- Git ref safety validation and exact 40-hex source SHA requirement;
+- default branch creation/replacement is forbidden before mutation;
+- independent post-write ref/SHA verification is mandatory for success;
+- credential missing/revoked fails closed after approval consumption but before external HTTP mutation;
+- authenticated owner console can bootstrap a canonical GitHub project on an empty local database;
+- owner console exposes an explicit `Approve & create branch` operation; authentication alone still does not authorize writes;
+- deterministic HTTP tests cover request order, default-branch rejection, unsafe refs, verification mismatch, and secret non-leakage;
+- owner-workflow acceptance covers project resolution -> approval creation/consume -> credential boundary -> verified write, plus revoked-credential no-HTTP behavior.
+
+Safe host behavior:
+
+```text
+LOREN_ENABLE_WRITES missing/false/malformed -> write denied before approval execution
+LOREN_ENABLE_WRITES=true + missing GITHUB_WRITE_TOKEN -> approval may be consumed, external mutation does not occur
+LOREN_GITHUB_WRITE_CREDENTIAL_REVOKED=true -> approval may be consumed, external mutation does not occur
+successful github.create_branch -> only after exact post-write ref/SHA verification
+```
+
+Local first-checkpoint test requires:
+
+```text
+LOREN_OWNER_PASSWORD=<local password>
+LOREN_ENABLE_WRITES=true
+GITHUB_WRITE_TOKEN=<GitHub token allowed to create refs in the target repo>
+LOREN_GITHUB_WRITE_CREDENTIAL_REVOKED=false
+```
+
+Then use the owner console to bootstrap the target GitHub repository if the local database is empty, obtain an exact existing 40-character source commit SHA, and press `Approve & create branch` with a new non-default branch name.
+
+Next narrow M5 target after this checkpoint is green on `main`:
+
+```text
+controlled file/commit path on the approved non-default branch
+ -> verify commit/ref/content identity
+```
 
 ---
 
