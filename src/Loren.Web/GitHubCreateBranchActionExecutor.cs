@@ -46,19 +46,19 @@ public sealed class GitHubCreateBranchActionExecutor : CredentialBoundActionExec
         if (!TryReadTarget(
                 authorization.NormalizedTarget,
                 BranchTargetKey,
-                out string? trustedBranch)
+                out string trustedBranch)
             || !TryReadTarget(
                 authorization.NormalizedTarget,
                 SourceShaTargetKey,
-                out string? trustedSourceSha))
+                out string trustedSourceSha))
         {
             return Failure(
                 request.Name,
                 "Trusted create-branch target is missing branch or source SHA.");
         }
 
-        if (!TryReadTarget(request.Arguments, BranchTargetKey, out string? proposedBranch)
-            || !TryReadTarget(request.Arguments, SourceShaTargetKey, out string? proposedSourceSha)
+        if (!TryReadTarget(request.Arguments, BranchTargetKey, out string proposedBranch)
+            || !TryReadTarget(request.Arguments, SourceShaTargetKey, out string proposedSourceSha)
             || !string.Equals(trustedBranch, proposedBranch, StringComparison.Ordinal)
             || !string.Equals(trustedSourceSha, proposedSourceSha, StringComparison.OrdinalIgnoreCase))
         {
@@ -102,7 +102,7 @@ public sealed class GitHubCreateBranchActionExecutor : CredentialBoundActionExec
     private static bool TryReadTarget(
         IReadOnlyDictionary<string, string> values,
         string key,
-        out string? value)
+        out string value)
     {
         if (values.TryGetValue(key, out string? candidate)
             && !string.IsNullOrWhiteSpace(candidate))
@@ -111,7 +111,7 @@ public sealed class GitHubCreateBranchActionExecutor : CredentialBoundActionExec
             return true;
         }
 
-        value = null;
+        value = string.Empty;
         return false;
     }
 
