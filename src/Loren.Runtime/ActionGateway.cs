@@ -133,6 +133,17 @@ public sealed class ActionGateway : IActionGateway
                 cancellationToken);
         }
 
+        if (definition.AccessClass is ActionAccessClass.OwnerStateRead or ActionAccessClass.OwnerStateWrite
+            && execution.OwnerContext is null)
+        {
+            const string reason = "Authenticated owner context is required for owner-state access.";
+            return await DenyAsync(
+                execution,
+                reason,
+                new Dictionary<string, string> { ["owner_context"] = "missing" },
+                cancellationToken);
+        }
+
         if (!_executors.TryGetValue(request.Name, out IActionExecutor? executor))
         {
             const string reason = "No executor is registered for the action.";
