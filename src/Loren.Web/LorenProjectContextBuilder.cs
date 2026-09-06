@@ -114,7 +114,7 @@ public sealed class LorenProjectContextBuilder
             .Select(snapshot => new LorenProjectDirectoryItem(
                 snapshot.Project.Name,
                 snapshot.Project.Aliases,
-                snapshot.Repositories.Select(ToRepositoryContext).ToArray()))
+                snapshot.Repositories.Select(ToDirectoryRepository).ToArray()))
             .ToArray();
     }
 
@@ -147,7 +147,7 @@ public sealed class LorenProjectContextBuilder
 
         foreach (string candidate in candidates)
         {
-            if (candidate.Contains(' ', StringComparison.Ordinal) || candidate.Contains('-', StringComparison.Ordinal))
+            if (candidate.Contains(' ') || candidate.Contains('-'))
             {
                 if (ContainsPhrase(normalizedMessage, candidate))
                 {
@@ -185,15 +185,12 @@ public sealed class LorenProjectContextBuilder
              index >= 0 && selected.Count < _conversationOptions.MaxHistoryMessages && remainingCharacters > 0;
              index--)
         {
-            LorenConversationMessage item = history[index]
-                ?? throw new ArgumentException("Conversation history cannot contain null messages.", nameof(history));
-            string content = item.Content?.Trim()
-                ?? throw new ArgumentException("Conversation history content cannot be null.", nameof(history));
-            if (content.Length == 0)
-            {
-                continue;
-            }
+            LorenConversationMessage item = history[index];
+            ArgumentNullException.ThrowIfNull(item);
+            ArgumentException.ThrowIfNullOrWhiteSpace(item.Role);
+            ArgumentException.ThrowIfNullOrWhiteSpace(item.Content);
 
+            string content = item.Content.Trim();
             BrainRole role = item.Role.Trim().ToLowerInvariant() switch
             {
                 "user" => BrainRole.User,
@@ -226,6 +223,11 @@ public sealed class LorenProjectContextBuilder
 
     private static LorenRepositoryContext ToRepositoryContext(CanonicalRepository repository) => new(
         repository.Id.ToString(),
+        repository.Name,
+        repository.Locator.Provider,
+        repository.Locator.FullName);
+
+    private static LorenProjectDirectoryRepository ToDirectoryRepository(CanonicalRepository repository) => new(
         repository.Name,
         repository.Locator.Provider,
         repository.Locator.FullName);
@@ -310,7 +312,12 @@ public sealed record LorenRepositoryContext(
 public sealed record LorenProjectDirectoryItem(
     string Name,
     IReadOnlyList<string> Aliases,
-    IReadOnlyList<LorenRepositoryContext> Repositories);
+    IReadOnlyList<LorenProjectDirectoryRepository> Repositories);
+
+public sealed record LorenProjectDirectoryRepository(
+    string Name,
+    string Provider,
+    string ExternalFullName);
 
 public sealed class UnknownProjectAliasException : InvalidOperationException
 {
