@@ -105,6 +105,40 @@ public sealed class OllamaWebSearchExecutorTests
     }
 
     [Fact]
+    public async Task OverlongSourceUrlIsExcludedInsteadOfBeingTruncated()
+    {
+        string longUrl = $"https://example.com/{new string('a', 120)}";
+        RecordingHandler handler = new(_ => Json(
+            HttpStatusCode.OK,
+            $$"""
+            {
+              "results": [
+                { "title": "Too long", "url": "{{longUrl}}", "content": "skip me" },
+                { "title": "Usable", "url": "https://example.com/usable", "content": "keep me" }
+              ]
+            }
+            """));
+        OllamaWebSearchExecutor executor = new(
+            new HttpClient(handler),
+            new OllamaWebSearchOptions(
+                new Uri("https://ollama.com/api/web_search"),
+                MaxUrlCharacters: 100),
+            Secret);
+
+        ActionResult result = await executor.ExecuteAsync(
+            new ActionRequest(
+                WebActions.Search.Name,
+                new Dictionary<string, string> { ["query"] = "test" }),
+            TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success);
+        WebSearchSource source = Assert.Single(
+            JsonSerializer.Deserialize<WebSearchSource[]>(result.Data["sources_json"])!);
+        Assert.Equal("https://example.com/usable", source.Url.TrimEnd('/'));
+        Assert.DoesNotContain(longUrl, result.Data["sources_json"], StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task InvalidExternalUrlsAreExcludedAndFailureBodiesAreNeverSurfaced()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
