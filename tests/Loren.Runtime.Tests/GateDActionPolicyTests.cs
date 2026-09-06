@@ -293,7 +293,7 @@ public sealed class GateDActionPolicyTests
         authorizationContext,
         approvalId);
 
-    private sealed class RecordingExecutor(string actionName) : IActionExecutor
+    private sealed class RecordingExecutor(string actionName) : ITrustedActionExecutor
     {
         public string ActionName { get; } = actionName;
 
@@ -305,11 +305,23 @@ public sealed class GateDActionPolicyTests
         {
             cancellationToken.ThrowIfCancellationRequested();
             Requests.Add(request);
-            return Task.FromResult(new ActionResult(
+            return Task.FromResult(Success(request));
+        }
+
+        public Task<ActionResult> ExecuteTrustedAsync(
+            ActionExecutionRequest execution,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            Requests.Add(execution.Request);
+            return Task.FromResult(Success(execution.Request));
+        }
+
+        private static ActionResult Success(ActionRequest request) =>
+            new(
                 request.Name,
                 true,
-                new Dictionary<string, string> { ["status"] = "ok" }));
-        }
+                new Dictionary<string, string> { ["status"] = "ok" });
     }
 
     private sealed class RecordingApprovalStore(ActionApproval? approval = null) : IActionApprovalStore
