@@ -2,159 +2,191 @@
 
 [English](README.md) · **Tiếng Việt**
 
-Loren là một hệ thống trí tuệ cá nhân sống lâu dài, có memory bền vững, permission rõ ràng, khả năng dùng tool và về sau có thể chủ động hỗ trợ xuyên suốt đời sống số của chủ sở hữu.
+Loren là một **thư ký / hệ thống trí tuệ cá nhân sống lâu dài**, có memory bền vững, biết lấy thông tin hiện tại qua tool, có permission rõ ràng, và về sau có thể có voice + proactive behavior xuyên suốt đời sống số của owner.
 
-> **Model chỉ là compute có thể thay thế. Loren sở hữu identity, memory, context, policy, approval, action boundary và lịch sử.**
+> **Model chỉ là compute có thể thay thế. Loren sở hữu identity, memory, context, organization, policy, approval, action boundary và lịch sử.**
+
+## Hướng sản phẩm
+
+Loren phải giống một thư ký/Jarvis riêng của owner hơn là một con bot automation cho GitHub.
+
+Thứ tự capability mặc định:
+
+```text
+NÓI CHUYỆN
+ -> NHỚ
+ -> ĐỌC THÔNG TIN HIỆN TẠI
+ -> RESEARCH / TỔNG HỢP
+ -> TỔ CHỨC CÔNG VIỆC / THÔNG TIN
+ -> ĐỀ XUẤT HÀNH ĐỘNG
+ -> OWNER APPROVE
+ -> THỰC HIỆN / VERIFY / AUDIT
+ -> sau đó mới BACKGROUND / PROACTIVE / VOICE
+```
+
+**Read/understand phải đi trước broad write/automation.**
 
 ## Nguyên tắc cốt lõi
 
-1. **Memory-first** — state bền vững sống qua conversation, restart và đổi provider.
-2. **Tool-first** — dữ liệu/action bên ngoài đi qua tool có thẩm quyền thay vì để model đoán.
-3. **Permission-first** — model có thể request action; Loren mới authorize và execute.
-4. **Model-independent** — model provider là adapter có thể thay thế.
-5. **Auditable** — hành vi quan trọng phải reconstruct được.
-6. **Tự chủ tăng dần** — background/proactive behavior chỉ đến sau khi trust boundary thấp hơn đã được chứng minh.
+1. **Conversation-first** — giao tiếp tự nhiên với owner là bề mặt sản phẩm chính.
+2. **Memory-first** — state bền vững sống qua conversation, restart và đổi provider.
+3. **Tool-first cho external facts** — thông tin hiện tại phải lấy từ read tool có thẩm quyền thay vì model đoán.
+4. **Read before write** — integration phải chứng minh hữu ích ở read-only trước khi mở rộng mutation.
+5. **Permission-first** — model có thể request action; Loren mới authorize và execute.
+6. **Model-independent** — model provider là adapter có thể thay thế.
+7. **Auditable** — hành vi quan trọng phải reconstruct được.
+8. **Tự chủ tăng dần** — scheduler/voice/proactive chỉ đến sau khi trust boundary thấp hơn đã được chứng minh.
 
 ## Trạng thái hiện tại
 
 **Cập nhật:** 2026-09-06  
-**Phase:** `v0.1 — Trustworthy Core development`  
-**Milestone đã hoàn tất:** `M4 — Trusted Durable Memory`  
-**Decision gates đã pass:** `Gate A`, `Gate B`, `Gate C`, `Gate D / ADR-004`  
-**Milestone hiện tại:** `M5 — Action/Credential Boundary + Narrow GitHub Writes`  
-**M5 slices đã hoàn tất:** `Slice 1 — policy/approval/read-only`, `Slice 2 — credential isolation/revocation/redaction`  
-**Checkpoint hiện tại:** `Slice 3 — explicit-owner verified create-non-default-branch`
+**Phase:** `v0.1 — Useful Trustworthy Assistant`  
+**Foundations đã hoàn tất:** `M1–M4`, `Gate D`, `M5 write-safety Slices 1–3`  
+**Product target hiện tại:** `M6A — Conversational Secretary + Information Layer`  
+**Đang pause:** `M5 file/commit/PR write expansion` cho tới khi owner interaction checkpoint dùng được
 
-Chi tiết chuẩn: [`docs/status.md`](docs/status.md). Checkpoint để mở thread mới: [`docs/handoff.md`](docs/handoff.md).
+Chi tiết chuẩn: [`docs/status.md`](docs/status.md). Checkpoint thread mới: [`docs/handoff.md`](docs/handoff.md).
 
-## Gate D / ADR-004 [PASSED]
+## Những gì đã chứng minh được
 
-Trust boundary cho write:
+### Conversation/tool loop
+
+M2 đã chứng minh flow production thật:
 
 ```text
-brain request write
- -> resolve canonical target
- -> deterministic policy / global read-only
+owner
+ -> Loren conversation
+ -> real brain provider
+ -> github.read_repository
+ -> Loren ActionGateway
+ -> real GitHub read
+ -> structured result
+ -> câu trả lời ngôn ngữ tự nhiên
+ -> correlated audit
+```
+
+### Canonical context
+
+M3 cho Loren-owned Project/Repository IDs + aliases, không phụ thuộc provider/session identity.
+
+### Durable memory
+
+M4 chứng minh owner memory sống qua restart, hỗ trợ correction/supersession/forget, có provenance và chống model/external content tự nâng thành owner truth.
+
+### Safe action boundary
+
+Gate D + M5 Slices 1–3 chứng minh:
+
+```text
+canonical target
+ -> typed policy / read-only kill
  -> explicit exact owner approval
- -> atomic one-time consume / chống replay
- -> write-specific credential resolver
- -> trusted controlled executor
- -> independent post-write verification
- -> correlated redacted audit
+ -> atomic one-time consume
+ -> dedicated write credential
+ -> trusted executor
+ -> post-write verification
+ -> redacted audit
 ```
 
-Authentication chỉ chứng minh owner identity; **không phải write approval**. Model/external content không thể tự tạo/broaden approval, chọn credential, tắt read-only, đổi canonical repository hay tự tuyên bố write đã verify.
+Real write proof đầu tiên là tạo **non-default GitHub branch** rồi verify exact SHA. Capability này vẫn giữ trong code, nhưng **không còn là product priority tiếp theo**.
 
-Mutation scope v0.1 cho phép:
+Evidence:
 
 ```text
-create non-default branch
-controlled file/commit path trên non-default branch
-open pull request
+PR #25 merge caa65fbbd7c3828b68aa198dad625e73e9c096b4
+post-merge CI #195 / 33973694524 PASS Ubuntu + Windows
+
+PR #26 merge f7fb36bae324dbd7bb8d12e02daf3fe0dd98e7da
+post-merge CI #202 / 34027255592 PASS Ubuntu + Windows
+
+PR #27 merge bd0220550592a3ba55a2c722192e43df6e8ca321
+PR CI #217 / 34029409983 PASS Ubuntu + Windows
+post-merge CI #218 / 34029500883 PASS Ubuntu + Windows
 ```
 
-Vẫn cấm:
+## Execution hiện tại — M6A
+
+### M6A.1 — Conversation là primary surface [NEXT]
+
+Loren phải có cảm giác là thư ký chứ không phải admin dashboard:
+
+- login xong conversation là surface chính;
+- hỏi kiến thức/reasoning ổn định thì trả lời tự nhiên;
+- trusted memory + project context tham gia normal chat;
+- owner không phải nhập low-level canonical ID khi dùng bình thường;
+- bootstrap/debug controls chuyển vào secondary admin/settings UI;
+- tool/audit activity vẫn nhìn được nhưng là secondary.
+
+### M6A.2 — Current-information / web read
+
+Thêm provider-neutral read-only search/retrieval để Loren trả lời được các câu mà dữ liệu có thể đã thay đổi sau thời điểm model được train.
+
+Yêu cầu:
+
+- source URL/title/time/provider metadata;
+- bounded retrieved content;
+- external page được xem là untrusted data;
+- deterministic fake-provider tests;
+- khi tool fail thì báo uncertainty, không bịa current fact.
+
+### M6A.3 — Source-aware research
+
+Multi-source retrieval, compare, dedupe, xử lý stale/conflict và phân biệt sourced fact với Loren inference.
+
+### M6A.4 — Notes / Decisions / Tasks
+
+Durable Loren-owned organization primitives dùng trực tiếp qua conversation:
 
 ```text
-write trực tiếp default branch
-merge pull request
-force push / rewrite history
-delete repository/branch/data
-repository admin/security changes
-secret-management actions
-production deployment
+Note
+Decision
+Task
+TaskStatus
+optional Project scope
+provenance/timestamps
 ```
 
-## M5 Slice 1 — policy + one-time approval [HOÀN TẤT]
+Scheduled/background reminders chờ Gate E.
 
-PR #25 merge tại `caa65fbbd7c3828b68aa198dad625e73e9c096b4`.
+### M6A.5 — Conversational approval
+
+Reuse create-branch executor đã an toàn nhưng đưa qua UX đúng:
 
 ```text
-frozen PR head: c9bfb9f82b70963c196a689d4b0be2feb9bfedb5
-PR CI #194 / 33973579862: Ubuntu full gate PASS + Windows integration PASS
-post-merge main CI #195 / 33973694524: Ubuntu full gate PASS + Windows integration PASS
+Owner: "Tạo branch abc cho Loren."
+ -> brain propose typed action
+ -> Loren resolve exact canonical target
+ -> conversation/UI hiện approval proposal
+ -> owner approve
+ -> Gate D boundary hiện có execute
+ -> branch được verify độc lập
+ -> Loren báo lại bằng ngôn ngữ tự nhiên
 ```
 
-Các invariant chính:
+Checkpoint này **không cần thêm write primitive mới**.
 
-- typed `ActionAccessClass`;
-- trusted `ActionAuthorizationContext` nằm ngoài model-visible arguments;
-- proposed/trusted target được freeze chống TOCTOU;
-- deterministic SHA-256 exact-intent fingerprint;
-- SQLite-backed `ActionApproval` / `IActionApprovalStore`;
-- mọi non-read action đều cần approval kể cả khi policy lỡ trả `Allow`;
-- check executor tồn tại trước khi consume approval;
-- consume atomically đúng một lần ngay trước consequential executor attempt;
-- missing/expired/revoked/mismatch/replay đều fail closed;
-- text `approvalId` do model đưa vào không có authority;
-- `LOREN_ENABLE_WRITES` mặc định read-only.
+## Mốc owner test tiếp theo
 
-Approval chủ ý được consume trước first consequential executor attempt. Retry sau failure/ambiguity cần approval mới.
-
-## M5 Slice 2 — credential boundary [HOÀN TẤT]
-
-PR #26 merge tại `f7fb36bae324dbd7bb8d12e02daf3fe0dd98e7da`.
+Lần pull/test có ý nghĩa tiếp theo phải là:
 
 ```text
-frozen PR head: e9e2b07378e1435e62e6090829619603ac7df42b
-PR CI #201 / 34027113298: Ubuntu full gate PASS + Windows integration PASS
-post-merge main CI #202 / 34027255592: Ubuntu full gate PASS + Windows integration PASS
+1. Chat bình thường với Loren.
+2. Hỏi một câu kiến thức ổn định.
+3. Hỏi một câu current info và thấy Loren retrieve external data + source.
+4. Hỏi về project đã biết; Loren dùng canonical context + memory + live read.
+5. Dạy Loren một fact/decision; restart; hỏi lại vẫn nhớ.
+6. Tạo/list/complete task qua chat.
+7. Yêu cầu tạo branch bằng ngôn ngữ tự nhiên.
+8. Review exact approval proposal và approve.
+9. Nhận verified completion tự nhiên.
+10. Hỏi tại sao Loren làm việc đó và xem explanation/audit.
 ```
 
-Các invariant chính:
+**Controlled file/commit và open-PR tiếp tục pause cho tới khi checkpoint này tồn tại.**
 
-- provider-neutral `CredentialPurpose` / `CredentialReference`;
-- GitHub write identity riêng `github.write / github.write.local-v0.1`;
-- local secret contract `GITHUB_WRITE_TOKEN`;
-- `LOREN_GITHUB_WRITE_CREDENTIAL_REVOKED=true` thắng intent đã approval;
-- malformed revocation state fail closed;
-- không fallback sang `OLLAMA_API_KEY`, read credential hay token rộng hơn;
-- secret chỉ materialize bên trong credential-bound executor callback;
-- result/exception được redact trước gateway/audit/brain.
+## Chạy local
 
-## M5 Slice 3 — verified create branch [CHECKPOINT HIỆN TẠI]
-
-Real mutation đầu tiên được giữ cực hẹp:
-
-```text
-authenticated owner
- -> explicit “Approve & create branch”
- -> resolve canonical Project + GitHub Repository
- -> freeze exact branch + existing 40-char source SHA
- -> tạo exact ActionApproval 5 phút
- -> policy + trusted-executor check
- -> fingerprint + atomic consume
- -> resolve github.write credential
- -> GET repository/default branch preflight
- -> reject default/unsafe branch
- -> POST git/refs
- -> GET exact created ref
- -> verified SHA phải == approved source SHA
- -> trả redacted result + audit
-```
-
-Slice 3 thêm `ITrustedActionExecutor`: non-read executor phải nhận Loren-owned `ActionExecutionRequest`, không chỉ model-visible `ActionRequest`. Legacy non-read executor bị reject trước khi approval bị burn. GitHub owner/repository dùng khi write luôn lấy từ `ActionAuthorizationContext.RepositoryLocator`, không lấy từ model text.
-
-Owner console có thêm:
-
-- form bootstrap canonical GitHub Project/Repository cho database local mới;
-- form explicit **Approve & create branch**;
-- read/chat console và audit display cũ vẫn giữ.
-
-Acceptance deterministic cover request order, Git ref safety, default-branch rejection, exact SHA validation, verification mismatch, secret redaction, owner approval consume và revoked-credential không tạo HTTP write.
-
-## Canonical storage
-
-```text
-database file: loren.db
-default directory: OS local application data / Loren
-override: LOREN_DATA_DIRECTORY
-migrations: tự chạy khi host start
-```
-
-## Chạy local — read-only
-
-PowerShell:
+Read-only development posture:
 
 ```powershell
 $env:LOREN_OWNER_PASSWORD='choose-a-local-owner-password'
@@ -163,42 +195,7 @@ $env:LOREN_ENABLE_WRITES='false'
 dotnet run --project src/Loren.Web/Loren.Web.csproj
 ```
 
-Bash:
-
-```bash
-export LOREN_OWNER_PASSWORD='choose-a-local-owner-password'
-export OLLAMA_API_KEY='your-provider-secret'
-export LOREN_ENABLE_WRITES='false'
-dotnet run --project src/Loren.Web/Loren.Web.csproj
-```
-
-## Chạy checkpoint write đầu tiên
-
-Chỉ bật khi chủ động muốn test tạo branch trên repo đã cấu hình.
-
-PowerShell:
-
-```powershell
-$env:LOREN_OWNER_PASSWORD='choose-a-local-owner-password'
-$env:LOREN_ENABLE_WRITES='true'
-$env:GITHUB_WRITE_TOKEN='your-write-token'
-$env:LOREN_GITHUB_WRITE_CREDENTIAL_REVOKED='false'
-dotnet run --project src/Loren.Web/Loren.Web.csproj
-```
-
-Bash:
-
-```bash
-export LOREN_OWNER_PASSWORD='choose-a-local-owner-password'
-export LOREN_ENABLE_WRITES='true'
-export GITHUB_WRITE_TOKEN='your-write-token'
-export LOREN_GITHUB_WRITE_CREDENTIAL_REVOKED='false'
-dotnet run --project src/Loren.Web/Loren.Web.csproj
-```
-
-Sau đó login owner console, bootstrap canonical repo nếu DB trống, nhập **existing exact 40-character source commit SHA**, chọn **branch mới không phải default branch**, review confirmation rồi nhấn **Approve & create branch**.
-
-Không commit secret thật. `OLLAMA_API_KEY` và `GITHUB_WRITE_TOKEN` cố ý là hai credential tách biệt.
+Không commit secret thật.
 
 ## Test
 
@@ -210,42 +207,29 @@ dotnet test Loren.slnx --configuration Release --no-build --no-restore
 
 Windows là first-class integration-test CI platform bên cạnh Ubuntu full gate.
 
-## M5 target tiếp theo
-
-Sau khi create-branch checkpoint xanh trên `main`:
-
-```text
-controlled file/commit path trên approved non-default branch
- -> bind exact path/content/branch intent
- -> cấm default-branch write
- -> verify commit SHA + branch ref + content identity
-```
-
-Open-PR capability chỉ tới sau slice file/commit này.
-
 ## Lộ trình version
 
 ```text
-v0.0  architecture / feasibility        ✓ hoàn tất
-v0.1  trustworthy core                 <- hiện tại / M5
-v0.2  useful project assistant
-v0.3  personal operations
+v0.0  architecture / feasibility             ✓ hoàn tất
+v0.1  useful trustworthy assistant           <- hiện tại
+v0.2  personal secretary integrations
+v0.3  personal/project operations
 v0.4  voice + device presence
 v0.5  proactive/background Loren
-v0.6+ hardening từ sử dụng thực tế
+v0.6+ daily-use hardening
 v1.0  stable personal daily driver
 ```
 
 ## Tài liệu
 
 - [`docs/status.md`](docs/status.md) — tiến độ chuẩn hiện tại
-- [`docs/handoff.md`](docs/handoff.md) — checkpoint ngắn để tiếp tục ở thread mới
-- [`docs/development.md`](docs/development.md) — build/test/configuration
+- [`docs/handoff.md`](docs/handoff.md) — checkpoint ngắn để mở thread mới
+- [`docs/plans/master-plan.md`](docs/plans/master-plan.md) — product/version roadmap
+- [`docs/plans/v0.1.md`](docs/plans/v0.1.md) — plan chi tiết version hiện tại
 - [`docs/architecture.md`](docs/architecture.md) — system boundaries
+- [`docs/memory.md`](docs/memory.md) — durable memory semantics
 - [`docs/permissions.md`](docs/permissions.md) — permission/approval baseline
 - [`docs/security.md`](docs/security.md) — security baseline
-- [`docs/plans/master-plan.md`](docs/plans/master-plan.md) — milestones/version gates
-- [`docs/plans/v0.1.md`](docs/plans/v0.1.md) — plan implementation chi tiết v0.1
-- [`docs/decisions/004-action-approval-and-credential-boundary.md`](docs/decisions/004-action-approval-and-credential-boundary.md)
+- [`docs/development.md`](docs/development.md) — build/test/configuration
 
 Repository này là source of truth cho product decisions, architecture, delivery plan, implementation, progress và release history của Loren.
