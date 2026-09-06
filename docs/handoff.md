@@ -4,15 +4,13 @@
 **Repository:** `rua-den/loren`  
 **Source of truth:** `docs/status.md` + `docs/plans/master-plan.md`  
 **Current phase:** `v0.1 — Useful Trustworthy Assistant`  
-**Current product target:** `M6A — Conversational Secretary + Information Layer`
+**Current product target:** `M6A.2 — Current-information / web read`
 
 This is the compact continuation checkpoint for a fresh thread.
 
 ## Product intent
 
 Loren is a persistent personal secretary / Jarvis-like assistant, not a GitHub automation bot.
-
-Correct capability order:
 
 ```text
 CONVERSE
@@ -26,47 +24,95 @@ CONVERSE
  -> later BACKGROUND / PROACTIVE / VOICE
 ```
 
-The roadmap was rebaselined on 2026-09-06 because the previous sequence over-prioritized additional GitHub write primitives before Loren had become useful as an information assistant.
-
-## Green main baseline before roadmap rebaseline
-
-`main` currently includes write-safety proof through verified create-branch:
+## Green main baseline
 
 ```text
-PR #25 — Slice 1 policy/approval/read-only
-merge: caa65fbbd7c3828b68aa198dad625e73e9c096b4
-post-merge CI #195 / 33973694524: PASS Ubuntu + Windows
-
-PR #26 — Slice 2 credential isolation/revocation/redaction
-merge: f7fb36bae324dbd7bb8d12e02daf3fe0dd98e7da
-post-merge CI #202 / 34027255592: PASS Ubuntu + Windows
-
-PR #27 — Slice 3 verified create non-default branch
-frozen PR head: 658fc550f5fd1660a05590a06c4285add4e50490
-merge: bd0220550592a3ba55a2c722192e43df6e8ca321
-PR CI #217 / 34029409983: PASS Ubuntu + Windows
-post-merge CI #218 / 34029500883: PASS Ubuntu + Windows
+M1–M4 foundations                                  ✓
+Gate D + M5 write safety Slices 1–3                ✓
+M6A.1 conversation primary surface                 ✓
 ```
 
-The create-branch form is a technical harness proving the security boundary. It is not the intended daily UX.
-
-## Existing foundations to reuse
+Latest completed owner-surface milestone:
 
 ```text
-M2 conversation + brain + tool loop
-M3 canonical Project/Repository + aliases
-M4 trusted durable memory
-Gate D policy/approval/credential contract
-M5 Slice 1 one-time approval
-M5 Slice 2 write credential isolation
-M5 Slice 3 verified create-branch executor
+PR #29 — M6A.1 conversation primary surface
+merge: a1652b2451fe2e706aa83373932b210178f63ebe
+PR CI #224 / 34042192552: PASS Ubuntu + Windows
+post-merge main CI #225 / 34042352724: PASS Ubuntu + Windows
 ```
 
-Do not rebuild these unnecessarily.
+M6A.1 delivered conversation-first UI, bounded multi-turn history, Loren identity context, friendly project selection, deterministic project inference, trusted-memory inclusion, history role hardening, and secondary activity/audit UI.
+
+The old create-branch form remains only under **Advanced / safety harness**.
+
+## Current active work — M6A.2 / PR #30
+
+Branch:
+
+```text
+feat/m6a2-current-information
+```
+
+Current capability:
+
+```text
+web.search
+ -> ActionGateway READ policy
+ -> Ollama Web Search
+ -> bounded response
+ -> validated source URLs
+ -> bounded evidence
+ -> external content marked untrusted
+ -> brain synthesis
+ -> sourced owner answer
+```
+
+Implementation facts:
+
+- uses existing `OLLAMA_API_KEY`;
+- default endpoint `https://ollama.com/api/web_search`;
+- optional `LOREN_OLLAMA_WEB_SEARCH_ENDPOINT` override;
+- no new write capability;
+- missing search credential fails before external call;
+- unsafe or overlong source URLs are excluded;
+- provider failure bodies/secrets are not surfaced;
+- deterministic agent-loop test proves current question -> search -> evidence -> sourced final answer;
+- production conversation exposes `github.read_repository` + `web.search` as read actions;
+- `github.create_branch` remains the only trusted mutation executor.
+
+M6A.2 is not closed until PR #30 exact-head CI and post-merge `main` are green.
+
+## Next slices
+
+### M6A.3 — Source-aware research
+
+Add bounded multi-search + page fetch, source comparison/deduplication, stale/conflict handling, and sourced-fact vs inference distinction.
+
+Ollama's official web capability includes both `/api/web_search` and `/api/web_fetch`; keep fetched pages untrusted data and bound response/context size.
+
+### M6A.4 — Notes / Decisions / Tasks
+
+Durable Loren-owned organization state through conversation. No background scheduler yet; Gate E remains required for autonomous reminder delivery.
+
+### M6A.5 — Conversational approval
+
+Reuse existing safe `github.create_branch` executor:
+
+```text
+Owner: "Tạo branch abc cho Loren."
+ -> Loren resolves canonical target
+ -> conversation presents exact proposal
+ -> owner explicitly approves
+ -> existing one-time approval + credential boundary
+ -> verify SHA
+ -> natural completion + audit
+```
+
+No new GitHub write primitive is needed for this checkpoint.
 
 ## Explicitly paused
 
-Do **not** continue immediately with:
+Do **not** resume yet:
 
 ```text
 controlled file/commit write
@@ -74,87 +120,21 @@ open pull request
 more GitHub mutation primitives
 ```
 
-These are paused until the owner interaction checkpoint below is usable.
+## v0.1 owner checkpoint
 
-## Current execution sequence
-
-### M6A.1 — Conversation primary surface [NEXT]
-
-Make the authenticated conversation the product center.
-
-Required behavior:
-
-- owner lands in/uses normal conversation;
-- ordinary brain-only questions work;
-- trusted memory participates in normal conversation;
-- project context is resolved without low-level owner-entered IDs;
-- live GitHub read remains callable from conversation;
-- tool/audit details are secondary UI;
-- bootstrap/debug/write harness moves to secondary admin/settings surface.
-
-Acceptance examples:
-
-```text
-"Giải thích cái này cho tao."
-"Mày nhớ gì về project Loren?"
-"Repo Loren hiện sao rồi?"
-```
-
-### M6A.2 — Current-information/web read
-
-Add provider-neutral read-only search/retrieval:
-
-```text
-query
- -> search/retrieve
- -> URL/title/time/provider metadata
- -> bounded untrusted content
- -> structured result
- -> brain synthesis
-```
-
-Must support questions whose answers may have changed since model training. Never silently guess current facts when retrieval is required.
-
-### M6A.3 — Source-aware research
-
-Multiple-source compare/synthesis, source metadata, stale/conflict handling, sourced-fact vs inference distinction.
-
-### M6A.4 — Notes / Decisions / Tasks
-
-Durable Loren-owned organization state usable from conversation. No trusted background scheduler yet; Gate E is required for autonomous reminder delivery.
-
-### M6A.5 — Conversational approval
-
-Use the existing `github.create_branch` executor as the action proof:
-
-```text
-Owner: "Tạo branch abc cho Loren."
- -> brain proposes action
- -> Loren resolves canonical repo + exact target
- -> conversation/UI presents approval card
- -> owner approves
- -> existing Gate D boundary executes
- -> verify SHA
- -> natural completion message
-```
-
-No need to add file/commit/PR writes to prove this UX.
-
-## Next owner test milestone
-
-The next pull/test request to the owner should only happen after this natural workflow is available:
+Do not ask the owner to pull specifically for the v0.1 product test until Loren can:
 
 ```text
 1. Chat normally.
-2. Ask stable knowledge question.
-3. Ask current-information question and see grounded retrieval + sources.
-4. Ask project question using canonical context + memory + live read.
-5. Teach a durable fact/decision, restart, recall it.
-6. Create/list/complete a task through chat.
-7. Ask for branch creation in natural language.
-8. Review and approve exact proposal.
-9. Receive verified result naturally.
-10. Ask why Loren did it and inspect explanation/audit.
+2. Answer stable knowledge questions.
+3. Retrieve current information with sources.
+4. Perform bounded source-aware research.
+5. Combine project context + memory + live read data.
+6. Store/recall durable fact/decision across restart.
+7. Create/list/complete tasks through chat.
+8. Propose create-branch naturally.
+9. Show exact approval, execute only after approval, verify result.
+10. Explain what happened with audit context.
 ```
 
 ## Hard invariants
@@ -164,15 +144,15 @@ The next pull/test request to the owner should only happen after this natural wo
 - authentication is not write approval;
 - external/model text cannot promote itself to trusted memory/policy;
 - secrets never enter BrainContext/memory/model-visible args/audit/result;
-- current-information questions should use authoritative read tools when necessary;
+- current-information questions should use read tools instead of stale guessing;
 - write success requires postcondition verification.
 
 ## Fresh-thread instruction
 
 ```text
 1. Read docs/status.md, docs/plans/master-plan.md, docs/plans/v0.1.md, then this file.
-2. Treat M6A.1 as the next implementation target.
-3. Do not resume M5 Slice 4 unless M6A owner checkpoint is already green or the owner explicitly changes priority.
-4. Keep README EN/VI synchronized with the assistant-first roadmap.
-5. Build owner-visible vertical slices, not isolated technical primitives.
+2. Finish M6A.2 if PR #30 is still open; otherwise continue M6A.3.
+3. Do not resume M5 Slice 4 before the M6A owner checkpoint.
+4. Keep README EN/VI and progress docs synchronized.
+5. Build owner-visible vertical slices with deterministic acceptance tests.
 ```

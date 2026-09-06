@@ -2,8 +2,8 @@
 
 **Status:** Active planning baseline — product roadmap rebaselined 2026-09-06  
 **Current phase:** `v0.1 — Useful Trustworthy Assistant`  
-**Completed foundations:** M1–M4 + Gate D + M5 write-safety Slices 1–3  
-**Current product target:** `M6A — Conversational Secretary + Information Layer`  
+**Completed foundations:** M1–M4 + Gate D + M5 write-safety Slices 1–3 + M6A.1 conversation surface  
+**Current product target:** `M6A.2 — Current-information / web read`  
 **Paused expansion:** `M5 Slices 4–6 — file/commit/PR writes` until M6A is owner-testable
 
 This is Loren's top-level delivery plan. The roadmap is **capability-driven, not date-driven**.
@@ -229,8 +229,6 @@ owner
  -> correlated audit
 ```
 
-This is important: the conversational/tool loop already exists and should now become the center of the product again.
-
 ## M3 — Canonical Project/Repository State [COMPLETE]
 
 Canonical IDs, aliases, durable project/repository state, prepared project context.
@@ -259,7 +257,15 @@ Slice 5  open pull request
 Slice 6  broad write/replay/injection E2E
 ```
 
-These resume only after the assistant-information checkpoint below is owner-testable.
+## M6A.1 — Conversation primary surface [COMPLETE]
+
+PR #29 delivered conversation-first UI, Loren identity context, bounded multi-turn history, friendly project selection, deterministic project inference, trusted memory in the normal conversation path, browser history role hardening, and secondary activity/audit UI.
+
+```text
+merge: a1652b2451fe2e706aa83373932b210178f63ebe
+PR CI #224 / 34042192552: PASS Ubuntu + Windows
+post-merge main CI #225 / 34042352724: PASS Ubuntu + Windows
+```
 
 ---
 
@@ -341,65 +347,64 @@ brain understands request
  -> Loren explains what happened
 ```
 
-The already-built create-branch executor is the first action used to prove this interaction pattern.
-
 ---
 
 # 8. Current milestone — M6A Conversational Secretary + Information Layer
 
-M6 was originally planned only as "minimal daily-use UI" after all M5 GitHub writes. That ordering is now corrected. M6 is pulled forward and expanded because **interaction + information is the product**, while additional write primitives are secondary.
+M6 is pulled forward and expanded because **interaction + information is the product**, while additional write primitives are secondary.
 
-## Slice M6A.1 — Conversation becomes the primary surface
+## Slice M6A.1 — Conversation becomes the primary surface [COMPLETE]
 
-Deliver:
+Delivered and green in PR #29.
 
-- owner opens Loren and chats naturally;
-- project alias/context may be inferred/selected without manual low-level IDs;
-- existing BrainContext + memory + tool loop is exercised through the main conversation surface;
-- tool activity is visible but does not dominate the UX;
-- errors are human-readable;
-- admin/bootstrap controls move behind secondary settings/debug surfaces.
-
-Acceptance examples:
+Acceptance includes:
 
 ```text
-"Mày là ai?"
-"Mày nhớ gì về project Loren?"
-"Repo Loren hiện tại thế nào?"
+"Mày là Loren đúng không?"
+"Project Loren hiện sao rồi?"
+normal multi-turn chat
+trusted project memory in conversation
 ```
 
-## Slice M6A.2 — General current-information / web read capability
+## Slice M6A.2 — General current-information / web read capability [ACTIVE — PR #30]
 
-Deliver a provider-neutral, read-only information/research action boundary capable of:
+Current implementation adds `web.search` through a read-only ActionGateway path backed by Ollama Web Search.
 
-- web search/retrieval;
-- current factual lookup;
-- source URL/title/time metadata;
-- bounded content extraction;
-- result provenance;
-- prompt-injection-resistant framing;
-- deterministic fake-provider tests;
-- optional real-provider acceptance behind configuration.
+Delivered contract in the active PR:
 
-The brain must be able to decide:
+- existing `OLLAMA_API_KEY` is reused for the read service;
+- default endpoint is `https://ollama.com/api/web_search` with optional trusted override;
+- query, response, source count, title, URL and content are bounded;
+- unsafe or overlong URLs are excluded rather than turned into broken citations;
+- external search evidence is explicitly untrusted data, not instruction/memory/permission;
+- missing credential fails before external call;
+- provider failure bodies and secrets are not surfaced;
+- deterministic executor tests and an agent-loop sourced-answer acceptance test exist;
+- normal conversation exposes `github.read_repository` and `web.search` as read actions.
+
+Close the slice only after exact-head PR CI and post-merge main CI are green.
+
+The brain decision remains:
 
 ```text
 stable knowledge -> answer directly
-current/external fact -> read tool
-multi-source question -> research tool calls -> synthesis
+current/external fact -> web.search
+multi-source question -> bounded research tool calls -> synthesis
 ```
 
-No external write is involved.
-
-## Slice M6A.3 — Information synthesis + source-aware answers
+## Slice M6A.3 — Information synthesis + source-aware answers [NEXT]
 
 Deliver:
 
 - multiple-source comparison;
+- bounded iterative search;
+- page fetch for selected search results or owner-provided URLs;
 - clear separation of sourced facts vs model inference;
-- concise citations/source list in owner-visible output;
-- stale/unknown information called out instead of guessed;
-- bounds for number/size of retrieved sources.
+- concise source list in owner-visible output;
+- stale/unknown/conflicting information called out instead of guessed;
+- deduplication/bounds for retrieved evidence.
+
+Ollama's official web capability exposes both `/api/web_search` and `/api/web_fetch`; page content remains untrusted external data.
 
 ## Slice M6A.4 — Personal organization primitives
 
@@ -438,7 +443,7 @@ owner asks in chat
  -> one-time approval artifact
  -> credential-bound executor
  -> post-write verify
- -> natural-language completion + audit link/details
+ -> natural-language completion + audit details
 ```
 
 The owner should not have to manually enter canonical IDs or raw approval objects.
@@ -450,14 +455,14 @@ Do not resume broad GitHub writes until the owner can pull `main`, start Loren, 
 ```text
 1. Chat normally with Loren.
 2. Ask a stable knowledge question and receive a normal answer.
-3. Ask a current-information question and see Loren fetch grounded external data.
-4. Ask about a known project and see canonical context + live read data used.
-5. Teach Loren a fact/decision, restart, and ask for it again.
-6. Create/list/complete a simple task or decision through chat.
-7. Ask Loren to create a branch; see an approval proposal; approve; get verified result.
+3. Ask a current-information question and see grounded external data + sources.
+4. Ask for bounded multi-source research and get source-aware synthesis.
+5. Ask about a known project and see canonical context + memory + live read data used.
+6. Teach Loren a fact/decision, restart, and ask for it again.
+7. Create/list/complete a task or decision through chat.
+8. Ask Loren to create a branch; see an approval proposal; approve; get verified result.
+9. Ask why Loren did it and inspect audit explanation.
 ```
-
-This is the next meaningful product checkpoint.
 
 ---
 
@@ -631,11 +636,10 @@ Stop and fix the boundary if:
 ```text
 M1–M4 foundations                              ✓ complete
 Gate D + M5 write safety Slices 1–3            ✓ complete enough / proof exists
+M6A.1 Conversation primary surface             ✓ complete
         |
-        |  PAUSE additional GitHub mutation work
         v
-M6A.1 Conversation primary surface              <- NEXT
-M6A.2 Current information / web read
+M6A.2 Current information / web read           <- ACTIVE
 M6A.3 Source-aware research/synthesis
 M6A.4 Notes / Decisions / Tasks
 M6A.5 Conversational approval using create-branch proof

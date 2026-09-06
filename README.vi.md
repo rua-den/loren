@@ -8,16 +8,14 @@ Loren là một **thư ký / hệ thống trí tuệ cá nhân sống lâu dài*
 
 ## Hướng sản phẩm
 
-Loren phải giống một thư ký/Jarvis riêng của owner hơn là một con bot automation cho GitHub.
-
-Thứ tự capability mặc định:
+Loren phải giống một thư ký/Jarvis riêng của owner hơn là một bot automation cho GitHub.
 
 ```text
 NÓI CHUYỆN
  -> NHỚ
  -> ĐỌC THÔNG TIN HIỆN TẠI
  -> RESEARCH / TỔNG HỢP
- -> TỔ CHỨC CÔNG VIỆC / THÔNG TIN
+ -> TỔ CHỨC
  -> ĐỀ XUẤT HÀNH ĐỘNG
  -> OWNER APPROVE
  -> THỰC HIỆN / VERIFY / AUDIT
@@ -30,7 +28,7 @@ NÓI CHUYỆN
 
 1. **Conversation-first** — giao tiếp tự nhiên với owner là bề mặt sản phẩm chính.
 2. **Memory-first** — state bền vững sống qua conversation, restart và đổi provider.
-3. **Tool-first cho external facts** — thông tin hiện tại phải lấy từ read tool có thẩm quyền thay vì model đoán.
+3. **Tool-first cho external facts** — thông tin hiện tại phải lấy từ read tool thay vì model đoán.
 4. **Read before write** — integration phải chứng minh hữu ích ở read-only trước khi mở rộng mutation.
 5. **Permission-first** — model có thể request action; Loren mới authorize và execute.
 6. **Model-independent** — model provider là adapter có thể thay thế.
@@ -41,37 +39,43 @@ NÓI CHUYỆN
 
 **Cập nhật:** 2026-09-06  
 **Phase:** `v0.1 — Useful Trustworthy Assistant`  
-**Foundations đã hoàn tất:** `M1–M4`, `Gate D`, `M5 write-safety Slices 1–3`  
-**Product target hiện tại:** `M6A — Conversational Secretary + Information Layer`  
+**Đã hoàn tất:** `M1–M4`, `Gate D`, `M5 write-safety Slices 1–3`, `M6A.1 conversation primary surface`  
+**Đang làm:** `M6A.2 — Current-information / web read`  
 **Đang pause:** `M5 file/commit/PR write expansion` cho tới khi owner interaction checkpoint dùng được
 
 Chi tiết chuẩn: [`docs/status.md`](docs/status.md). Checkpoint thread mới: [`docs/handoff.md`](docs/handoff.md).
 
-## Những gì đã chứng minh được
+## Những gì đã chứng minh
 
-### Conversation/tool loop
+### Conversation-first surface — M6A.1
 
-M2 đã chứng minh flow production thật:
+PR #29 đưa Loren trở lại đúng vai trò sản phẩm:
 
 ```text
-owner
- -> Loren conversation
- -> real brain provider
- -> github.read_repository
- -> Loren ActionGateway
- -> real GitHub read
- -> structured result
- -> câu trả lời ngôn ngữ tự nhiên
- -> correlated audit
+owner login
+ -> conversation-first UI
+ -> Loren identity
+ -> bounded multi-turn history
+ -> optional/inferred canonical project context
+ -> trusted durable memory
+ -> read tools
+ -> câu trả lời tự nhiên
+ -> activity/audit nằm phụ
 ```
 
-### Canonical context
+Bootstrap và create-branch proof form đã nằm dưới **Advanced / safety harness**.
 
-M3 cho Loren-owned Project/Repository IDs + aliases, không phụ thuộc provider/session identity.
+Evidence:
 
-### Durable memory
+```text
+PR #29 merge a1652b2451fe2e706aa83373932b210178f63ebe
+PR CI #224 / 34042192552 PASS Ubuntu + Windows
+post-merge CI #225 / 34042352724 PASS Ubuntu + Windows
+```
 
-M4 chứng minh owner memory sống qua restart, hỗ trợ correction/supersession/forget, có provenance và chống model/external content tự nâng thành owner truth.
+### Canonical context + durable memory
+
+M3 cho Loren-owned Project/Repository IDs + aliases, không phụ thuộc provider/session identity. M4 chứng minh owner memory sống qua restart, hỗ trợ correction/supersession/forget, có provenance và chống model/external content tự nâng thành owner truth.
 
 ### Safe action boundary
 
@@ -88,50 +92,38 @@ canonical target
  -> redacted audit
 ```
 
-Real write proof đầu tiên là tạo **non-default GitHub branch** rồi verify exact SHA. Capability này vẫn giữ trong code, nhưng **không còn là product priority tiếp theo**.
-
-Evidence:
-
-```text
-PR #25 merge caa65fbbd7c3828b68aa198dad625e73e9c096b4
-post-merge CI #195 / 33973694524 PASS Ubuntu + Windows
-
-PR #26 merge f7fb36bae324dbd7bb8d12e02daf3fe0dd98e7da
-post-merge CI #202 / 34027255592 PASS Ubuntu + Windows
-
-PR #27 merge bd0220550592a3ba55a2c722192e43df6e8ca321
-PR CI #217 / 34029409983 PASS Ubuntu + Windows
-post-merge CI #218 / 34029500883 PASS Ubuntu + Windows
-```
+Real write proof đầu tiên là tạo **non-default GitHub branch** rồi verify exact SHA. Capability này vẫn giữ nhưng mở rộng GitHub write đang pause.
 
 ## Execution hiện tại — M6A
 
-### M6A.1 — Conversation là primary surface [NEXT]
+### M6A.1 — Conversation là primary surface [COMPLETE]
 
-Loren phải có cảm giác là thư ký chứ không phải admin dashboard:
+- conversation là surface mặc định;
+- chọn project bằng tên/alias hoặc infer deterministic;
+- bounded user/assistant history;
+- trusted project memory tham gia normal chat;
+- browser history không inject được system role;
+- tool/audit activity là secondary.
 
-- login xong conversation là surface chính;
-- hỏi kiến thức/reasoning ổn định thì trả lời tự nhiên;
-- trusted memory + project context tham gia normal chat;
-- owner không phải nhập low-level canonical ID khi dùng bình thường;
-- bootstrap/debug controls chuyển vào secondary admin/settings UI;
-- tool/audit activity vẫn nhìn được nhưng là secondary.
+### M6A.2 — Current-information / web read [ACTIVE — PR #30]
 
-### M6A.2 — Current-information / web read
+Thêm read-only `web.search` dùng Ollama Web Search và chính `OLLAMA_API_KEY` hiện có.
 
-Thêm provider-neutral read-only search/retrieval để Loren trả lời được các câu mà dữ liệu có thể đã thay đổi sau thời điểm model được train.
+```text
+câu hỏi current
+ -> brain chọn web.search
+ -> ActionGateway READ policy
+ -> bounded Ollama web search
+ -> validate source URL + bounded evidence
+ -> external evidence được đánh dấu untrusted
+ -> Loren tổng hợp câu trả lời có nguồn
+```
 
-Yêu cầu:
+Implementation chặn unsafe/overlong URL, giới hạn query/result/content, fail trước external call khi thiếu credential và không surface provider error body hay secret.
 
-- source URL/title/time/provider metadata;
-- bounded retrieved content;
-- external page được xem là untrusted data;
-- deterministic fake-provider tests;
-- khi tool fail thì báo uncertainty, không bịa current fact.
+### M6A.3 — Source-aware research [NEXT]
 
-### M6A.3 — Source-aware research
-
-Multi-source retrieval, compare, dedupe, xử lý stale/conflict và phân biệt sourced fact với Loren inference.
+Nhiều search/source, fetch page sâu hơn khi cần, compare/dedupe, stale/conflict handling và phân biệt sourced fact với Loren inference.
 
 ### M6A.4 — Notes / Decisions / Tasks
 
@@ -150,36 +142,35 @@ Scheduled/background reminders chờ Gate E.
 
 ### M6A.5 — Conversational approval
 
-Reuse create-branch executor đã an toàn nhưng đưa qua UX đúng:
+Reuse create-branch executor đã an toàn nhưng qua UX đúng:
 
 ```text
 Owner: "Tạo branch abc cho Loren."
- -> brain propose typed action
- -> Loren resolve exact canonical target
- -> conversation/UI hiện approval proposal
+ -> Loren resolve exact target
+ -> conversation hiện exact proposal
  -> owner approve
- -> Gate D boundary hiện có execute
+ -> Gate D boundary execute
  -> branch được verify độc lập
- -> Loren báo lại bằng ngôn ngữ tự nhiên
+ -> Loren báo tự nhiên
 ```
 
-Checkpoint này **không cần thêm write primitive mới**.
+Checkpoint này không cần thêm GitHub mutation primitive mới.
 
-## Mốc owner test tiếp theo
+## Mốc owner test v0.1
 
-Lần pull/test có ý nghĩa tiếp theo phải là:
+Lần pull để test sản phẩm sẽ là khi Loren làm được:
 
 ```text
-1. Chat bình thường với Loren.
-2. Hỏi một câu kiến thức ổn định.
-3. Hỏi một câu current info và thấy Loren retrieve external data + source.
-4. Hỏi về project đã biết; Loren dùng canonical context + memory + live read.
-5. Dạy Loren một fact/decision; restart; hỏi lại vẫn nhớ.
-6. Tạo/list/complete task qua chat.
-7. Yêu cầu tạo branch bằng ngôn ngữ tự nhiên.
-8. Review exact approval proposal và approve.
-9. Nhận verified completion tự nhiên.
-10. Hỏi tại sao Loren làm việc đó và xem explanation/audit.
+1. Chat bình thường.
+2. Trả lời knowledge/reasoning ổn định.
+3. Lấy current information kèm nguồn.
+4. Research nhiều nguồn có bounds.
+5. Kết hợp project context + memory + live read.
+6. Ghi/nhớ fact hoặc decision qua restart.
+7. Tạo/list/complete task qua chat.
+8. Nhận yêu cầu tạo branch bằng ngôn ngữ tự nhiên.
+9. Hiện exact approval rồi execute + verify sau khi owner approve.
+10. Giải thích chuyện đã xảy ra kèm audit context.
 ```
 
 **Controlled file/commit và open-PR tiếp tục pause cho tới khi checkpoint này tồn tại.**
@@ -194,6 +185,8 @@ $env:OLLAMA_API_KEY='your-provider-secret'
 $env:LOREN_ENABLE_WRITES='false'
 dotnet run --project src/Loren.Web/Loren.Web.csproj
 ```
+
+`OLLAMA_API_KEY` dùng cho cả Ollama brain cloud endpoint và current-information web search. `LOREN_OLLAMA_WEB_SEARCH_ENDPOINT` là optional, mặc định `https://ollama.com/api/web_search`.
 
 Không commit secret thật.
 

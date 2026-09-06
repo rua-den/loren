@@ -12,6 +12,7 @@
     <ProjectReference Include="../../src/Loren.Brain.Ollama/Loren.Brain.Ollama.csproj" />
     <ProjectReference Include="../../src/Loren.Infrastructure/Loren.Infrastructure.csproj" />
     <ProjectReference Include="../../src/Loren.Tools.GitHub/Loren.Tools.GitHub.csproj" />
+    <ProjectReference Include="../../src/Loren.Tools.Web/Loren.Tools.Web.csproj" />
     <ProjectReference Include="../../src/Loren.Web/Loren.Web.csproj" />
   </ItemGroup>
 </Project>

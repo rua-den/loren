@@ -10,6 +10,7 @@ using Loren.Infrastructure.CanonicalState;
 using Loren.Infrastructure.Credentials;
 using Loren.Runtime;
 using Loren.Tools.GitHub;
+using Loren.Tools.Web;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -20,6 +21,7 @@ namespace Loren.Web;
 public static class LorenHostServices
 {
     private const string OllamaHttpClientName = "loren-ollama";
+    private const string OllamaWebSearchHttpClientName = "loren-ollama-web-search";
     private const string GitHubReadHttpClientName = "loren-github-read";
     private const string GitHubWriteHttpClientName = "loren-github-write";
 
@@ -31,6 +33,7 @@ public static class LorenHostServices
         ArgumentNullException.ThrowIfNull(configuration);
 
         services.AddHttpClient(OllamaHttpClientName);
+        services.AddHttpClient(OllamaWebSearchHttpClientName);
         services.AddHttpClient(GitHubReadHttpClientName);
         services.AddHttpClient(GitHubWriteHttpClientName);
 
@@ -80,6 +83,23 @@ public static class LorenHostServices
                 httpClientFactory.CreateClient(GitHubReadHttpClientName));
         });
 
+        services.AddSingleton<IActionExecutor>(provider =>
+        {
+            IHttpClientFactory httpClientFactory = provider.GetRequiredService<IHttpClientFactory>();
+            string endpointValue = configuration["LOREN_OLLAMA_WEB_SEARCH_ENDPOINT"]
+                ?? "https://ollama.com/api/web_search";
+            if (!Uri.TryCreate(endpointValue, UriKind.Absolute, out Uri? endpoint))
+            {
+                throw new InvalidOperationException(
+                    "LOREN_OLLAMA_WEB_SEARCH_ENDPOINT must be an absolute URI.");
+            }
+
+            return new OllamaWebSearchExecutor(
+                httpClientFactory.CreateClient(OllamaWebSearchHttpClientName),
+                new OllamaWebSearchOptions(endpoint),
+                configuration["OLLAMA_API_KEY"]);
+        });
+
         services.AddSingleton(provider =>
         {
             IHttpClientFactory httpClientFactory = provider.GetRequiredService<IHttpClientFactory>();
@@ -112,7 +132,7 @@ public static class LorenHostServices
 
         services.AddScoped<IActionGateway>(provider =>
             new ActionGateway(
-                [GitHubActions.ReadRepository, GitHubActions.CreateBranch],
+                [GitHubActions.ReadRepository, WebActions.Search, GitHubActions.CreateBranch],
                 provider.GetServices<IActionExecutor>(),
                 provider.GetRequiredService<IActionPolicy>(),
                 provider.GetRequiredService<IAuditSink>(),

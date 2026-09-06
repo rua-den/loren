@@ -3,6 +3,7 @@ using Loren.Core.Brains;
 using Loren.Infrastructure.Audit;
 using Loren.Runtime;
 using Loren.Tools.GitHub;
+using Loren.Tools.Web;
 
 namespace Loren.Web;
 
@@ -58,7 +59,7 @@ public sealed class LorenRunService
 
         AgentRunResult result = await _agentLoop.RunAsync(
             preparedContext.BrainContext,
-            [GitHubActions.ReadRepository],
+            [GitHubActions.ReadRepository, WebActions.Search],
             cancellationToken);
 
         LorenAuditEntry[] auditEntries = _audit
