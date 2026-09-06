@@ -92,7 +92,7 @@ public sealed class SqliteOrganizationStore(CanonicalStateDbContext dbContext) :
         }
 
         OrganizationItemRow[] rows = await query
-            .OrderByDescending(item => item.UpdatedAt)
+            .OrderByDescending(item => item.UpdatedAtUnixMs)
             .ThenBy(item => item.Id)
             .Take(limit)
             .ToArrayAsync(cancellationToken);
@@ -130,10 +130,11 @@ public sealed class SqliteOrganizationStore(CanonicalStateDbContext dbContext) :
                 nameof(changedAt));
         }
 
+        long changedAtUnixMs = changedAt.ToUnixTimeMilliseconds();
         row.TaskStatus = status.ToString();
-        row.UpdatedAt = changedAt;
-        row.CompletedAt = status is OrganizationTaskStatus.Completed
-            ? changedAt
+        row.UpdatedAtUnixMs = changedAtUnixMs;
+        row.CompletedAtUnixMs = status is OrganizationTaskStatus.Completed
+            ? changedAtUnixMs
             : null;
 
         await _dbContext.SaveChangesAsync(cancellationToken);
@@ -168,9 +169,9 @@ public sealed class SqliteOrganizationStore(CanonicalStateDbContext dbContext) :
         ProjectId = item.ProjectId?.Value,
         TaskStatus = item.TaskStatus?.ToString(),
         SourceReference = item.SourceReference,
-        CreatedAt = item.CreatedAt,
-        UpdatedAt = item.UpdatedAt,
-        CompletedAt = item.CompletedAt,
+        CreatedAtUnixMs = item.CreatedAt.ToUnixTimeMilliseconds(),
+        UpdatedAtUnixMs = item.UpdatedAt.ToUnixTimeMilliseconds(),
+        CompletedAtUnixMs = item.CompletedAt?.ToUnixTimeMilliseconds(),
     };
 
     private static OrganizationItem ToDomain(OrganizationItemRow row)
@@ -206,8 +207,10 @@ public sealed class SqliteOrganizationStore(CanonicalStateDbContext dbContext) :
             row.ProjectId is Guid projectId ? new ProjectId(projectId) : null,
             status,
             row.SourceReference,
-            row.CreatedAt,
-            row.UpdatedAt,
-            row.CompletedAt);
+            DateTimeOffset.FromUnixTimeMilliseconds(row.CreatedAtUnixMs),
+            DateTimeOffset.FromUnixTimeMilliseconds(row.UpdatedAtUnixMs),
+            row.CompletedAtUnixMs is long completedAtUnixMs
+                ? DateTimeOffset.FromUnixTimeMilliseconds(completedAtUnixMs)
+                : null);
     }
 }
