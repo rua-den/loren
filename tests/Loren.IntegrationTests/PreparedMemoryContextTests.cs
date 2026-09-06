@@ -290,10 +290,14 @@ public sealed class PreparedMemoryContextTests
             cancellationToken.ThrowIfCancellationRequested();
             CallCount++;
 
-            Assert.Equal(3, context.Inputs.Count);
-            BrainMessage projectMessage = Assert.IsType<BrainMessage>(context.Inputs[0]);
-            BrainMessage memoryMessage = Assert.IsType<BrainMessage>(context.Inputs[1]);
-            BrainMessage userMessage = Assert.IsType<BrainMessage>(context.Inputs[2]);
+            Assert.Equal(4, context.Inputs.Count);
+            BrainMessage identityMessage = Assert.IsType<BrainMessage>(context.Inputs[0]);
+            BrainMessage projectMessage = Assert.IsType<BrainMessage>(context.Inputs[1]);
+            BrainMessage memoryMessage = Assert.IsType<BrainMessage>(context.Inputs[2]);
+            BrainMessage userMessage = Assert.IsType<BrainMessage>(context.Inputs[3]);
+
+            Assert.Equal(BrainRole.System, identityMessage.Role);
+            Assert.Contains("You are Loren", identityMessage.Content, StringComparison.Ordinal);
 
             Assert.Equal(BrainRole.System, projectMessage.Role);
             Assert.Contains("rua-den/wedding-online", projectMessage.Content, StringComparison.Ordinal);
