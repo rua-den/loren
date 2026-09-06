@@ -153,12 +153,13 @@ internal static class CanonicalStateModel
             entity.Property(item => item.Content).IsRequired();
             entity.Property(item => item.TaskStatus).HasMaxLength(32);
             entity.Property(item => item.SourceReference).HasMaxLength(1000).IsRequired();
-            entity.Property(item => item.CreatedAt).IsRequired();
-            entity.Property(item => item.UpdatedAt).IsRequired();
-            entity.Property(item => item.CompletedAt).IsRequired(false);
+            entity.Property(item => item.CreatedAtUnixMs).IsRequired();
+            entity.Property(item => item.UpdatedAtUnixMs).IsRequired();
+            entity.Property(item => item.CompletedAtUnixMs).IsRequired(false);
             entity.HasIndex(item => item.ProjectId);
             entity.HasIndex(item => item.Kind);
             entity.HasIndex(item => item.TaskStatus);
+            entity.HasIndex(item => item.UpdatedAtUnixMs);
             entity.HasIndex(item => new { item.ProjectId, item.Kind, item.TaskStatus });
 
             entity
@@ -277,9 +278,9 @@ internal sealed class OrganizationItemRow
 
     public string SourceReference { get; set; } = string.Empty;
 
-    public DateTimeOffset CreatedAt { get; set; }
+    public long CreatedAtUnixMs { get; set; }
 
-    public DateTimeOffset UpdatedAt { get; set; }
+    public long UpdatedAtUnixMs { get; set; }
 
-    public DateTimeOffset? CompletedAt { get; set; }
+    public long? CompletedAtUnixMs { get; set; }
 }
