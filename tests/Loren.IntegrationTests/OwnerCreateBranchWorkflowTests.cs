@@ -197,7 +197,7 @@ public sealed class OwnerCreateBranchWorkflowTests
     {
         private readonly Dictionary<ApprovalId, ActionApproval> _approvals = [];
 
-        public IReadOnlyList<ActionApproval> Approvals => _approvals.Values.ToArray();
+        public ActionApproval[] Approvals => _approvals.Values.ToArray();
 
         public Task AddAsync(
             ActionApproval approval,
