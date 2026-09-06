@@ -2,173 +2,190 @@
 
 **English** · [Tiếng Việt](README.vi.md)
 
-Loren is a long-lived personal intelligence system with persistent memory, explicit permissions, tool use, and eventually proactive behavior across the owner's digital life.
+Loren is a long-lived personal secretary / intelligence system with persistent memory, current-information tools, explicit permissions, and eventually voice/proactive behavior across the owner's digital life.
 
-> **The model is replaceable compute. Loren owns identity, memory, context, policy, approvals, action boundaries, and history.**
+> **The model is replaceable compute. Loren owns identity, memory, context, organization, policy, approvals, action boundaries, and history.**
+
+## Product direction
+
+Loren is intended to feel more like a private Jarvis-style secretary than a project automation bot.
+
+Default capability order:
+
+```text
+CONVERSE
+ -> REMEMBER
+ -> READ CURRENT INFORMATION
+ -> RESEARCH / SYNTHESIZE
+ -> ORGANIZE
+ -> PROPOSE ACTION
+ -> OWNER APPROVES
+ -> ACT / VERIFY / AUDIT
+ -> later BACKGROUND / PROACTIVE / VOICE
+```
+
+Read/understand comes before broad external mutation.
 
 ## Core principles
 
-1. **Memory-first** — durable state survives conversations, restarts, and provider changes.
-2. **Tool-first** — external facts/actions come from authoritative tools instead of model guessing.
-3. **Permission-first** — a model may request an action; Loren authorizes and executes it.
-4. **Model-independent** — model providers are replaceable adapters.
-5. **Auditable** — consequential behavior must be reconstructable.
-6. **Progressive autonomy** — proactive/background behavior comes only after lower-level trust boundaries are proven.
+1. **Conversation-first** — normal owner interaction is the primary product surface.
+2. **Memory-first** — durable state survives conversations, restarts, and provider changes.
+3. **Tool-first for external facts** — current facts come from authoritative read tools instead of model guessing.
+4. **Read before write** — integrations prove useful read-only behavior before broad mutation.
+5. **Permission-first** — a model may request an action; Loren authorizes and executes it.
+6. **Model-independent** — model providers are replaceable adapters.
+7. **Auditable** — consequential behavior must be reconstructable.
+8. **Progressive autonomy** — scheduling/voice/proactive behavior comes only after lower trust boundaries are proven.
 
 ## Current status
 
 **Last updated:** 2026-09-06  
-**Phase:** `v0.1 — Trustworthy Core development`  
-**Completed milestone:** `M4 — Trusted Durable Memory`  
-**Passed decision gates:** `Gate A`, `Gate B`, `Gate C`, `Gate D / ADR-004`  
-**Current milestone:** `M5 — Action/Credential Boundary + Narrow GitHub Writes`  
-**Completed M5 slices:** `Slice 1 — policy/approval/read-only`, `Slice 2 — credential isolation/revocation/redaction`  
-**Current checkpoint:** `Slice 3 — explicit-owner verified create-non-default-branch`
+**Phase:** `v0.1 — Useful Trustworthy Assistant`  
+**Completed foundations:** `M1–M4`, `Gate D`, `M5 write-safety Slices 1–3`  
+**Current product target:** `M6A — Conversational Secretary + Information Layer`  
+**Paused:** `M5 file/commit/PR write expansion` until the owner interaction checkpoint is usable
 
-Completed:
+Detailed status: [`docs/status.md`](docs/status.md). Fresh-thread continuation: [`docs/handoff.md`](docs/handoff.md).
 
-- Gate A / ADR-001 — Loren-owned core/runtime boundary.
-- Gate B / ADR-002 — provider-neutral v0.1 stack.
-- Gate C / ADR-003 — canonical state + memory lifecycle.
-- Gate D / ADR-004 — action approval + credential boundary.
-- M0 — technical feasibility.
-- M1 — engineering foundation.
-- M2 — Walking Skeleton.
-- M3 — Canonical Project/Repository State.
-- M4 — Trusted Durable Memory.
-- M5 Slice 1 — typed action policy, trusted canonical target, exact one-time approval, fail-closed global read-only.
-- M5 Slice 2 — write-specific credential resolver, revocation, no fallback, redaction across result/audit/brain boundaries.
+## What is already proven
 
-Detailed status: [`docs/status.md`](docs/status.md). Fresh-thread continuation checkpoint: [`docs/handoff.md`](docs/handoff.md).
+### Conversation/tool loop
 
-## Gate D / ADR-004 [PASSED]
-
-Gate D freezes the first write-capable trust boundary:
+M2 proved a real authenticated flow:
 
 ```text
-brain requests write
- -> canonical target resolution
- -> deterministic policy / global read-only
+owner
+ -> Loren conversation
+ -> real brain provider
+ -> github.read_repository
+ -> Loren ActionGateway
+ -> real GitHub read
+ -> structured result
+ -> natural-language final answer
+ -> correlated audit
+```
+
+### Canonical context
+
+M3 gives Loren-owned Project/Repository IDs and aliases independent of provider/session identity.
+
+### Durable memory
+
+M4 proves owner memory survives restart, supports correction/supersession and forgetting, retains provenance, and resists model/external-content self-promotion.
+
+### Safe action boundary
+
+Gate D and M5 Slices 1–3 prove:
+
+```text
+canonical target
+ -> typed policy / read-only kill
  -> explicit exact owner approval
- -> atomic one-time consume / replay rejection
- -> write-specific credential resolver
- -> trusted controlled executor
- -> independent post-write verification
- -> correlated redacted audit
+ -> atomic one-time consume
+ -> dedicated write credential
+ -> trusted executor
+ -> post-write verification
+ -> redacted audit
 ```
 
-Authentication proves owner identity; it is **not** write approval. Model/external content cannot create approval, broaden it, select credentials, disable read-only, select a different canonical repository, or declare a write verified.
+The first real proof action is verified creation of a **non-default GitHub branch**. That capability stays in the code, but it is no longer the next product priority.
 
-Allowed v0.1 mutation scope:
+Evidence:
 
 ```text
-create non-default branch
-controlled file/commit path on a non-default branch
-open pull request
+PR #25 merge caa65fbbd7c3828b68aa198dad625e73e9c096b4
+post-merge CI #195 / 33973694524 PASS Ubuntu + Windows
+
+PR #26 merge f7fb36bae324dbd7bb8d12e02daf3fe0dd98e7da
+post-merge CI #202 / 34027255592 PASS Ubuntu + Windows
+
+PR #27 merge bd0220550592a3ba55a2c722192e43df6e8ca321
+PR CI #217 / 34029409983 PASS Ubuntu + Windows
+post-merge CI #218 / 34029500883 PASS Ubuntu + Windows
 ```
 
-Still forbidden:
+## Current execution — M6A
+
+### M6A.1 — Conversation primary surface [NEXT]
+
+Make Loren feel like a secretary, not an admin dashboard:
+
+- conversation is the first/main owner surface;
+- stable knowledge/reasoning questions work naturally;
+- trusted memory and project context participate in normal chat;
+- low-level IDs/bootstrap controls move to secondary admin/settings UI;
+- tool/audit activity remains visible but secondary.
+
+### M6A.2 — Current-information / web read
+
+Add provider-neutral read-only search/retrieval so Loren can answer questions whose facts may have changed since model training.
+
+Required properties:
+
+- source URL/title/time/provider metadata;
+- bounded retrieved content;
+- external pages treated as untrusted data;
+- deterministic fake-provider tests;
+- uncertainty/failure instead of fabricated current facts.
+
+### M6A.3 — Source-aware research
+
+Multiple-source retrieval, comparison, deduplication, stale/conflict handling, and clear distinction between sourced facts and Loren inference.
+
+### M6A.4 — Notes / Decisions / Tasks
+
+Durable Loren-owned organization primitives usable from conversation:
 
 ```text
-direct default-branch write
-merge pull request
-force push / history rewrite
-delete repository/branch/data
-repository admin/security changes
-secret-management actions
-production deployment
+Note
+Decision
+Task
+TaskStatus
+optional Project scope
+provenance/timestamps
 ```
 
-## M5 Slice 1 — policy + one-time approval [COMPLETE]
+Scheduled/background reminders wait for Gate E.
 
-PR #25 merged at `caa65fbbd7c3828b68aa198dad625e73e9c096b4`.
+### M6A.5 — Conversational approval
+
+Reuse the existing safe create-branch executor through the intended UX:
 
 ```text
-frozen PR head: c9bfb9f82b70963c196a689d4b0be2feb9bfedb5
-PR CI #194 / 33973579862: Ubuntu full gate PASS + Windows integration PASS
-post-merge main CI #195 / 33973694524: Ubuntu full gate PASS + Windows integration PASS
+Owner: "Create branch abc for Loren."
+ -> brain proposes typed action
+ -> Loren resolves exact canonical target
+ -> conversation/UI shows approval proposal
+ -> owner approves
+ -> existing Gate D boundary executes
+ -> branch is independently verified
+ -> Loren reports completion naturally
 ```
 
-Key properties:
+No additional GitHub mutation primitive is required for this checkpoint.
 
-- typed `ActionAccessClass`;
-- trusted `ActionAuthorizationContext` outside model-visible arguments;
-- immutable snapshots for proposed + trusted normalized target data;
-- deterministic SHA-256 exact-intent fingerprint;
-- SQLite-backed `ActionApproval` / `IActionApprovalStore`;
-- every non-read action requires approval even if policy accidentally returns `Allow`;
-- executor existence is checked before approval consumption;
-- exact atomic one-time consume immediately before the consequential executor attempt;
-- missing/expired/revoked/mismatched/replayed approval fails closed;
-- model-visible `approvalId` text has no authority;
-- `LOREN_ENABLE_WRITES` defaults to read-only.
+## Next owner test milestone
 
-Approval is intentionally consumed before the first consequential executor attempt. A retry after failure/ambiguity needs fresh approval.
-
-## M5 Slice 2 — credential boundary [COMPLETE]
-
-PR #26 merged at `f7fb36bae324dbd7bb8d12e02daf3fe0dd98e7da`.
+The next meaningful manual checkpoint is:
 
 ```text
-frozen PR head: e9e2b07378e1435e62e6090829619603ac7df42b
-PR CI #201 / 34027113298: Ubuntu full gate PASS + Windows integration PASS
-post-merge main CI #202 / 34027255592: Ubuntu full gate PASS + Windows integration PASS
+1. Chat normally with Loren.
+2. Ask a stable knowledge question.
+3. Ask a current-information question and see grounded retrieval + sources.
+4. Ask about a known project and see canonical context + memory + live read data used.
+5. Teach Loren a durable fact/decision, restart, recall it.
+6. Create/list/complete a task through chat.
+7. Ask to create a branch in natural language.
+8. Review and approve the exact proposal.
+9. Receive a verified natural-language completion.
+10. Ask why Loren did it and inspect the explanation/audit.
 ```
 
-Key properties:
+**Controlled file/commit and open-PR work stay paused until this checkpoint exists.**
 
-- provider-neutral `CredentialPurpose` / `CredentialReference`;
-- dedicated GitHub write identity `github.write / github.write.local-v0.1`;
-- local secret contract `GITHUB_WRITE_TOKEN`;
-- `LOREN_GITHUB_WRITE_CREDENTIAL_REVOKED=true` overrides an already-approved intent;
-- malformed revocation state fails closed;
-- no fallback to `OLLAMA_API_KEY`, read credentials, or a broader token;
-- secret material exists only inside the credential-bound executor callback;
-- executor result/exception data is redacted before gateway/audit/brain consumption.
+## Run locally
 
-## M5 Slice 3 — verified create branch [CURRENT CHECKPOINT]
-
-The first real mutation is intentionally narrow:
-
-```text
-authenticated owner
- -> explicit “Approve & create branch”
- -> resolve canonical Project + GitHub Repository
- -> freeze exact branch + existing 40-char source SHA
- -> create 5-minute exact ActionApproval
- -> policy + trusted-executor check
- -> fingerprint + atomic consume
- -> github.write credential resolution
- -> GET repository/default branch preflight
- -> reject default/unsafe branch
- -> POST git/refs
- -> GET exact created ref
- -> require verified SHA == approved source SHA
- -> return redacted result + audit
-```
-
-Slice 3 introduces `ITrustedActionExecutor`: a non-read executor must receive Loren-owned `ActionExecutionRequest`, not only model-visible `ActionRequest`. A legacy non-read executor is rejected before approval is burned. Canonical GitHub owner/repository comes from `ActionAuthorizationContext.RepositoryLocator`; write execution does not trust model-proposed repository identity.
-
-The owner console now includes:
-
-- a bootstrap form to save one canonical GitHub Project/Repository into a fresh local database;
-- an explicit `Approve & create branch` form;
-- the existing read/chat console and audit display.
-
-Deterministic acceptance covers request order, safe ref validation, default-branch rejection, exact SHA validation, verification mismatch, credential redaction, owner approval consumption, and revoked-credential zero-HTTP behavior.
-
-## Canonical storage
-
-```text
-database file: loren.db
-default directory: OS local application data / Loren
-override: LOREN_DATA_DIRECTORY
-migrations: automatic at host startup
-```
-
-## Run locally — read-only
-
-PowerShell:
+Read-only development posture:
 
 ```powershell
 $env:LOREN_OWNER_PASSWORD='choose-a-local-owner-password'
@@ -177,42 +194,7 @@ $env:LOREN_ENABLE_WRITES='false'
 dotnet run --project src/Loren.Web/Loren.Web.csproj
 ```
 
-Bash:
-
-```bash
-export LOREN_OWNER_PASSWORD='choose-a-local-owner-password'
-export OLLAMA_API_KEY='your-provider-secret'
-export LOREN_ENABLE_WRITES='false'
-dotnet run --project src/Loren.Web/Loren.Web.csproj
-```
-
-## Run the first write checkpoint
-
-Only enable this when you intentionally want to test branch creation on the configured repository.
-
-PowerShell:
-
-```powershell
-$env:LOREN_OWNER_PASSWORD='choose-a-local-owner-password'
-$env:LOREN_ENABLE_WRITES='true'
-$env:GITHUB_WRITE_TOKEN='your-write-token'
-$env:LOREN_GITHUB_WRITE_CREDENTIAL_REVOKED='false'
-dotnet run --project src/Loren.Web/Loren.Web.csproj
-```
-
-Bash:
-
-```bash
-export LOREN_OWNER_PASSWORD='choose-a-local-owner-password'
-export LOREN_ENABLE_WRITES='true'
-export GITHUB_WRITE_TOKEN='your-write-token'
-export LOREN_GITHUB_WRITE_CREDENTIAL_REVOKED='false'
-dotnet run --project src/Loren.Web/Loren.Web.csproj
-```
-
-Then sign in to the owner console, bootstrap the canonical repository if the database is empty, enter an **existing exact 40-character source commit SHA**, choose a **new non-default branch name**, review the confirmation, and press **Approve & create branch**.
-
-Do not commit real secrets. `OLLAMA_API_KEY` and `GITHUB_WRITE_TOKEN` are intentionally separate credentials.
+Do not commit real secrets.
 
 ## Test
 
@@ -224,42 +206,29 @@ dotnet test Loren.slnx --configuration Release --no-build --no-restore
 
 Windows is a first-class integration-test CI platform in addition to the Ubuntu full gate.
 
-## Next narrow M5 target
-
-After the create-branch checkpoint is green on `main`:
-
-```text
-controlled file/commit path on an approved non-default branch
- -> bind exact path/content/branch intent
- -> forbid default-branch write
- -> verify commit SHA + branch ref + content identity
-```
-
-Open-PR write capability comes after that slice.
-
 ## Version path
 
 ```text
-v0.0  architecture / feasibility        ✓ complete
-v0.1  trustworthy core                 <- current / M5
-v0.2  useful project assistant
-v0.3  personal operations
+v0.0  architecture / feasibility             ✓ complete
+v0.1  useful trustworthy assistant           <- current
+v0.2  personal secretary integrations
+v0.3  personal/project operations
 v0.4  voice + device presence
 v0.5  proactive/background Loren
-v0.6+ real-use hardening
+v0.6+ daily-use hardening
 v1.0  stable personal daily driver
 ```
 
 ## Documentation
 
 - [`docs/status.md`](docs/status.md) — authoritative current progress
-- [`docs/handoff.md`](docs/handoff.md) — compact continuation checkpoint for a fresh thread
-- [`docs/development.md`](docs/development.md) — build/test/configuration guidance
+- [`docs/handoff.md`](docs/handoff.md) — compact fresh-thread checkpoint
+- [`docs/plans/master-plan.md`](docs/plans/master-plan.md) — product/version roadmap
+- [`docs/plans/v0.1.md`](docs/plans/v0.1.md) — detailed current-version execution plan
 - [`docs/architecture.md`](docs/architecture.md) — active system boundaries
-- [`docs/permissions.md`](docs/permissions.md) — active permission/approval baseline
-- [`docs/security.md`](docs/security.md) — active security baseline
-- [`docs/plans/master-plan.md`](docs/plans/master-plan.md) — version milestones and gates
-- [`docs/plans/v0.1.md`](docs/plans/v0.1.md) — detailed v0.1 implementation plan
-- [`docs/decisions/004-action-approval-and-credential-boundary.md`](docs/decisions/004-action-approval-and-credential-boundary.md)
+- [`docs/memory.md`](docs/memory.md) — durable-memory semantics
+- [`docs/permissions.md`](docs/permissions.md) — permission/approval baseline
+- [`docs/security.md`](docs/security.md) — security baseline
+- [`docs/development.md`](docs/development.md) — build/test/configuration
 
 This repository is the source of truth for Loren's product decisions, architecture, delivery plans, implementation, progress, and release history.
