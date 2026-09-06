@@ -5,6 +5,7 @@
   <Project Path="src/Loren.Brain.OpenAI/Loren.Brain.OpenAI.csproj" />
   <Project Path="src/Loren.Infrastructure/Loren.Infrastructure.csproj" />
   <Project Path="src/Loren.Tools.GitHub/Loren.Tools.GitHub.csproj" />
+  <Project Path="src/Loren.Tools.Web/Loren.Tools.Web.csproj" />
   <Project Path="src/Loren.Web/Loren.Web.csproj" />
   <Project Path="tests/Loren.Core.Tests/Loren.Core.Tests.csproj" />
   <Project Path="tests/Loren.Runtime.Tests/Loren.Runtime.Tests.csproj" />
