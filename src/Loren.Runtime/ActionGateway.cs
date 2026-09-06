@@ -150,6 +150,29 @@ public sealed class ActionGateway : IActionGateway
                 reason);
         }
 
+        ITrustedActionExecutor? trustedExecutor = null;
+        if (definition.AccessClass is not ActionAccessClass.Read)
+        {
+            trustedExecutor = executor as ITrustedActionExecutor;
+            if (trustedExecutor is null)
+            {
+                const string reason =
+                    "Non-read action executor is not registered for trusted execution context.";
+                await AppendAuditAsync(
+                    execution,
+                    AuditEventKind.ActionCompleted,
+                    "failed",
+                    reason,
+                    cancellationToken);
+
+                return new ActionResult(
+                    request.Name,
+                    false,
+                    new Dictionary<string, string>(),
+                    reason);
+            }
+        }
+
         bool requiresApproval =
             definition.AccessClass is not ActionAccessClass.Read
             || decision.Kind is PolicyDecisionKind.RequireApproval;
@@ -171,7 +194,9 @@ public sealed class ActionGateway : IActionGateway
         ActionResult result;
         try
         {
-            result = await executor.ExecuteAsync(request, cancellationToken);
+            result = trustedExecutor is null
+                ? await executor.ExecuteAsync(request, cancellationToken)
+                : await trustedExecutor.ExecuteTrustedAsync(execution, cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
