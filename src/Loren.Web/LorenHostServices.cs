@@ -2,10 +2,12 @@ using Loren.Brain.Ollama;
 using Loren.Core.Actions;
 using Loren.Core.Audit;
 using Loren.Core.Brains;
+using Loren.Core.Credentials;
 using Loren.Core.Memories;
 using Loren.Core.Projects;
 using Loren.Infrastructure.Audit;
 using Loren.Infrastructure.CanonicalState;
+using Loren.Infrastructure.Credentials;
 using Loren.Runtime;
 using Loren.Tools.GitHub;
 using Microsoft.Data.Sqlite;
@@ -58,6 +60,16 @@ public static class LorenHostServices
         services.AddSingleton<IWriteSafetyState>(
             new FixedWriteSafetyState(isReadOnly: !writesEnabled));
         services.AddSingleton<IActionPolicy, GateDActionPolicy>();
+
+        services.AddSingleton<IActionCredentialResolver>(
+            new EnvironmentActionCredentialResolver(
+                [
+                    new EnvironmentCredentialBinding(
+                        GitHubCredentials.WritePurpose,
+                        GitHubCredentials.LocalV01WriteReference,
+                        "GITHUB_WRITE_TOKEN",
+                        "LOREN_GITHUB_WRITE_CREDENTIAL_REVOKED"),
+                ]));
 
         services.AddSingleton<IActionExecutor>(provider =>
         {
