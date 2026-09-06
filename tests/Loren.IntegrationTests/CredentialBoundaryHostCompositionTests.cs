@@ -14,7 +14,7 @@ namespace Loren.IntegrationTests;
 public sealed class CredentialBoundaryHostCompositionTests
 {
     [Fact]
-    public void ProductionHostRegistersReadExecutorsAndOnlyOneTrustedMutationExecutor()
+    public void ProductionHostRegistersPublicReadsOwnerStateAndOnlyNarrowExternalMutation()
     {
         string dataDirectory = Path.Combine(
             Path.GetTempPath(),
@@ -34,10 +34,11 @@ public sealed class CredentialBoundaryHostCompositionTests
             services.AddLorenM2ReadPath(configuration);
 
             using ServiceProvider provider = services.BuildServiceProvider();
+            using IServiceScope scope = provider.CreateScope();
 
             IActionCredentialResolver resolver =
                 provider.GetRequiredService<IActionCredentialResolver>();
-            IActionExecutor[] executors = provider
+            IActionExecutor[] executors = scope.ServiceProvider
                 .GetServices<IActionExecutor>()
                 .OrderBy(executor => executor.ActionName, StringComparer.Ordinal)
                 .ToArray();
@@ -46,7 +47,7 @@ public sealed class CredentialBoundaryHostCompositionTests
 
             Assert.IsType<EnvironmentActionCredentialResolver>(resolver);
             Assert.False(writeSafetyState.IsReadOnly);
-            Assert.Equal(4, executors.Length);
+            Assert.Equal(10, executors.Length);
 
             IActionExecutor createBranchExecutor = Assert.Single(
                 executors,
@@ -69,10 +70,18 @@ public sealed class CredentialBoundaryHostCompositionTests
                 executor => executor.ActionName == WebActions.Fetch.Name);
             Assert.IsType<OllamaWebFetchExecutor>(webFetchExecutor);
 
-            IActionExecutor mutationExecutor = Assert.Single(
+            foreach (ActionDefinition organizationAction in OrganizationActions.All)
+            {
+                IActionExecutor organizationExecutor = Assert.Single(
+                    executors,
+                    executor => executor.ActionName == organizationAction.Name);
+                Assert.IsType<OrganizationActionExecutor>(organizationExecutor);
+                Assert.IsAssignableFrom<ITrustedActionExecutor>(organizationExecutor);
+            }
+
+            Assert.Single(
                 executors,
-                executor => executor is ITrustedActionExecutor);
-            Assert.Equal(GitHubActions.CreateBranch.Name, mutationExecutor.ActionName);
+                executor => executor.ActionName == GitHubActions.CreateBranch.Name);
         }
         finally
         {
