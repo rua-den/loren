@@ -27,9 +27,9 @@ public sealed class AddOrganizationItems : Migration
                 ProjectId = table.Column<Guid>(type: "TEXT", nullable: true),
                 TaskStatus = table.Column<string>(type: "TEXT", maxLength: 32, nullable: true),
                 SourceReference = table.Column<string>(type: "TEXT", maxLength: 1000, nullable: false),
-                CreatedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false),
-                UpdatedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false),
-                CompletedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: true),
+                CreatedAtUnixMs = table.Column<long>(type: "INTEGER", nullable: false),
+                UpdatedAtUnixMs = table.Column<long>(type: "INTEGER", nullable: false),
+                CompletedAtUnixMs = table.Column<long>(type: "INTEGER", nullable: true),
             },
             constraints: table =>
             {
@@ -56,6 +56,11 @@ public sealed class AddOrganizationItems : Migration
             name: "IX_OrganizationItems_TaskStatus",
             table: "OrganizationItems",
             column: "TaskStatus");
+
+        migrationBuilder.CreateIndex(
+            name: "IX_OrganizationItems_UpdatedAtUnixMs",
+            table: "OrganizationItems",
+            column: "UpdatedAtUnixMs");
 
         migrationBuilder.CreateIndex(
             name: "IX_OrganizationItems_ProjectId_Kind_TaskStatus",
