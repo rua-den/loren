@@ -11,6 +11,7 @@ public enum ActionParameterType
 public enum ActionAccessClass
 {
     Read,
+    OwnerStateWrite,
     ReversibleWrite,
     ExternalWrite,
     PrivilegedWrite,
