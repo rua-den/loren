@@ -2,13 +2,13 @@
 
 **Last updated:** 2026-09-06  
 **Current version phase:** `v0.1 — Useful Trustworthy Assistant`  
-**Current product target:** `M6A — Conversational Secretary + Information Layer`  
+**Current product target:** `M6A.2 — Current-information / web read`  
 **Write expansion status:** `M5 Slices 4–6 paused after Slice 3 proof`  
 **Decision gates passed:** `Gate A`, `Gate B`, `Gate C`, `Gate D`
 
 This file is the authoritative progress ledger. Read [`handoff.md`](handoff.md) immediately after this file when continuing in a fresh thread.
 
-> **Roadmap correction:** Loren is a personal secretary / Jarvis-like assistant first. The next owner checkpoint is natural conversation + current information + research + durable context/organization + conversational approval. Additional GitHub write primitives are not the current priority.
+> **Roadmap correction:** Loren is a personal secretary / Jarvis-like assistant first. Natural conversation is now the primary surface; current information, research, durable organization, and conversational approval come before additional GitHub write primitives.
 
 ---
 
@@ -24,13 +24,12 @@ Gate D Action/Approval/Credential Policy   ✓ passed
 M5 Slice 1 write policy/approval            ✓ complete
 M5 Slice 2 credential isolation/redaction  ✓ complete
 M5 Slice 3 verified create branch          ✓ complete
+M6A.1 conversation primary surface         ✓ complete
 ```
 
 ## M2 proved
 
 Authenticated owner -> real brain -> real GitHub read -> structured tool result -> natural final answer -> correlated audit.
-
-That conversation/tool loop already exists and is now being promoted back to the center of the product.
 
 ## M3 proved
 
@@ -119,11 +118,9 @@ The branch-create owner form is a **technical harness / safety proof**, not the 
 
 ---
 
-# 3. Product roadmap rebaseline — why
+# 3. Product roadmap rebaseline
 
-The previous roadmap made M5 GitHub write slices the linear path before the daily-use assistant experience. That sequence was technically defensible but product-wrong for Loren's intended identity.
-
-The corrected capability order is:
+Correct capability order:
 
 ```text
 CONVERSE
@@ -151,51 +148,63 @@ Existing write foundations remain valid and will be reused after the assistant i
 
 # 4. Current milestone — M6A Conversational Secretary + Information Layer
 
-## M6A.1 — Conversation primary surface [NEXT]
+## M6A.1 — Conversation primary surface [COMPLETE]
 
-Goal: Loren should feel like a secretary, not an admin dashboard.
-
-Deliver:
-
-- conversation becomes the first/main surface after login;
-- ordinary reasoning/knowledge questions work naturally;
-- canonical project context and trusted memory are part of the normal conversation path;
-- owner does not manually enter canonical IDs for normal use;
-- tool activity is visible but secondary;
-- low-level bootstrap/debug controls move behind secondary settings/admin UI.
-
-Initial acceptance:
+PR #29 merged:
 
 ```text
-"Giải thích cái này cho tao."
-"Mày nhớ gì về project Loren?"
-"Repo Loren hiện sao rồi?"
+merge: a1652b2451fe2e706aa83373932b210178f63ebe
+PR CI #224 / 34042192552: PASS Ubuntu + Windows
+post-merge main CI #225 / 34042352724: PASS Ubuntu + Windows
 ```
 
-## M6A.2 — Current-information / web read [AFTER M6A.1]
+Delivered:
 
-Add provider-neutral read-only information/search capability.
+- authenticated login lands on conversation-first Loren UI;
+- normal turns carry bounded multi-turn user/assistant history;
+- Loren identity guidance is always present;
+- canonical project context can be selected by friendly alias/name or inferred deterministically;
+- ambiguous project inference does not guess;
+- `Mày là Loren đúng không?` does not accidentally activate a project named Loren;
+- trusted project-scoped memory remains in the normal conversation path;
+- browser history cannot inject a system role;
+- tool/audit activity is secondary UI;
+- bootstrap and write proof controls live under Advanced / safety harness.
 
-Required:
+## M6A.2 — Current-information / web read [ACTIVE — PR #30]
 
-- search/retrieve current external information;
-- source URL/title/time/provider metadata;
-- bounded retrieved content;
-- external content treated as inert untrusted data;
-- deterministic fake-provider tests;
-- failure/uncertainty instead of fabricated current facts.
+Current implementation adds read-only `web.search` backed by Ollama Web Search using the existing `OLLAMA_API_KEY`.
 
-Acceptance examples:
+Trust/quality contract:
 
 ```text
-"Tìm tài liệu mới nhất về X."
-"Y hiện version mới nhất là gì?"
-"Có update gì gần đây về Z?"
+brain requests web.search
+ -> ActionGateway READ policy
+ -> Ollama Web Search
+ -> bounded response
+ -> validate source URLs
+ -> bounded source title/content
+ -> mark evidence as untrusted external data
+ -> brain synthesizes
+ -> owner-visible answer includes source URLs
 ```
 
-## M6A.3 — Source-aware research/synthesis
+Implemented coverage includes:
 
-- multiple sources;
+- Bearer credential use without secret exposure;
+- missing credential fails before external call;
+- bounded query/result/content size;
+- invalid/overlong source URLs are excluded rather than surfaced as broken citations;
+- failure response bodies are never surfaced;
+- deterministic agent-loop acceptance from current-info question to sourced final answer;
+- production host exposes `github.read_repository` + `web.search` as read actions while keeping `github.create_branch` as the only trusted mutation executor.
+
+M6A.2 is not complete until PR #30 exact-head CI and post-merge `main` are green.
+
+## M6A.3 — Source-aware research/synthesis [NEXT AFTER M6A.2]
+
+- multiple searches/sources;
+- page fetch for deeper evidence where needed;
 - compare/merge/deduplicate;
 - sourced fact vs inference distinction;
 - stale/conflicting information surfaced;
@@ -237,19 +246,19 @@ No new GitHub write primitive is needed for this slice.
 
 # 5. Next owner test checkpoint
 
-The next time the owner should pull `main` specifically to evaluate the product, Loren must support:
+The next time the owner should pull `main` specifically to evaluate v0.1, Loren must support:
 
 ```text
 1. Normal conversation as the default surface.
 2. Stable knowledge/reasoning question.
 3. Current-information question with grounded external retrieval + sources.
-4. Project question combining canonical context + memory + live GitHub read.
-5. Teach a durable fact/decision, restart, recall it.
-6. Create/list/complete a task through chat.
-7. Ask to create a branch in natural language.
-8. Review exact approval proposal and approve.
-9. Receive verified completion naturally.
-10. Ask why Loren did it and inspect explanation/audit.
+4. Source-aware multi-step research.
+5. Project question combining canonical context + memory + live GitHub read.
+6. Teach a durable fact/decision, restart, recall it.
+7. Create/list/complete a task through chat.
+8. Ask to create a branch in natural language.
+9. Review exact approval proposal and approve.
+10. Receive verified completion naturally and inspect why/audit.
 ```
 
 **Do not resume controlled file/commit or open-PR work before this checkpoint is usable.**
@@ -266,14 +275,6 @@ Likely options:
 A. resume M5 Slice 4 controlled file/commit
 B. richer read-only personal integrations
 C. recovery/security closeout
-```
-
-If write expansion resumes:
-
-```text
-M5 Slice 4 controlled file/commit on non-default branch
-M5 Slice 5 open pull request
-M5 Slice 6 replay/revocation/injection/audit E2E
 ```
 
 ---
