@@ -22,6 +22,7 @@ public static class LorenHostServices
 {
     private const string OllamaHttpClientName = "loren-ollama";
     private const string OllamaWebSearchHttpClientName = "loren-ollama-web-search";
+    private const string OllamaWebFetchHttpClientName = "loren-ollama-web-fetch";
     private const string GitHubReadHttpClientName = "loren-github-read";
     private const string GitHubWriteHttpClientName = "loren-github-write";
 
@@ -34,6 +35,7 @@ public static class LorenHostServices
 
         services.AddHttpClient(OllamaHttpClientName);
         services.AddHttpClient(OllamaWebSearchHttpClientName);
+        services.AddHttpClient(OllamaWebFetchHttpClientName);
         services.AddHttpClient(GitHubReadHttpClientName);
         services.AddHttpClient(GitHubWriteHttpClientName);
 
@@ -86,17 +88,26 @@ public static class LorenHostServices
         services.AddSingleton<IActionExecutor>(provider =>
         {
             IHttpClientFactory httpClientFactory = provider.GetRequiredService<IHttpClientFactory>();
-            string endpointValue = configuration["LOREN_OLLAMA_WEB_SEARCH_ENDPOINT"]
-                ?? "https://ollama.com/api/web_search";
-            if (!Uri.TryCreate(endpointValue, UriKind.Absolute, out Uri? endpoint))
-            {
-                throw new InvalidOperationException(
-                    "LOREN_OLLAMA_WEB_SEARCH_ENDPOINT must be an absolute URI.");
-            }
-
+            Uri endpoint = ResolveHttpEndpoint(
+                configuration,
+                "LOREN_OLLAMA_WEB_SEARCH_ENDPOINT",
+                "https://ollama.com/api/web_search");
             return new OllamaWebSearchExecutor(
                 httpClientFactory.CreateClient(OllamaWebSearchHttpClientName),
                 new OllamaWebSearchOptions(endpoint),
+                configuration["OLLAMA_API_KEY"]);
+        });
+
+        services.AddSingleton<IActionExecutor>(provider =>
+        {
+            IHttpClientFactory httpClientFactory = provider.GetRequiredService<IHttpClientFactory>();
+            Uri endpoint = ResolveHttpEndpoint(
+                configuration,
+                "LOREN_OLLAMA_WEB_FETCH_ENDPOINT",
+                "https://ollama.com/api/web_fetch");
+            return new OllamaWebFetchExecutor(
+                httpClientFactory.CreateClient(OllamaWebFetchHttpClientName),
+                new OllamaWebFetchOptions(endpoint),
                 configuration["OLLAMA_API_KEY"]);
         });
 
@@ -132,7 +143,12 @@ public static class LorenHostServices
 
         services.AddScoped<IActionGateway>(provider =>
             new ActionGateway(
-                [GitHubActions.ReadRepository, WebActions.Search, GitHubActions.CreateBranch],
+                [
+                    GitHubActions.ReadRepository,
+                    WebActions.Search,
+                    WebActions.Fetch,
+                    GitHubActions.CreateBranch,
+                ],
                 provider.GetServices<IActionExecutor>(),
                 provider.GetRequiredService<IActionPolicy>(),
                 provider.GetRequiredService<IAuditSink>(),
@@ -148,6 +164,21 @@ public static class LorenHostServices
         services.AddScoped<LorenOwnerProjectBootstrapService>();
         services.AddScoped<LorenOwnerGitHubWriteService>();
         return services;
+    }
+
+    private static Uri ResolveHttpEndpoint(
+        IConfiguration configuration,
+        string key,
+        string defaultValue)
+    {
+        string endpointValue = configuration[key] ?? defaultValue;
+        if (!Uri.TryCreate(endpointValue, UriKind.Absolute, out Uri? endpoint)
+            || endpoint.Scheme is not ("http" or "https"))
+        {
+            throw new InvalidOperationException($"{key} must be an absolute http/https URI.");
+        }
+
+        return endpoint;
     }
 
     private static string ResolveDataDirectory(IConfiguration configuration)
