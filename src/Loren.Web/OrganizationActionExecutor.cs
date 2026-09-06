@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text.Json;
 using Loren.Core.Actions;
@@ -225,7 +226,7 @@ public sealed class OrganizationActionExecutor : ITrustedActionExecutor
     private static bool TryRequiredArgument(
         ActionRequest request,
         string name,
-        out string? value,
+        [NotNullWhen(true)] out string? value,
         out ActionResult? failure)
     {
         value = null;
