@@ -27,6 +27,18 @@ app.MapGet(
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
+app.MapGet(
+        "/api/projects",
+        async (
+            LorenProjectContextBuilder contextBuilder,
+            CancellationToken cancellationToken) =>
+        {
+            IReadOnlyList<LorenProjectDirectoryItem> projects = await contextBuilder
+                .ListProjectsAsync(cancellationToken);
+            return Results.Ok(projects);
+        })
+    .RequireAuthorization();
+
 app.MapPost(
         "/api/run",
         async (
@@ -44,12 +56,17 @@ app.MapPost(
                 LorenRunResult result = await runService.RunAsync(
                     request.Message,
                     request.ProjectAlias,
+                    request.History,
                     cancellationToken);
                 return Results.Ok(result);
             }
             catch (UnknownProjectAliasException exception)
             {
                 return Results.NotFound(new { error = exception.Message });
+            }
+            catch (ArgumentException exception)
+            {
+                return Results.BadRequest(new { error = exception.Message });
             }
         })
     .RequireAuthorization();
@@ -152,12 +169,17 @@ if (developmentRunEndpointEnabled)
                 LorenRunResult result = await runService.RunAsync(
                     request.Message,
                     request.ProjectAlias,
+                    request.History,
                     cancellationToken);
                 return Results.Ok(result);
             }
             catch (UnknownProjectAliasException exception)
             {
                 return Results.NotFound(new { error = exception.Message });
+            }
+            catch (ArgumentException exception)
+            {
+                return Results.BadRequest(new { error = exception.Message });
             }
         });
 }
