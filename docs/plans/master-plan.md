@@ -1,84 +1,66 @@
 # Loren Master Delivery Plan
 
-**Status:** Active planning baseline — product roadmap rebaselined 2026-09-06  
+**Status:** Active capability-driven roadmap  
+**Updated:** 2026-09-07  
 **Current phase:** `v0.1 — Useful Trustworthy Assistant`  
-**Completed foundations:** M1–M4 + Gate D + M5 write-safety Slices 1–3 + M6A.1 conversation surface  
-**Current product target:** `M6A.2 — Current-information / web read`  
-**Paused expansion:** `M5 Slices 4–6 — file/commit/PR writes` until M6A is owner-testable
+**Completed:** M1–M4 + Gate D + M5 write-safety Slices 1–3 + M6A.1–M6A.3  
+**Ready to merge:** `M6A.4 — Notes / Decisions / Tasks`  
+**Next:** `M6A.5 — Conversational approval`  
+**Paused:** broader M5 file/commit/PR writes until the v0.1 owner checkpoint
 
 This is Loren's top-level delivery plan. The roadmap is **capability-driven, not date-driven**.
 
-> **Product correction (2026-09-06): Loren is a personal secretary / Jarvis-like assistant first, not a GitHub automation agent. The product must learn to converse, understand context, retrieve current information, remember, and organize before broadening its ability to mutate external systems.**
+> Loren is the owner's persistent personal secretary / Jarvis-like intelligence system. GitHub automation is one capability, not the product identity.
 
 ---
 
 # 1. Product objective
 
-Loren should become the owner's persistent personal intelligence / secretary that can:
+Loren should become a long-lived personal intelligence that can:
 
 1. talk naturally with the owner;
-2. understand the owner's durable personal/project context without being re-taught every session;
-3. answer ordinary knowledge questions from the selected brain provider;
-4. retrieve **current** information through authoritative read-only tools when model knowledge is not enough;
-5. research, compare, summarize, and explain where information came from;
-6. read the owner's connected information sources with explicit scopes;
-7. remember owner-provided facts, preferences, rules, decisions, and project context;
-8. organize information into useful notes/tasks/decisions rather than dumping transcripts;
-9. ask for approval before consequential external actions;
-10. act through Loren-owned policy/credential/audit boundaries;
-11. gradually gain scheduling, voice, device presence, and proactive behavior only after lower trust layers are proven.
+2. carry durable personal/project context across sessions and provider changes;
+3. reason from stable model knowledge when appropriate;
+4. retrieve current information through authoritative read-only tools;
+5. research multiple sources and explain provenance/trade-offs;
+6. maintain owner-controlled notes, decisions and tasks;
+7. read connected personal/project systems with explicit scopes;
+8. propose consequential actions in conversation;
+9. require explicit owner approval before consequential external actions;
+10. execute through Loren-owned policy/credential/audit boundaries;
+11. verify external writes independently;
+12. later gain background, proactive and voice behavior only behind new trust gates.
 
-The long-term product is **not** a model wrapper, **not** a GitHub bot, and **not** a generic agent framework.
-
-A useful mental model is:
-
-```text
-Owner
-  |
-  v
-Loren — personal secretary / long-lived intelligence
-  |
-  +--> conversation + reasoning
-  +--> durable memory/context
-  +--> current information / research
-  +--> personal/project information sources
-  +--> notes / tasks / decisions
-  +--> approval UI
-  +--> safe actions
-  +--> later reminders / background work / voice / proactive behavior
-```
+The model is replaceable compute. Loren owns identity, state, context, organization, authorization and history.
 
 ---
 
-# 2. Product ordering principle — understand before act
-
-The delivery order must optimize for a useful assistant, not for the most interesting infrastructure primitive.
-
-Default capability order:
+# 2. Capability order
 
 ```text
 CONVERSE
   -> REMEMBER
-  -> READ / RETRIEVE CURRENT INFORMATION
+  -> READ CURRENT INFORMATION
   -> RESEARCH / SYNTHESIZE
   -> ORGANIZE
   -> PRESENT PROPOSED ACTION
   -> OWNER APPROVES
   -> ACT
   -> VERIFY / AUDIT
-  -> later SCHEDULE / PROACT
+  -> later SCHEDULE / PROACT / VOICE
 ```
 
 Consequences:
 
-- read-only information capabilities come before broad external writes;
-- a user-visible conversation checkpoint comes before adding more GitHub mutation primitives;
-- external writes remain narrow until Loren can explain what it knows, what it found, and what it proposes to do;
-- technical security foundations may be implemented early, but they do **not** define the product roadmap by themselves.
+- read/understand before broad external mutation;
+- owner-visible vertical slices before adjacent framework primitives;
+- external/model content is data, never authority;
+- no background execution before Gate E;
+- no new GitHub write primitive is required to prove conversational approval.
 
 ---
 
-# 3. Architectural invariants across all versions
+# 3. Architectural invariants
 
 Breaking one requires an explicit superseding ADR.
 
@@ -87,47 +69,48 @@ Breaking one requires an explicit superseding ADR.
 ```text
 identity
 canonical personal/project state
-memory + provenance
+trusted durable memory
+notes / decisions / tasks
 permissions/policy
 approval artifacts
 action gateway
 audit/history
 context assembly
-personal organization state
 ```
 
 ## Replaceable infrastructure
 
 ```text
 brain/model provider
-agent-loop implementation details
-web/search providers
+web/search provider
 MCP servers
 vendor APIs
 UI clients
-database engine after migration
-computer-use/device runtimes
-notification channels
 secret-store backend
+execution runtime
+database engine after migration
+notification channels
+device/voice runtime
 ```
 
-## Security invariants
+## Trust invariants
 
-1. The model may request actions; it may not authorize itself.
-2. Privileged tool credentials remain outside model/runtime context.
-3. Authentication proves owner identity; it is not write approval.
-4. External/model content cannot silently promote itself to owner policy, approval, or trusted memory.
-5. Consequential writes are canonical-target-bound, permission-checked, one-time approved, audited, and post-verified.
-6. Credential revocation overrides prior approval.
-7. Global privileged writes can fail closed into read-only mode.
-8. Canonical state is exportable/recoverable independently of model-provider session state.
-9. Runtime/provider-specific IDs never become Loren's durable primary identity.
-10. Retrieved information is data, not instruction or permission.
-11. Read-only tool access should use the least privilege necessary for the requested information.
+1. The model may propose actions; it may not authorize itself.
+2. Privileged write credentials remain outside BrainContext/model-visible args.
+3. Authentication identifies the owner; it is not external-write approval.
+4. Owner-local state access requires authenticated Loren-owned owner context.
+5. External/model/tool content cannot self-promote to memory, owner-state mutation, policy or approval.
+6. Consequential external writes are canonical-target-bound, one-time approved, credential-isolated, audited and post-verified.
+7. Credential revocation overrides prior approval.
+8. Global external write mode fails closed.
+9. Current facts use read tools instead of stale guessing when verification is needed.
+10. Retrieved content is inert untrusted evidence.
+11. Canonical state remains recoverable independently from model/provider sessions.
+12. Background execution requires Gate E.
 
 ---
 
-# 4. Versioning model — rebaselined around usefulness
+# 4. Version path
 
 ```text
 v0.0   architecture / feasibility             ✓ complete
@@ -136,11 +119,9 @@ v0.2   personal secretary integrations
 v0.3   personal/project operations
 v0.4   voice + device presence
 v0.5   proactive/background Loren
-v0.6+  hardening based on real daily use
+v0.6+  daily-use hardening
 v1.0   stable personal daily driver
 ```
-
-Patch releases (`v0.x.y`) may add narrow capabilities or hardening without changing the main trust boundary of the minor version.
 
 ---
 
@@ -148,509 +129,353 @@ Patch releases (`v0.x.y`) may add narrow capabilities or hardening without chang
 
 ## Gate A — Core ownership [PASSED]
 
-ADR-001: Loren owns canonical identity/state/policy/action authorization; models, runtimes, MCP, and external frameworks are adapters.
+ADR-001: Loren owns canonical identity/state/policy/action authorization; model/runtime/MCP are adapters.
 
-## Gate B — v0.1 implementation stack [PASSED]
+## Gate B — v0.1 stack [PASSED]
 
-ADR-002 accepted baseline:
+ADR-002 baseline:
 
 ```text
 C# 14 / .NET 10 LTS
 ASP.NET Core
-small Loren-owned bounded agent loop
+small Loren-owned bounded AgentLoop
 provider-neutral IBrain
-MCP C# SDK behind Loren action contracts
 SQLite + EF Core
-Blazor/Web owner surface
+owner web UI
 xUnit
 ```
 
-## Gate C — Canonical storage and memory lifecycle [PASSED]
+## Gate C — Canonical storage + memory lifecycle [PASSED]
 
-ADR-003 locked opaque Loren IDs, SQLite/EF migration policy, Project/Repository canonical boundaries, durable-memory source classes, correction/supersession, memory-delete vs audit separation, and portable logical export versioning.
+ADR-003 locks opaque Loren IDs, checked-in EF migrations, Project/Repository boundaries, memory provenance, append/supersede correction, forget semantics and logical export direction.
 
-## Gate D — Action/approval/credential policy [PASSED]
+## Gate D — External action/approval/credential boundary [PASSED]
 
-ADR-004 locks exact write intent, canonical target binding, explicit owner approval, non-replay, host-controlled read-only, credential isolation/revocation, post-write verification, and redacted audit.
+ADR-004 locks exact external-write intent, canonical target binding, explicit owner approval, one-time consume, global read-only, credential isolation/revocation, post-write verification and redacted audit.
 
-Gate D is a **safety foundation**, not the primary product persona.
+Gate D applies to consequential external mutation. Loren-owned local organization state has its own authenticated-owner boundary and does not pretend to be an external write.
 
-## Gate E — Background execution
+## Gate E — Background execution [NOT YET]
 
-Required before trusted reminders/background operations that can execute when the owner is not actively present:
+Required before Loren can execute trusted work without active owner presence:
 
-- persistent job ownership/state;
+- persistent job identity/state;
 - timezone/missed-run semantics;
 - bounded retry/backoff;
 - cancellation;
 - quotas;
 - notification policy;
-- safe restart/resume behavior.
+- safe restart/resume.
 
-Simple owner-created tasks/checklists that do not execute in the background do **not** require Gate E.
+Storing a Task or due date as data does not require Gate E. Delivering a reminder in the background does.
 
-## Gate F — Trusted devices and voice approval
+## Gate F — Trusted devices / voice approval [LATER]
 
-Required before voice/device trust can authorize sensitive operations.
+Required before device/voice trust can authorize sensitive actions.
 
-## Gate G — Proactive autonomy
+## Gate G — Proactive autonomy [LATER]
 
-Required before standing permissions, proactive evaluations, event-driven work, or self-created recurring tasks.
+Required before standing permissions, event-driven work or self-created recurring operations.
 
-## Gate H — v1 stable contract
+## Gate H — v1 stable contract [LATER]
 
-Required before v1.0: recovery compatibility, migrations/upgrades, stable core contracts, secret rotation, operational monitoring, and privacy/security baseline.
+Recovery compatibility, upgrade/migration stability, secret rotation, operations and privacy/security baseline.
 
 ---
 
-# 6. Completed engineering foundations
+# 6. Completed foundations
 
-## v0.0 — Architecture and feasibility [COMPLETE]
+## M1 Engineering Foundation [COMPLETE]
 
-ADR-001/002 feasibility complete.
+Provider-neutral core, bounded loop, deterministic tests, CI gates and dependency boundaries.
 
-## M1 — Engineering Foundation [COMPLETE]
-
-Production scaffold, provider-neutral contracts, bounded loop, deterministic tests, CI gates, dependency boundaries.
-
-## M2 — Walking Skeleton [COMPLETE]
-
-A real authenticated production flow proved:
+## M2 Conversation/tool walking skeleton [COMPLETE]
 
 ```text
 owner
  -> Loren conversation
- -> real brain provider
- -> github.read_repository ActionRequest
+ -> real brain
+ -> github.read_repository
  -> ActionGateway
  -> real GitHub read
- -> structured result
- -> final natural-language answer
+ -> structured observation
+ -> natural answer
  -> correlated audit
 ```
 
-## M3 — Canonical Project/Repository State [COMPLETE]
+## M3 Canonical Project/Repository [COMPLETE]
 
-Canonical IDs, aliases, durable project/repository state, prepared project context.
+Loren-owned opaque IDs, aliases and provider-independent project/repository identity.
 
-## M4 — Trusted Durable Memory [COMPLETE]
+## M4 Trusted Durable Memory [COMPLETE]
 
-Durable owner memory, correction/supersession, bounded trusted retrieval, poisoning resistance, owner forget semantics, Windows SQLite hardening.
+Owner memory survives restart, supports correction/supersession/forget, keeps provenance and resists low-authority content promotion.
 
-## Gate D + M5 Slices 1–3 — Write-safety foundation [FOUNDATION COMPLETE / EXPANSION PAUSED]
-
-Already delivered and green on `main`:
+## Gate D + M5 Slices 1–3 [WRITE-SAFETY PROOF COMPLETE]
 
 ```text
-Slice 1  typed action policy + exact one-time approval + global read-only
-Slice 2  dedicated write credential resolver + revocation + redaction
-Slice 3  verified create-non-default-branch capability + owner test harness
+Slice 1  typed policy + exact one-time approval + global external read-only
+Slice 2  dedicated write credential + revocation + redaction
+Slice 3  verified create non-default GitHub branch
 ```
 
-The create-branch capability is retained as a proof that the safety boundary works. It is **not** the next product priority.
-
-Paused for now:
+Evidence:
 
 ```text
-Slice 4  controlled file/commit write
-Slice 5  open pull request
-Slice 6  broad write/replay/injection E2E
+PR #25 merge caa65fbbd7c3828b68aa198dad625e73e9c096b4
+PR #26 merge f7fb36bae324dbd7bb8d12e02daf3fe0dd98e7da
+PR #27 merge bd0220550592a3ba55a2c722192e43df6e8ca321
+post-merge main CI #218 / 34029500883 PASS Ubuntu + Windows
 ```
+
+Paused:
+
+```text
+M5 Slice 4 controlled file/commit
+M5 Slice 5 open PR
+M5 Slice 6 broader write adversarial E2E
+```
+
+---
+
+# 7. M6A — Conversational Secretary + Information Layer
 
 ## M6A.1 — Conversation primary surface [COMPLETE]
 
-PR #29 delivered conversation-first UI, Loren identity context, bounded multi-turn history, friendly project selection, deterministic project inference, trusted memory in the normal conversation path, browser history role hardening, and secondary activity/audit UI.
+PR #29 merge `a1652b2451fe2e706aa83373932b210178f63ebe`.
+
+Delivered conversation-first UI, Loren identity context, bounded history, friendly project selection/inference, trusted memory in normal chat, role hardening and secondary tool/audit UI.
+
+## M6A.2 — Current-information web read [COMPLETE]
+
+PR #30 merge `a8d3e7bbc94c9a468ebc234deb1fe87dcb7d23e9`.
+
+Delivered `web.search` through ActionGateway, Ollama Web Search, bounded evidence/source URLs, secret-safe failures and deterministic current-info acceptance.
+
+## M6A.3 — Source-aware bounded research [COMPLETE]
+
+PR #31:
 
 ```text
-merge: a1652b2451fe2e706aa83373932b210178f63ebe
-PR CI #224 / 34042192552: PASS Ubuntu + Windows
-post-merge main CI #225 / 34042352724: PASS Ubuntu + Windows
+frozen head: 6f2b5d1ea5739b84b369f689214db95745071cb1
+merge: d789ccc7f7540cb802b14f677d317db3e571a7d3
+PR CI #240 / 34045079047 PASS Ubuntu + Windows
+main CI #241 / 34052513007 PASS Ubuntu + Windows
 ```
 
----
+Delivered `web.fetch`, public-web URL safety, bounded search/fetch evidence, source timestamps, multi-step research in the existing bounded AgentLoop and explicit sourced-fact vs inference behavior.
 
-# 7. v0.1 — Useful Trustworthy Assistant [ACTIVE]
+## M6A.4 — Notes / Decisions / Tasks [READY TO MERGE — PR #32]
 
-## v0.1 goal
-
-The first version the owner should actually want to keep open during the day.
-
-Before v0.1 is called useful, Loren must support these classes of interaction:
-
-### A. Ordinary conversation
-
-```text
-"Loren, giải thích dependency injection cho tao dễ hiểu."
-"So sánh 2 hướng thiết kế này giúp tao."
-"Tóm tắt đoạn này cho tao."
-```
-
-No tool is required when stable model knowledge/reasoning is sufficient.
-
-### B. Current-information questions
-
-```text
-"Hôm nay có tin gì đáng chú ý về .NET?"
-"Tìm giúp tao tài liệu mới nhất về X."
-"Giá / lịch / phiên bản / trạng thái hiện tại của Y là gì?"
-```
-
-Loren must know when it needs a read-only external information tool instead of guessing from stale model knowledge.
-
-### C. Personal/project context
-
-```text
-"Project wedding-online hiện sao rồi?"
-"Mày nhớ tao chốt framework nào cho Loren không?"
-"Quyết định trước của tao về production deploy là gì?"
-```
-
-Answer uses canonical state + trusted durable memory + authoritative read tools as appropriate.
-
-### D. Research/synthesis
-
-```text
-"Research giúp tao 3 lựa chọn, đưa nguồn và trade-off."
-"Đọc mấy nguồn này rồi chốt khác nhau ở đâu."
-```
-
-Retrieved content remains inert data. Loren must distinguish sourced fact from inference/opinion.
-
-### E. Personal organization
-
-Initial non-background form:
-
-```text
-"Ghi lại quyết định này."
-"Tạo task: review X."
-"Cho tao xem các việc đang pending."
-"Đánh dấu task Y xong."
-```
-
-Tasks/notes/decisions are Loren-owned durable state. Scheduled reminders/background execution come later behind Gate E.
-
-### F. Proposed consequential action
-
-```text
-"Tạo branch abc cho Loren."
-```
-
-The desired UX is not an admin form. The conversation should:
-
-```text
-brain understands request
- -> Loren resolves exact canonical target
- -> Loren presents proposed action in conversation/UI
- -> owner explicitly approves
- -> existing Gate D boundary executes
- -> Loren verifies
- -> Loren explains what happened
-```
-
----
-
-# 8. Current milestone — M6A Conversational Secretary + Information Layer
-
-M6 is pulled forward and expanded because **interaction + information is the product**, while additional write primitives are secondary.
-
-## Slice M6A.1 — Conversation becomes the primary surface [COMPLETE]
-
-Delivered and green in PR #29.
-
-Acceptance includes:
-
-```text
-"Mày là Loren đúng không?"
-"Project Loren hiện sao rồi?"
-normal multi-turn chat
-trusted project memory in conversation
-```
-
-## Slice M6A.2 — General current-information / web read capability [ACTIVE — PR #30]
-
-Current implementation adds `web.search` through a read-only ActionGateway path backed by Ollama Web Search.
-
-Delivered contract in the active PR:
-
-- existing `OLLAMA_API_KEY` is reused for the read service;
-- default endpoint is `https://ollama.com/api/web_search` with optional trusted override;
-- query, response, source count, title, URL and content are bounded;
-- unsafe or overlong URLs are excluded rather than turned into broken citations;
-- external search evidence is explicitly untrusted data, not instruction/memory/permission;
-- missing credential fails before external call;
-- provider failure bodies and secrets are not surfaced;
-- deterministic executor tests and an agent-loop sourced-answer acceptance test exist;
-- normal conversation exposes `github.read_repository` and `web.search` as read actions.
-
-Close the slice only after exact-head PR CI and post-merge main CI are green.
-
-The brain decision remains:
-
-```text
-stable knowledge -> answer directly
-current/external fact -> web.search
-multi-source question -> bounded research tool calls -> synthesis
-```
-
-## Slice M6A.3 — Information synthesis + source-aware answers [NEXT]
-
-Deliver:
-
-- multiple-source comparison;
-- bounded iterative search;
-- page fetch for selected search results or owner-provided URLs;
-- clear separation of sourced facts vs model inference;
-- concise source list in owner-visible output;
-- stale/unknown/conflicting information called out instead of guessed;
-- deduplication/bounds for retrieved evidence.
-
-Ollama's official web capability exposes both `/api/web_search` and `/api/web_fetch`; page content remains untrusted external data.
-
-## Slice M6A.4 — Personal organization primitives
-
-Deliver Loren-owned durable:
+Owner-visible state:
 
 ```text
 Note
 Decision
 Task
-Task status
+TaskStatus = Open | Completed
 optional Project scope
-provenance / created / updated timestamps
+provenance
+created / updated / completed timestamps
 ```
 
-No background execution yet.
-
-Natural conversation examples:
+Conversation operations:
 
 ```text
-"Nhớ decision này."
-"Tạo task cho ngày mai"   -> may store due date, but no autonomous reminder until Gate E
-"Các task của wedding-online còn gì?"
-"Đánh dấu task deploy checklist xong."
+create note
+record decision
+create task
+list/filter owner organization state
+complete task
+reopen task
 ```
 
-## Slice M6A.5 — Conversational approval presentation
+### Owner-state security class
 
-Use the already-safe `github.create_branch` capability to prove:
+M6A.4 introduces explicit access classes:
 
 ```text
-owner asks in chat
- -> model proposes typed action
- -> Loren resolves trusted target
- -> UI/conversation shows exact action summary
- -> owner approves
- -> one-time approval artifact
- -> credential-bound executor
- -> post-write verify
- -> natural-language completion + audit details
+Read
+OwnerStateRead
+OwnerStateWrite
+ReversibleWrite
+ExternalWrite
+PrivilegedWrite
 ```
 
-The owner should not have to manually enter canonical IDs or raw approval objects.
+Rules:
 
-### M6A checkpoint — OWNER TEST MILESTONE
+- `OwnerStateRead/Write` require authenticated trusted `AuthenticatedOwnerContext`;
+- owner context is attached by Loren outside model-visible action arguments;
+- ActionGateway independently enforces it;
+- owner-state actions require `ITrustedActionExecutor`;
+- local organization state does not require external-write approval or GitHub write credentials;
+- external write behavior remains unchanged;
+- `LOREN_ENABLE_WRITES` is an external-write kill switch, not a switch that disables the owner's local notes/tasks.
 
-Do not resume broad GitHub writes until the owner can pull `main`, start Loren, and test this flow naturally:
+### Persistence
+
+SQLite migration `202609070001_AddOrganizationItems` stores opaque IDs, optional canonical project scope and Unix-millisecond lifecycle timestamps. Restart acceptance proves Note/Decision/Task durability and Task complete/reopen state.
+
+### Acceptance
 
 ```text
-1. Chat normally with Loren.
-2. Ask a stable knowledge question and receive a normal answer.
-3. Ask a current-information question and see grounded external data + sources.
-4. Ask for bounded multi-source research and get source-aware synthesis.
-5. Ask about a known project and see canonical context + memory + live read data used.
-6. Teach Loren a fact/decision, restart, and ask for it again.
-7. Create/list/complete a task or decision through chat.
-8. Ask Loren to create a branch; see an approval proposal; approve; get verified result.
-9. Ask why Loren did it and inspect audit explanation.
+owner chat
+ -> create project task
+ -> list open project tasks
+ -> complete exact task
+ -> restart-safe SQLite state
+```
+
+CI #247 / `34053503945` passed Ubuntu full gate + Windows integration before final docs synchronization. PR #32 must pass one final exact-head CI after docs before merge.
+
+No background scheduling exists in this slice.
+
+## M6A.5 — Conversational approval [NEXT]
+
+Use the existing verified `github.create_branch` capability as the first consequential conversational action.
+
+Required flow:
+
+```text
+owner asks naturally
+ -> brain/Loren interprets intent
+ -> Loren resolves canonical project/repository
+ -> Loren reads/resolves exact source branch SHA
+ -> Loren emits an exact action proposal
+ -> UI shows repo + branch + SHA + risk
+ -> owner explicitly approves
+ -> Loren creates exact one-time approval
+ -> existing credential-bound executor runs
+ -> independent ref/SHA verification
+ -> natural completion + audit explanation
+```
+
+The owner utterance is intent, not Gate D approval. The model never supplies trusted canonical authority, approval ID or credentials.
+
+No new GitHub mutation primitive is needed.
+
+---
+
+# 8. v0.1 owner checkpoint
+
+Do not request the owner to pull specifically for product testing until all of this works naturally:
+
+```text
+1. normal conversation
+2. stable knowledge/reasoning
+3. current information with sources
+4. bounded source-aware research
+5. canonical project context + memory + live read
+6. durable Note/Decision across restart
+7. create/list/complete Task through chat
+8. natural-language branch request
+9. exact proposal + explicit owner approval + verified action
+10. explanation/audit of what happened
+```
+
+This is the next meaningful product checkpoint.
+
+---
+
+# 9. v0.1 closeout after M6A
+
+After the owner checkpoint, prioritize based on value rather than automatically resuming writes.
+
+Required before `v0.1.0`:
+
+- logical export/recovery for canonical state, memory and organization state;
+- no raw credential export;
+- restart/recovery continuity;
+- retrieved-content prompt-injection E2E;
+- current-info failure/stale behavior;
+- approval replay/revocation/read-only E2E;
+- write post-verification E2E;
+- audit reconstruction;
+- deterministic core behavior without live provider dependency.
+
+If broader GitHub write expansion is still highest-value afterward:
+
+```text
+M5 Slice 4 controlled file/commit
+M5 Slice 5 open PR
+M5 Slice 6 adversarial write E2E
 ```
 
 ---
 
-# 9. Resume M5 write expansion only after M6A
+# 10. Later versions
 
-After M6A is owner-tested:
+## v0.2 — Personal Secretary Integrations
 
-## M5 Slice 4 — Controlled file/commit path
-
-Only on approved non-default branch, exact path/content digest/branch binding, post-write verification.
-
-## M5 Slice 5 — Open pull request
-
-Exact repo/base/head/title/body security-relevant intent binding + post-read verification.
-
-## M5 Slice 6 — Write authorization/adversarial E2E
-
-Replay, revocation, injection, ambiguous result, audit reconstruction.
-
-These capabilities support Loren's work; they do not define Loren's identity.
-
----
-
-# 10. v0.1 recovery/security closeout
-
-After M6A and the narrow required write flow:
-
-## Recovery
-
-- logical export format;
-- wipe -> restore;
-- canonical IDs retained;
-- memory/tasks/decisions restored;
-- raw credentials never exported.
-
-## Adversarial E2E
-
-- restart continuity;
-- memory poisoning;
-- retrieved-content prompt injection;
-- stale/current information handling;
-- approval replay;
-- credential revocation;
-- read-only kill;
-- provider/tool failures;
-- cancellation;
-- audit reconstruction.
-
----
-
-# 11. v0.1 exit gate
-
-Do not tag `v0.1.0` until:
-
-- conversation is the normal product surface;
-- stable knowledge questions work without unnecessary tools;
-- current/external questions use grounded read-only tools rather than stale guessing;
-- research answers retain source/provenance information;
-- owner memory survives restart/correction/forget;
-- basic durable notes/decisions/tasks work through conversation;
-- project context can combine canonical state, memory, and live read data;
-- at least one consequential action can be proposed in conversation, explicitly approved, executed, verified, and explained;
-- writes remain fail-closed under read-only/revoked/missing credential conditions;
-- recovery works;
-- core behavior is deterministically testable without a live model/provider.
-
----
-
-# 12. v0.2 — Personal Secretary Integrations
-
-Goal: move from a useful general/personal assistant to a secretary connected to the owner's daily information streams.
-
-Priority candidates:
+Candidates:
 
 ```text
-Calendar read + schedule understanding
-Gmail/mail read + summarize/search
-files/documents / personal knowledge sources
-richer tasks and due dates
+Calendar read/search
+Gmail/mail read/search/summarize
+files/documents
 contacts/people context
+richer tasks/due dates
 daily brief on demand
-project dashboards / GitHub richer reads
 ```
 
-Writes such as sending mail or calendar changes require their own approval/credential/action policies.
+Integration writes get their own approval/credential policies. Background delivery waits for Gate E.
 
-Gate E must pass before autonomous scheduled reminders/background delivery.
+## v0.3 — Personal Operations
 
----
+Approved calendar/mail/project writes, bounded background jobs after Gate E, cross-tool workflows.
 
-# 13. v0.3 — Personal Operations
+## v0.4 — Voice + device presence
 
-After read-heavy secretary use proves useful:
+Trusted device enrollment, PWA/mobile presence, push-to-talk, STT/TTS, notifications. Gate F required for sensitive voice/device approval.
 
-```text
-calendar writes with approval
-mail draft/send with approval
-bounded reminders/background jobs after Gate E
-server/VPS health and constrained operations
-cross-tool workflows
-richer GitHub/project operations
-```
+## v0.5 — Proactive Loren
 
-Read before write remains the default integration rule.
+Normalized events, proactive evaluation, bounded recurring work and global pause. Gate G required.
+
+## v0.6+ / v1.0
+
+Daily-use hardening, recovery/upgrade compatibility, more providers/integrations, privacy/security/operations maturity. Gate H before v1.0.
 
 ---
 
-# 14. v0.4 — Voice and Device Presence
-
-Trusted device enrollment, mobile/PWA presence, push-to-talk, STT/TTS, notifications, lost-device/revocation handling. Gate F required.
-
----
-
-# 15. v0.5 — Proactive Loren
-
-Normalized events, proactive evaluation, notification prioritization, tiny allowlisted standing permissions, bounded recurring work, active-task visibility, global pause. Gate G required.
-
----
-
-# 16. v0.6+ — Daily-use hardening
-
-Let actual usage determine priorities: memory consolidation, more providers/local models, Home Assistant, computer use, more integrations, offline/private execution, performance/cost, UX, packaging/deployment simplification.
-
----
-
-# 17. v1.0 — Stable Personal Daily Driver
-
-Loren is a trusted long-lived personal secretary that can evolve without casually losing state, leaking secrets, confusing retrieved content with authority, or bypassing owner control. Gate H must pass.
-
----
-
-# 18. Milestone execution rules
+# 11. Execution rules
 
 For every milestone:
 
-1. define the **owner-visible behavior** first;
-2. write acceptance scenarios in natural owner language before low-level implementation details;
-3. identify whether the capability is `understand`, `read`, `organize`, or `act`;
-4. prefer read-only integration before write integration;
-5. build the smallest vertical slice that proves usefulness end-to-end;
-6. preserve provider/framework boundaries;
-7. add audit/provenance with the capability;
-8. test deterministic logic with fakes before relying on live services;
-9. synchronize `docs/status.md`, README EN/VI, roadmap, v0.1 plan, and handoff;
-10. do not add adjacent technical primitives merely because the framework makes them easy.
+1. define owner-visible behavior first;
+2. write natural-language acceptance scenarios;
+3. classify the capability as public read, private owner state, or external action;
+4. build the smallest vertical slice that proves usefulness end to end;
+5. keep trusted metadata outside model-visible args;
+6. add provenance/audit with the capability;
+7. use deterministic fake/provider tests before live-provider dependence;
+8. review diff for trust-boundary regressions;
+9. require exact-head Ubuntu + Windows CI before merge;
+10. require post-merge main CI;
+11. synchronize status + README EN/VI + plans + handoff + architecture when relevant.
 
-A milestone is complete only when its acceptance criteria pass on the main owner path.
-
----
-
-# 19. Stop-the-line conditions
-
-Stop and fix the boundary if:
-
-- model/runtime can bypass ActionGateway;
-- privileged credentials leak;
-- approval can be replayed or broadened;
-- read-only can be bypassed;
-- writes can report success without verification;
-- canonical state depends on provider sessions;
-- retrieved/model content can self-promote to policy/memory/approval;
-- current-information answers silently rely on stale model knowledge when authoritative retrieval is required;
-- external content can inject instructions into Loren's authority path;
-- recovery is known broken;
-- deterministic core logic requires live model behavior.
+Stop the line if a model/runtime can bypass ActionGateway, private owner state loses authentication, credentials leak, external approval can replay/broaden, current information silently guesses when a read is required, external content becomes authority, or external writes report success without verification.
 
 ---
 
-# 20. Current next action
+# 12. Current next action
 
 ```text
-M1–M4 foundations                              ✓ complete
-Gate D + M5 write safety Slices 1–3            ✓ complete enough / proof exists
-M6A.1 Conversation primary surface             ✓ complete
+M1–M4                                         ✓
+Gate D + M5 write-safety Slices 1–3           ✓
+M6A.1 conversation primary surface            ✓
+M6A.2 current-information search              ✓
+M6A.3 source-aware bounded research           ✓
+M6A.4 Notes / Decisions / Tasks               <- PR #32 READY TO MERGE AFTER FINAL CI
+M6A.5 conversational approval
         |
         v
-M6A.2 Current information / web read           <- ACTIVE
-M6A.3 Source-aware research/synthesis
-M6A.4 Notes / Decisions / Tasks
-M6A.5 Conversational approval using create-branch proof
+OWNER v0.1 TEST CHECKPOINT
         |
         v
-OWNER INTERACTION CHECKPOINT
+recovery/security closeout + reassess writes
         |
-        +--> then resume file/commit/PR writes if still the highest-value next capability
-        +--> recovery/security closeout
         v
 v0.1.0
 ```
-
-**Do not continue with controlled file/commit or open-PR work before the M6A owner interaction checkpoint is usable.**
