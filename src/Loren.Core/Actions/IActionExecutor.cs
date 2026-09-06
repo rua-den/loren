@@ -8,3 +8,10 @@ public interface IActionExecutor
         ActionRequest request,
         CancellationToken cancellationToken);
 }
+
+public interface ITrustedActionExecutor : IActionExecutor
+{
+    Task<ActionResult> ExecuteTrustedAsync(
+        ActionExecutionRequest execution,
+        CancellationToken cancellationToken);
+}
