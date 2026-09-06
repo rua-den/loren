@@ -261,9 +261,9 @@ public sealed class GitHubCreateBranchClient
         if (string.IsNullOrWhiteSpace(branch)
             || branch.Length > 255
             || branch.StartsWith("refs/", StringComparison.Ordinal)
-            || branch.StartsWith('/', StringComparison.Ordinal)
-            || branch.EndsWith('/', StringComparison.Ordinal)
-            || branch.EndsWith('.', StringComparison.Ordinal)
+            || branch.StartsWith("/", StringComparison.Ordinal)
+            || branch.EndsWith("/", StringComparison.Ordinal)
+            || branch.EndsWith(".", StringComparison.Ordinal)
             || branch.Contains("..", StringComparison.Ordinal)
             || branch.Contains("@{", StringComparison.Ordinal)
             || branch.Contains("//", StringComparison.Ordinal)
@@ -278,7 +278,7 @@ public sealed class GitHubCreateBranchClient
         foreach (string component in branch.Split('/'))
         {
             if (component.Length == 0
-                || component.StartsWith('.', StringComparison.Ordinal)
+                || component.StartsWith(".", StringComparison.Ordinal)
                 || component.EndsWith(".lock", StringComparison.OrdinalIgnoreCase))
             {
                 return false;
