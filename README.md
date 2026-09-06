@@ -8,9 +8,7 @@ Loren is a long-lived personal secretary / intelligence system with persistent m
 
 ## Product direction
 
-Loren is intended to feel more like a private Jarvis-style secretary than a project automation bot.
-
-Default capability order:
+Loren should feel like a private Jarvis-style secretary, not a GitHub automation bot.
 
 ```text
 CONVERSE
@@ -41,37 +39,43 @@ Read/understand comes before broad external mutation.
 
 **Last updated:** 2026-09-06  
 **Phase:** `v0.1 — Useful Trustworthy Assistant`  
-**Completed foundations:** `M1–M4`, `Gate D`, `M5 write-safety Slices 1–3`  
-**Current product target:** `M6A — Conversational Secretary + Information Layer`  
+**Completed:** `M1–M4`, `Gate D`, `M5 write-safety Slices 1–3`, `M6A.1 conversation primary surface`  
+**Active:** `M6A.2 — Current-information / web read`  
 **Paused:** `M5 file/commit/PR write expansion` until the owner interaction checkpoint is usable
 
 Detailed status: [`docs/status.md`](docs/status.md). Fresh-thread continuation: [`docs/handoff.md`](docs/handoff.md).
 
 ## What is already proven
 
-### Conversation/tool loop
+### Conversation-first surface — M6A.1
 
-M2 proved a real authenticated flow:
+PR #29 moved the owner experience back to Loren itself:
 
 ```text
-owner
- -> Loren conversation
- -> real brain provider
- -> github.read_repository
- -> Loren ActionGateway
- -> real GitHub read
- -> structured result
- -> natural-language final answer
- -> correlated audit
+owner login
+ -> conversation-first UI
+ -> Loren identity
+ -> bounded multi-turn history
+ -> optional/inferred canonical project context
+ -> trusted durable memory
+ -> read tools
+ -> natural answer
+ -> secondary activity/audit
 ```
 
-### Canonical context
+Low-level bootstrap and create-branch proof forms now live under **Advanced / safety harness**.
 
-M3 gives Loren-owned Project/Repository IDs and aliases independent of provider/session identity.
+Evidence:
 
-### Durable memory
+```text
+PR #29 merge a1652b2451fe2e706aa83373932b210178f63ebe
+PR CI #224 / 34042192552 PASS Ubuntu + Windows
+post-merge CI #225 / 34042352724 PASS Ubuntu + Windows
+```
 
-M4 proves owner memory survives restart, supports correction/supersession and forgetting, retains provenance, and resists model/external-content self-promotion.
+### Canonical context + durable memory
+
+M3 gives Loren-owned Project/Repository IDs and aliases independent of provider/session identity. M4 proves owner memory survives restart, supports correction/supersession and forgetting, retains provenance, and resists model/external-content self-promotion.
 
 ### Safe action boundary
 
@@ -88,49 +92,38 @@ canonical target
  -> redacted audit
 ```
 
-The first real proof action is verified creation of a **non-default GitHub branch**. That capability stays in the code, but it is no longer the next product priority.
-
-Evidence:
-
-```text
-PR #25 merge caa65fbbd7c3828b68aa198dad625e73e9c096b4
-post-merge CI #195 / 33973694524 PASS Ubuntu + Windows
-
-PR #26 merge f7fb36bae324dbd7bb8d12e02daf3fe0dd98e7da
-post-merge CI #202 / 34027255592 PASS Ubuntu + Windows
-
-PR #27 merge bd0220550592a3ba55a2c722192e43df6e8ca321
-PR CI #217 / 34029409983 PASS Ubuntu + Windows
-post-merge CI #218 / 34029500883 PASS Ubuntu + Windows
-```
+The first write proof is verified creation of a **non-default GitHub branch**. That capability remains available only as a narrow proof; expanding GitHub writes is paused.
 
 ## Current execution — M6A
 
-### M6A.1 — Conversation primary surface [NEXT]
+### M6A.1 — Conversation primary surface [COMPLETE]
 
-Make Loren feel like a secretary, not an admin dashboard:
+- conversation is the default owner surface;
+- friendly project selection and deterministic project inference;
+- bounded user/assistant history;
+- trusted project memory participates in normal chat;
+- system-role injection from browser history is rejected;
+- tool/audit activity is secondary.
 
-- conversation is the first/main owner surface;
-- stable knowledge/reasoning questions work naturally;
-- trusted memory and project context participate in normal chat;
-- low-level IDs/bootstrap controls move to secondary admin/settings UI;
-- tool/audit activity remains visible but secondary.
+### M6A.2 — Current-information / web read [ACTIVE — PR #30]
 
-### M6A.2 — Current-information / web read
+Adds read-only `web.search` using Ollama Web Search and the existing `OLLAMA_API_KEY`.
 
-Add provider-neutral read-only search/retrieval so Loren can answer questions whose facts may have changed since model training.
+```text
+current question
+ -> brain chooses web.search
+ -> ActionGateway READ policy
+ -> bounded Ollama web search
+ -> validated source URLs + bounded evidence
+ -> evidence marked untrusted external data
+ -> Loren synthesizes a sourced answer
+```
 
-Required properties:
+The implementation rejects unsafe/overlong source URLs, bounds query/result/content size, fails closed when the search credential is missing, and never surfaces provider failure bodies or secrets.
 
-- source URL/title/time/provider metadata;
-- bounded retrieved content;
-- external pages treated as untrusted data;
-- deterministic fake-provider tests;
-- uncertainty/failure instead of fabricated current facts.
+### M6A.3 — Source-aware research [NEXT]
 
-### M6A.3 — Source-aware research
-
-Multiple-source retrieval, comparison, deduplication, stale/conflict handling, and clear distinction between sourced facts and Loren inference.
+Multiple searches/sources, deeper page fetch where useful, comparison/deduplication, stale/conflict handling, and clear distinction between sourced facts and Loren inference.
 
 ### M6A.4 — Notes / Decisions / Tasks
 
@@ -153,9 +146,8 @@ Reuse the existing safe create-branch executor through the intended UX:
 
 ```text
 Owner: "Create branch abc for Loren."
- -> brain proposes typed action
- -> Loren resolves exact canonical target
- -> conversation/UI shows approval proposal
+ -> Loren resolves exact target
+ -> conversation shows exact proposal
  -> owner approves
  -> existing Gate D boundary executes
  -> branch is independently verified
@@ -164,21 +156,21 @@ Owner: "Create branch abc for Loren."
 
 No additional GitHub mutation primitive is required for this checkpoint.
 
-## Next owner test milestone
+## v0.1 owner test milestone
 
-The next meaningful manual checkpoint is:
+The next pull specifically for product testing happens when Loren can:
 
 ```text
-1. Chat normally with Loren.
-2. Ask a stable knowledge question.
-3. Ask a current-information question and see grounded retrieval + sources.
-4. Ask about a known project and see canonical context + memory + live read data used.
-5. Teach Loren a durable fact/decision, restart, recall it.
-6. Create/list/complete a task through chat.
-7. Ask to create a branch in natural language.
-8. Review and approve the exact proposal.
-9. Receive a verified natural-language completion.
-10. Ask why Loren did it and inspect the explanation/audit.
+1. Chat normally.
+2. Answer stable knowledge/reasoning questions.
+3. Retrieve current information with sources.
+4. Do bounded source-aware research.
+5. Combine project context + memory + live read data.
+6. Store/recall a durable fact or decision across restart.
+7. Create/list/complete tasks through chat.
+8. Propose a branch action in natural language.
+9. Show exact approval, then execute + verify after approval.
+10. Explain what happened with audit context.
 ```
 
 **Controlled file/commit and open-PR work stay paused until this checkpoint exists.**
@@ -193,6 +185,8 @@ $env:OLLAMA_API_KEY='your-provider-secret'
 $env:LOREN_ENABLE_WRITES='false'
 dotnet run --project src/Loren.Web/Loren.Web.csproj
 ```
+
+`OLLAMA_API_KEY` powers both the Ollama brain cloud endpoint and the current-information web-search endpoint. `LOREN_OLLAMA_WEB_SEARCH_ENDPOINT` is optional and defaults to `https://ollama.com/api/web_search`.
 
 Do not commit real secrets.
 
