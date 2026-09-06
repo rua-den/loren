@@ -1,154 +1,158 @@
 # Loren Thread Handoff
 
-**Updated:** 2026-09-05  
+**Updated:** 2026-09-06  
 **Repository:** `rua-den/loren`  
 **Source of truth:** GitHub repository state and `docs/status.md`  
 **Current phase:** `v0.1 — Trustworthy Core development`  
 **Current milestone:** `M5 — Action/Credential Boundary + Narrow GitHub Writes`
 
-This file is a compact continuation checkpoint for a fresh ChatGPT thread. It does not replace `docs/status.md`; it points to the exact work that is in flight and the next execution step.
+This file is the compact continuation checkpoint for a fresh ChatGPT thread. It does not replace `docs/status.md`.
+
+## Green main baseline
+
+M5 Slice 2 is merged and green on `main`.
+
+```text
+PR #26 — feat: add M5 write credential boundary
+merge: f7fb36bae324dbd7bb8d12e02daf3fe0dd98e7da
+frozen PR head: e9e2b07378e1435e62e6090829619603ac7df42b
+PR CI #201 / 34027113298: Ubuntu full gate PASS + Windows integration PASS
+post-merge main CI #202 / 34027255592: Ubuntu full gate PASS + Windows integration PASS
+```
+
+Slices complete on main:
+
+```text
+Slice 1 — typed write policy + exact one-time approval + fail-closed global read-only
+Slice 2 — write credential purpose/reference + revocation + redaction boundary
+```
 
 ## Current pull request
 
 ```text
-PR: #25 — feat: add M5 one-time write approval foundation
-branch: feat/m5-policy-approval-slice1
+PR: #27 — feat: add verified GitHub create-branch slice
+branch: feat/m5-github-create-branch-slice3
 base: main
-base commit: b8649cb563e30af845a0b383103797632bed79a4
-state: OPEN / mergeable / not merged
+base commit: f7fb36bae324dbd7bb8d12e02daf3fe0dd98e7da
+state: OPEN
 ```
 
-PR #25 is M5 Slice 1. It deliberately adds **no real GitHub mutation executor**.
+PR #27 is M5 Slice 3 and contains the first narrow real mutation capability: explicit-owner create of a **non-default GitHub branch** from an exact existing commit SHA, with independent ref/SHA verification before success.
 
-## Last validated code state
-
-The last code-changing self-review hardening head is:
+## Slice 3 capability contract
 
 ```text
-5ed9049eeedf3210f1df13a0c8735b67d7e4766e
+authenticated owner
+ -> owner reviews exact project/repository/branch/source SHA
+ -> presses “Approve & create branch”
+ -> canonical Project/Repository resolution
+ -> exact 5-minute ActionApproval creation
+ -> ActionGateway policy/read-only check
+ -> trusted-executor check
+ -> exact fingerprint validation + atomic one-time consume
+ -> write credential resolution
+ -> GET repository/default branch preflight
+ -> reject unsafe/default branch
+ -> POST git/refs
+ -> GET exact created ref
+ -> verified SHA must equal approved source SHA
+ -> redacted result + correlated audit
 ```
 
-CI evidence:
+Important: authentication still does not authorize the write by itself. The explicit owner create-branch request is the approval event for that exact branch/SHA intent.
+
+## Trust-boundary hardening added in Slice 3
+
+- `ITrustedActionExecutor` was introduced because legacy `IActionExecutor` only receives model-visible `ActionRequest`.
+- Every non-read executor must implement the trusted contract and receive the full Loren-owned `ActionExecutionRequest`.
+- `ActionGateway` rejects a legacy non-read executor **before approval consumption**.
+- `CredentialBoundActionExecutor` refuses direct untrusted invocation.
+- Canonical repository owner/name comes only from `ActionAuthorizationContext.RepositoryLocator`, never from model-visible GitHub owner/repository arguments.
+- exact branch + source SHA are frozen in trusted normalized target and compared again at executor boundary.
+- create-branch client validates safe Git ref names and exact 40-character hexadecimal source SHA.
+- creating/replacing the repository default branch is forbidden before mutation.
+- POST success alone is insufficient; exact GET ref/SHA readback is required.
+
+## Owner-testable vertical slice
+
+PR #27 also adds an authenticated local owner path so a fresh database can actually exercise the feature:
 
 ```text
-CI #186
-run: 33900018499
-Ubuntu full gate: PASS
-Windows integration: PASS
+Owner console
+ -> bootstrap canonical GitHub Project/Repository if database is empty
+ -> enter exact existing source commit SHA
+ -> enter new non-default branch name
+ -> Approve & create branch
+ -> inspect result + audit
 ```
 
-The Ubuntu full gate includes build, all tests, format verification, secret scan, dependency vulnerability scan, and web/auth smoke tests.
-
-Earlier important implementation validation:
+Required local environment for the write checkpoint:
 
 ```text
-base implementation head: 15a2b2c4c853324a546a55d13da22d94d4ac5765
-CI #172 / run 33898878125: PASS on Ubuntu full gate + Windows integration
+LOREN_OWNER_PASSWORD=<local password>
+LOREN_ENABLE_WRITES=true
+GITHUB_WRITE_TOKEN=<GitHub token allowed to create refs in the target repository>
+LOREN_GITHUB_WRITE_CREDENTIAL_REVOKED=false
 ```
 
-CI #172 also proved the fix for the EF migration/model drift that had caused the integration suite to fail before behavior tests could run.
+`OLLAMA_API_KEY` is still separate and is never used as the GitHub write credential.
 
-## What M5 Slice 1 currently delivers
+## Deterministic acceptance coverage in PR #27
 
-- typed `ActionAccessClass`: `READ`, `REVERSIBLE_WRITE`, `EXTERNAL_WRITE`, `PRIVILEGED_WRITE`;
-- trusted `ActionAuthorizationContext` carrying canonical Project/Repository target and owner principal outside model-visible action arguments;
-- Loren-owned `ApprovalId`, `ActionApproval`, lifecycle/status types, and EF-neutral `IActionApprovalStore`;
-- deterministic SHA-256 exact-intent fingerprint;
-- SQLite `ActionApprovals` persistence via migration `202609040003_AddActionApprovals`;
-- atomic one-time consume with replay, expiry, revocation, mismatch, and concurrent-consume rejection;
-- `GateDActionPolicy` with fail-closed global read-only behavior;
-- ActionGateway defense-in-depth requiring approval for every non-read action even if policy accidentally returns `Allow`;
-- model-visible `approvalId` text cannot become trusted approval;
-- `LOREN_ENABLE_WRITES` defaults fail-closed;
-- permanent EF migration-drift regression test;
-- production still registers only the existing GitHub read executor.
+- GitHub request order: GET preflight -> POST create ref -> GET verify ref.
+- Authorization header uses the write credential only inside the client call.
+- secret never appears in owner-visible operation result.
+- default branch is rejected before POST.
+- unsafe Git ref names are rejected before any HTTP call.
+- verification SHA mismatch is never reported as success.
+- owner workflow covers project resolution -> approval creation -> approval consume -> credential boundary -> verified write.
+- revoked write credential overrides a fresh approval and produces **zero GitHub HTTP calls**.
+- approval is still consumed before a credential/executor attempt; retry requires a fresh approval by design.
 
-## Self-review hardening already completed
+## CI history while hardening PR #27
 
-Two additional trust-boundary issues were found and fixed after the base implementation was green:
-
-1. **Do not burn an approval when no executor exists.**
-   - executor registration is confirmed before approval consumption;
-   - approval is still consumed immediately before the first real executor attempt.
-
-2. **Freeze approved intent against TOCTOU mutation.**
-   - model-visible `ActionRequest.Arguments` are defensively copied/frozen;
-   - trusted normalized target data is defensively copied/frozen;
-   - approved/fingerprinted intent cannot later be mutated so the executor sees a different request.
-
-Both hardenings are covered by regression tests and passed CI #186 on Ubuntu and Windows.
-
-## Migration failure that was fixed
-
-A prior PR CI failure showed 22+ integration tests failing with EF `PendingModelChangesWarning`.
-
-A dedicated migration-drift diagnostic reduced the mismatch to:
+Early CI failures were compiler/analyzer feedback, not permission relaxations:
 
 ```text
-AddColumn ActionApprovals.RevokedAtUnixMs (Int64)
+CI #207: invalid StartsWith/EndsWith overloads in branch-name validation
+CI #208: CA1865 single-character overload analyzer
+CI #210: nullable-flow warning at trusted branch/SHA handoff
 ```
 
-The EF model metadata was corrected. The warning was **not suppressed**. A permanent snapshot-vs-design-time-model regression test remains in the suite.
-
-## Current documentation state
-
-The M5 Slice 1 status and Slice 2 next target are already synchronized across:
-
-- `docs/status.md` — authoritative progress ledger;
-- `README.md`;
-- `README.vi.md`;
-- `docs/roadmap.md`;
-- `docs/plans/v0.1.md`;
-- `docs/plans/master-plan.md`;
-- `docs/development.md`;
-- `.env.example`.
-
-`docs/architecture.md` already reflects M5 Slice 1 and Slice 2 direction. Before merging PR #25, do one final review that the execution-order wording matches the hardened implementation:
-
-```text
-freeze trusted/proposed intent
--> policy/read-only
--> verify executor registration
--> recompute exact fingerprint
--> validate + atomically consume approval
--> first consequential executor attempt
-```
+All fixes preserve the same fail-closed behavior. Do not merge until the latest exact PR head passes both Ubuntu full gate and Windows integration.
 
 ## Exact next action in a fresh thread
 
-Do **not** start Slice 2 yet.
-
-Continue PR #25 in this order:
-
 ```text
 1. Read docs/status.md and this handoff.
-2. Review docs/architecture.md against the hardened ActionGateway order.
-3. Make only documentation corrections needed for consistency.
-4. Treat the resulting PR head as frozen.
-5. Run/fetch final exact-head PR CI.
-6. Require Ubuntu full gate + Windows integration PASS.
-7. Self-review the final PR diff for accidental mutation registration, secret leakage, scope/lifetime issues, replay/TOCTOU regressions, and docs drift.
-8. If clean and green, squash-merge PR #25 to main using the exact expected head SHA.
-9. Verify post-merge main CI.
-10. Update status/README EN+VI/roadmap/plans with the merged commit and main CI evidence.
-11. Only then create the M5 Slice 2 branch.
+2. Fetch PR #27 current head and exact-head CI.
+3. Fix any remaining compiler/analyzer/test failures without weakening trust invariants.
+4. Synchronize README.md and README.vi.md with Slice 2 complete + Slice 3 checkpoint.
+5. Review final PR diff for:
+   - no direct default-branch write path;
+   - no merge/delete/admin capability;
+   - no model-created approval;
+   - no owner/repo selection from model-visible write arguments;
+   - no credential fallback or leakage;
+   - mandatory post-write SHA verification;
+   - no approval replay.
+6. Freeze exact PR head and require Ubuntu full gate + Windows integration PASS.
+7. Merge PR #27 using expected head SHA.
+8. Verify post-merge main CI.
+9. Report the exact pull/test instructions to the owner.
+10. Only after that move to the controlled file/commit-on-non-default-branch slice.
 ```
 
-## M5 Slice 2 next target
+## Next M5 target after Slice 3
 
-After PR #25 is on green `main`, implement the credential boundary:
+```text
+controlled file/commit path on the approved non-default branch
+ -> exact path/content/branch intent binding
+ -> no default-branch write
+ -> verify commit SHA + branch ref + content identity
+```
 
-- write-specific credential resolver abstraction;
-- host/env-backed local v0.1 secret implementation;
-- secret value materialized only inside the controlled executor boundary;
-- logical separation of read/write credential purpose;
-- missing/revoked credential fails closed;
-- no silent fallback to a broader token;
-- credential revocation overrides prior approval;
-- redaction acceptance across request, logs, exceptions, audit, action results, and brain context;
-- still no broad GitHub write surface until this boundary is green.
-
-After Slice 2, proceed to the first verified real write: create a non-default branch, then controlled file/commit, then open PR.
+Open PR comes only after the controlled file/commit slice is green.
 
 ## Hard security invariant
 
