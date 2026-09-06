@@ -46,7 +46,7 @@ public sealed class CredentialBoundaryHostCompositionTests
 
             Assert.IsType<EnvironmentActionCredentialResolver>(resolver);
             Assert.False(writeSafetyState.IsReadOnly);
-            Assert.Equal(3, executors.Length);
+            Assert.Equal(4, executors.Length);
 
             IActionExecutor createBranchExecutor = Assert.Single(
                 executors,
@@ -63,6 +63,11 @@ public sealed class CredentialBoundaryHostCompositionTests
                 executors,
                 executor => executor.ActionName == WebActions.Search.Name);
             Assert.IsType<OllamaWebSearchExecutor>(webSearchExecutor);
+
+            IActionExecutor webFetchExecutor = Assert.Single(
+                executors,
+                executor => executor.ActionName == WebActions.Fetch.Name);
+            Assert.IsType<OllamaWebFetchExecutor>(webFetchExecutor);
 
             IActionExecutor mutationExecutor = Assert.Single(
                 executors,
