@@ -125,6 +125,8 @@ public static class LorenHostServices
                 new AgentLoopOptions()));
 
         services.AddScoped<LorenRunService>();
+        services.AddScoped<LorenOwnerProjectBootstrapService>();
+        services.AddScoped<LorenOwnerGitHubWriteService>();
         return services;
     }
 
