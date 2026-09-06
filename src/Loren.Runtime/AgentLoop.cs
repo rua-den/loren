@@ -17,9 +17,16 @@ public sealed class AgentLoop
         _options.Validate();
     }
 
+    public Task<AgentRunResult> RunAsync(
+        BrainContext initialContext,
+        IReadOnlyList<ActionDefinition> availableActions,
+        CancellationToken cancellationToken) =>
+        RunAsync(initialContext, availableActions, null, cancellationToken);
+
     public async Task<AgentRunResult> RunAsync(
         BrainContext initialContext,
         IReadOnlyList<ActionDefinition> availableActions,
+        AuthenticatedOwnerContext? ownerContext,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(initialContext);
@@ -60,7 +67,8 @@ public sealed class AgentLoop
             ActionExecutionRequest execution = new(
                 runId,
                 ActionId.New(),
-                request);
+                request,
+                OwnerContext: ownerContext);
             ActionResult result = await _gateway.ExecuteAsync(execution, cancellationToken);
             context = context.Append(new BrainActionObservation(request, result));
         }
