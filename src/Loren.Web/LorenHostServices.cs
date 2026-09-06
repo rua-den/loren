@@ -20,7 +20,8 @@ namespace Loren.Web;
 public static class LorenHostServices
 {
     private const string OllamaHttpClientName = "loren-ollama";
-    private const string GitHubHttpClientName = "loren-github-read";
+    private const string GitHubReadHttpClientName = "loren-github-read";
+    private const string GitHubWriteHttpClientName = "loren-github-write";
 
     public static IServiceCollection AddLorenM2ReadPath(
         this IServiceCollection services,
@@ -30,7 +31,8 @@ public static class LorenHostServices
         ArgumentNullException.ThrowIfNull(configuration);
 
         services.AddHttpClient(OllamaHttpClientName);
-        services.AddHttpClient(GitHubHttpClientName);
+        services.AddHttpClient(GitHubReadHttpClientName);
+        services.AddHttpClient(GitHubWriteHttpClientName);
 
         string dataDirectory = ResolveDataDirectory(configuration);
         Directory.CreateDirectory(dataDirectory);
@@ -75,8 +77,19 @@ public static class LorenHostServices
         {
             IHttpClientFactory httpClientFactory = provider.GetRequiredService<IHttpClientFactory>();
             return new GitHubReadRepositoryExecutor(
-                httpClientFactory.CreateClient(GitHubHttpClientName));
+                httpClientFactory.CreateClient(GitHubReadHttpClientName));
         });
+
+        services.AddSingleton(provider =>
+        {
+            IHttpClientFactory httpClientFactory = provider.GetRequiredService<IHttpClientFactory>();
+            return new GitHubCreateBranchClient(
+                httpClientFactory.CreateClient(GitHubWriteHttpClientName));
+        });
+        services.AddSingleton<IActionExecutor>(provider =>
+            new GitHubCreateBranchActionExecutor(
+                provider.GetRequiredService<IActionCredentialResolver>(),
+                provider.GetRequiredService<GitHubCreateBranchClient>()));
 
         services.AddSingleton<IBrain>(provider =>
         {
@@ -99,7 +112,7 @@ public static class LorenHostServices
 
         services.AddScoped<IActionGateway>(provider =>
             new ActionGateway(
-                [GitHubActions.ReadRepository],
+                [GitHubActions.ReadRepository, GitHubActions.CreateBranch],
                 provider.GetServices<IActionExecutor>(),
                 provider.GetRequiredService<IActionPolicy>(),
                 provider.GetRequiredService<IAuditSink>(),
@@ -112,6 +125,8 @@ public static class LorenHostServices
                 new AgentLoopOptions()));
 
         services.AddScoped<LorenRunService>();
+        services.AddScoped<LorenOwnerProjectBootstrapService>();
+        services.AddScoped<LorenOwnerGitHubWriteService>();
         return services;
     }
 

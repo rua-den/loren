@@ -3,7 +3,7 @@ using Loren.Core.Credentials;
 
 namespace Loren.Runtime;
 
-public abstract class CredentialBoundActionExecutor : IActionExecutor
+public abstract class CredentialBoundActionExecutor : ITrustedActionExecutor
 {
     private readonly IActionCredentialResolver _credentialResolver;
     private readonly CredentialPurpose _credentialPurpose;
@@ -22,12 +22,36 @@ public abstract class CredentialBoundActionExecutor : IActionExecutor
 
     public abstract string ActionName { get; }
 
-    public async Task<ActionResult> ExecuteAsync(
+    public Task<ActionResult> ExecuteAsync(
         ActionRequest request,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
         cancellationToken.ThrowIfCancellationRequested();
+
+        return Task.FromResult(
+            Failure(
+                request.Name,
+                "trusted_context_required",
+                "Credential-bound actions require Loren trusted execution context."));
+    }
+
+    public async Task<ActionResult> ExecuteTrustedAsync(
+        ActionExecutionRequest execution,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(execution);
+        ArgumentNullException.ThrowIfNull(execution.Request);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        ActionRequest request = execution.Request;
+        if (execution.AuthorizationContext is null)
+        {
+            return Failure(
+                request.Name,
+                "trusted_context_missing",
+                "Credential-bound action is missing trusted canonical authorization context.");
+        }
 
         CredentialResolutionRequest resolutionRequest = new(
             _credentialPurpose,
@@ -67,7 +91,7 @@ public abstract class CredentialBoundActionExecutor : IActionExecutor
                 try
                 {
                     ActionResult result = await ExecuteWithCredentialAsync(
-                        request,
+                        execution,
                         secret,
                         useCancellationToken);
                     return Redact(result, lease);
@@ -93,7 +117,7 @@ public abstract class CredentialBoundActionExecutor : IActionExecutor
     }
 
     protected abstract Task<ActionResult> ExecuteWithCredentialAsync(
-        ActionRequest request,
+        ActionExecutionRequest execution,
         string credentialSecret,
         CancellationToken cancellationToken);
 

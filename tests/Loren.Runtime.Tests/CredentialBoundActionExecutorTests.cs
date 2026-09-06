@@ -1,5 +1,6 @@
 using Loren.Core.Actions;
 using Loren.Core.Credentials;
+using Loren.Core.Projects;
 using Loren.Runtime;
 using Xunit;
 
@@ -11,6 +12,24 @@ public sealed class CredentialBoundActionExecutorTests
     private static readonly CredentialReference Reference = new("github.write.local-v0.1");
 
     [Fact]
+    public async Task DirectUntrustedActionRequestCannotResolveCredential()
+    {
+        CredentialLease lease = new(Purpose, Reference, "must-not-be-resolved");
+        StubCredentialResolver resolver = new(_ => CredentialResolution.Resolved(lease));
+        RecordingExecutor executor = new(resolver, (_, _, _) =>
+            Task.FromResult(Success("test.write")));
+
+        ActionResult result = await executor.ExecuteAsync(
+            new ActionRequest("test.write", new Dictionary<string, string>()),
+            CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Equal(0, resolver.ResolveCalls);
+        Assert.Equal(0, executor.CallCount);
+        Assert.Equal("trusted_context_required", result.Data["credential_status"]);
+    }
+
+    [Fact]
     public async Task MissingCredentialFailsBeforeConsequentialExecutorAttempt()
     {
         CredentialResolutionRequest request = new(Purpose, Reference);
@@ -18,8 +37,8 @@ public sealed class CredentialBoundActionExecutorTests
         RecordingExecutor executor = new(resolver, (_, _, _) =>
             Task.FromResult(Success("test.write")));
 
-        ActionResult result = await executor.ExecuteAsync(
-            new ActionRequest("test.write", new Dictionary<string, string>()),
+        ActionResult result = await executor.ExecuteTrustedAsync(
+            TrustedExecution(),
             CancellationToken.None);
 
         Assert.False(result.Success);
@@ -37,8 +56,8 @@ public sealed class CredentialBoundActionExecutorTests
         RecordingExecutor executor = new(resolver, (_, _, _) =>
             Task.FromResult(Success("test.write")));
 
-        ActionResult result = await executor.ExecuteAsync(
-            new ActionRequest("test.write", new Dictionary<string, string>()),
+        ActionResult result = await executor.ExecuteTrustedAsync(
+            TrustedExecution(),
             CancellationToken.None);
 
         Assert.False(result.Success);
@@ -55,9 +74,9 @@ public sealed class CredentialBoundActionExecutorTests
         StubCredentialResolver resolver = new(_ => CredentialResolution.Resolved(lease));
         RecordingExecutor executor = new(
             resolver,
-            (actionRequest, observedSecret, _) => Task.FromResult(
+            (execution, observedSecret, _) => Task.FromResult(
                 new ActionResult(
-                    actionRequest.Name,
+                    execution.Request.Name,
                     true,
                     new Dictionary<string, string>(StringComparer.Ordinal)
                     {
@@ -66,8 +85,8 @@ public sealed class CredentialBoundActionExecutorTests
                     },
                     $"diagnostic-{observedSecret}")));
 
-        ActionResult result = await executor.ExecuteAsync(
-            new ActionRequest("test.write", new Dictionary<string, string>()),
+        ActionResult result = await executor.ExecuteTrustedAsync(
+            TrustedExecution(),
             CancellationToken.None);
 
         Assert.True(result.Success);
@@ -94,8 +113,8 @@ public sealed class CredentialBoundActionExecutorTests
             (_, observedSecret, _) => throw new InvalidOperationException(
                 $"remote failure included {observedSecret}"));
 
-        ActionResult result = await executor.ExecuteAsync(
-            new ActionRequest("test.write", new Dictionary<string, string>()),
+        ActionResult result = await executor.ExecuteTrustedAsync(
+            TrustedExecution(),
             CancellationToken.None);
 
         Assert.False(result.Success);
@@ -112,8 +131,8 @@ public sealed class CredentialBoundActionExecutorTests
         RecordingExecutor executor = new(resolver, (_, _, _) =>
             Task.FromResult(Success("test.write")));
 
-        ActionResult result = await executor.ExecuteAsync(
-            new ActionRequest("test.write", new Dictionary<string, string>()),
+        ActionResult result = await executor.ExecuteTrustedAsync(
+            TrustedExecution(),
             CancellationToken.None);
 
         Assert.False(result.Success);
@@ -122,6 +141,18 @@ public sealed class CredentialBoundActionExecutorTests
         Assert.Contains("InvalidOperationException", result.Error, StringComparison.Ordinal);
     }
 
+    private static ActionExecutionRequest TrustedExecution() =>
+        new(
+            RunId.New(),
+            ActionId.New(),
+            new ActionRequest("test.write", new Dictionary<string, string>()),
+            new ActionAuthorizationContext(
+                ProjectId.New(),
+                RepositoryId.New(),
+                new RepositoryLocator("github", "owner", "repository"),
+                "owner"),
+            ApprovalId.New());
+
     private static ActionResult Success(string actionName) =>
         new(actionName, true, new Dictionary<string, string>());
 
@@ -129,11 +160,14 @@ public sealed class CredentialBoundActionExecutorTests
         Func<CredentialResolutionRequest, CredentialResolution> resolve)
         : IActionCredentialResolver
     {
+        public int ResolveCalls { get; private set; }
+
         public Task<CredentialResolution> ResolveAsync(
             CredentialResolutionRequest request,
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            ResolveCalls++;
             return Task.FromResult(resolve(request));
         }
     }
@@ -151,11 +185,11 @@ public sealed class CredentialBoundActionExecutorTests
 
     private sealed class RecordingExecutor : CredentialBoundActionExecutor
     {
-        private readonly Func<ActionRequest, string, CancellationToken, Task<ActionResult>> _execute;
+        private readonly Func<ActionExecutionRequest, string, CancellationToken, Task<ActionResult>> _execute;
 
         public RecordingExecutor(
             IActionCredentialResolver resolver,
-            Func<ActionRequest, string, CancellationToken, Task<ActionResult>> execute)
+            Func<ActionExecutionRequest, string, CancellationToken, Task<ActionResult>> execute)
             : base(resolver, Purpose, Reference)
         {
             _execute = execute;
@@ -168,13 +202,13 @@ public sealed class CredentialBoundActionExecutorTests
         public string? ObservedSecret { get; private set; }
 
         protected override Task<ActionResult> ExecuteWithCredentialAsync(
-            ActionRequest request,
+            ActionExecutionRequest execution,
             string credentialSecret,
             CancellationToken cancellationToken)
         {
             CallCount++;
             ObservedSecret = credentialSecret;
-            return _execute(request, credentialSecret, cancellationToken);
+            return _execute(execution, credentialSecret, cancellationToken);
         }
     }
 }

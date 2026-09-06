@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Loren.Infrastructure.CanonicalState;
 using Loren.Web;
 
@@ -49,6 +50,74 @@ app.MapPost(
             catch (UnknownProjectAliasException exception)
             {
                 return Results.NotFound(new { error = exception.Message });
+            }
+        })
+    .RequireAuthorization();
+
+app.MapPost(
+        "/api/projects/bootstrap",
+        async (
+            OwnerProjectBootstrapRequest request,
+            LorenOwnerProjectBootstrapService service,
+            CancellationToken cancellationToken) =>
+        {
+            try
+            {
+                OwnerProjectBootstrapResult result = await service.BootstrapGitHubProjectAsync(
+                    request.ProjectName,
+                    request.ProjectAlias,
+                    request.GitHubOwner,
+                    request.GitHubRepository,
+                    cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (ArgumentException exception)
+            {
+                return Results.BadRequest(new { error = exception.Message });
+            }
+            catch (InvalidOperationException exception)
+            {
+                return Results.Conflict(new { error = exception.Message });
+            }
+        })
+    .RequireAuthorization();
+
+app.MapPost(
+        "/api/github/create-branch",
+        async (
+            OwnerCreateBranchRequest request,
+            LorenOwnerGitHubWriteService service,
+            HttpContext context,
+            CancellationToken cancellationToken) =>
+        {
+            string? ownerPrincipalReference = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(ownerPrincipalReference))
+            {
+                return Results.Unauthorized();
+            }
+
+            try
+            {
+                OwnerCreateBranchResult result = await service.ApproveAndCreateBranchAsync(
+                    request.ProjectAlias,
+                    request.RepositoryId,
+                    request.Branch,
+                    request.SourceSha,
+                    ownerPrincipalReference,
+                    cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (UnknownProjectAliasException exception)
+            {
+                return Results.NotFound(new { error = exception.Message });
+            }
+            catch (ArgumentException exception)
+            {
+                return Results.BadRequest(new { error = exception.Message });
+            }
+            catch (InvalidOperationException exception)
+            {
+                return Results.BadRequest(new { error = exception.Message });
             }
         })
     .RequireAuthorization();

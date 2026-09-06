@@ -3,6 +3,7 @@ using Loren.Core.Actions;
 using Loren.Core.Audit;
 using Loren.Core.Brains;
 using Loren.Core.Credentials;
+using Loren.Core.Projects;
 using Loren.Infrastructure.Audit;
 using Loren.Runtime;
 using Xunit;
@@ -18,7 +19,7 @@ public sealed class CredentialRedactionBoundaryTests
     public async Task SecretCannotEscapeIntoAuditOrBrainObservation()
     {
         const string secret = "slice2-boundary-secret";
-        const string actionName = "test.credential_read";
+        const string actionName = "test.credential_write";
         CredentialLease lease = new(Purpose, Reference, secret);
         ResolvedCredentialResolver resolver = new(lease);
         LeakyCredentialExecutor executor = new(resolver, actionName);
@@ -26,24 +27,33 @@ public sealed class CredentialRedactionBoundaryTests
         ActionDefinition definition = new(
             actionName,
             "Credential redaction plumbing test.",
-            isReadOnly: true);
+            ActionAccessClass.ExternalWrite);
         ActionGateway gateway = new(
             [definition],
             [executor],
-            new ReadOnlyActionPolicy(),
-            audit);
+            new GateDActionPolicy(new FixedWriteSafetyState(isReadOnly: false)),
+            audit,
+            new AlwaysConsumeApprovalStore());
         ActionRequest request = new(
             actionName,
             new Dictionary<string, string>(StringComparer.Ordinal)
             {
                 ["safe_argument"] = "safe-value",
             });
+        ActionAuthorizationContext authorization = new(
+            ProjectId.New(),
+            RepositoryId.New(),
+            new RepositoryLocator("github", "owner", "repository"),
+            "owner");
+        ActionExecutionRequest execution = new(
+            RunId.New(),
+            ActionId.New(),
+            request,
+            authorization,
+            ApprovalId.New());
 
         ActionResult result = await gateway.ExecuteAsync(
-            new ActionExecutionRequest(
-                RunId.New(),
-                ActionId.New(),
-                request),
+            execution,
             CancellationToken.None);
 
         Assert.True(result.Success);
@@ -55,7 +65,7 @@ public sealed class CredentialRedactionBoundaryTests
         });
 
         IReadOnlyList<AuditEvent> events = audit.Snapshot();
-        Assert.Equal(3, events.Count);
+        Assert.Equal(4, events.Count);
         Assert.All(events, auditEvent =>
         {
             Assert.DoesNotContain(secret, auditEvent.ActionName, StringComparison.Ordinal);
@@ -91,14 +101,14 @@ public sealed class CredentialRedactionBoundaryTests
         public override string ActionName { get; } = actionName;
 
         protected override Task<ActionResult> ExecuteWithCredentialAsync(
-            ActionRequest request,
+            ActionExecutionRequest execution,
             string credentialSecret,
             CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
             return Task.FromResult(
                 new ActionResult(
-                    request.Name,
+                    execution.Request.Name,
                     true,
                     new Dictionary<string, string>(StringComparer.Ordinal)
                     {
@@ -107,5 +117,35 @@ public sealed class CredentialRedactionBoundaryTests
                     },
                     $"diagnostic contained {credentialSecret}"));
         }
+    }
+
+    private sealed class AlwaysConsumeApprovalStore : IActionApprovalStore
+    {
+        public Task AddAsync(
+            ActionApproval approval,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<ActionApproval?> GetAsync(
+            ApprovalId approvalId,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<ApprovalConsumptionResult> ConsumeAsync(
+            ApprovalConsumptionRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(
+                new ApprovalConsumptionResult(
+                    ApprovalConsumptionStatus.Consumed,
+                    "consumed for redaction test"));
+        }
+
+        public Task RevokeAsync(
+            ApprovalId approvalId,
+            DateTimeOffset revokedAt,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
     }
 }

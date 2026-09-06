@@ -13,7 +13,7 @@ namespace Loren.IntegrationTests;
 public sealed class CredentialBoundaryHostCompositionTests
 {
     [Fact]
-    public void ProductionHostRegistersWriteCredentialResolverWithoutMutationExecutor()
+    public void ProductionHostRegistersOnlyReadAndTrustedCreateBranchExecutors()
     {
         string dataDirectory = Path.Combine(
             Path.GetTempPath(),
@@ -37,15 +37,29 @@ public sealed class CredentialBoundaryHostCompositionTests
                 provider.GetRequiredService<IActionCredentialResolver>();
             IActionExecutor[] executors = provider
                 .GetServices<IActionExecutor>()
+                .OrderBy(executor => executor.ActionName, StringComparer.Ordinal)
                 .ToArray();
             IWriteSafetyState writeSafetyState =
                 provider.GetRequiredService<IWriteSafetyState>();
 
             Assert.IsType<EnvironmentActionCredentialResolver>(resolver);
             Assert.False(writeSafetyState.IsReadOnly);
-            IActionExecutor readExecutor = Assert.Single(executors);
+            Assert.Equal(2, executors.Length);
+
+            IActionExecutor createBranchExecutor = Assert.Single(
+                executors,
+                executor => executor.ActionName == GitHubActions.CreateBranch.Name);
+            Assert.IsType<GitHubCreateBranchActionExecutor>(createBranchExecutor);
+            Assert.IsAssignableFrom<ITrustedActionExecutor>(createBranchExecutor);
+
+            IActionExecutor readExecutor = Assert.Single(
+                executors,
+                executor => executor.ActionName == GitHubActions.ReadRepository.Name);
             Assert.IsType<GitHubReadRepositoryExecutor>(readExecutor);
-            Assert.Equal(GitHubActions.ReadRepository.Name, readExecutor.ActionName);
+
+            Assert.All(
+                executors.Where(executor => executor.ActionName != GitHubActions.ReadRepository.Name),
+                executor => Assert.Equal(GitHubActions.CreateBranch.Name, executor.ActionName));
         }
         finally
         {

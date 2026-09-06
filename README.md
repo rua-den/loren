@@ -17,13 +17,13 @@ Loren is a long-lived personal intelligence system with persistent memory, expli
 
 ## Current status
 
-**Last updated:** 2026-09-05  
+**Last updated:** 2026-09-06  
 **Phase:** `v0.1 — Trustworthy Core development`  
 **Completed milestone:** `M4 — Trusted Durable Memory`  
 **Passed decision gates:** `Gate A`, `Gate B`, `Gate C`, `Gate D / ADR-004`  
 **Current milestone:** `M5 — Action/Credential Boundary + Narrow GitHub Writes`  
-**Completed M5 slice:** `Slice 1 — typed policy + one-time approval + global read-only`  
-**Current target:** `M5 Slice 2 — write credential resolver + secret redaction/revocation`
+**Completed M5 slices:** `Slice 1 — policy/approval/read-only`, `Slice 2 — credential isolation/revocation/redaction`  
+**Current checkpoint:** `Slice 3 — explicit-owner verified create-non-default-branch`
 
 Completed:
 
@@ -36,64 +36,30 @@ Completed:
 - M2 — Walking Skeleton.
 - M3 — Canonical Project/Repository State.
 - M4 — Trusted Durable Memory.
-- M5 Slice 1 — policy/approval/read-only foundation.
+- M5 Slice 1 — typed action policy, trusted canonical target, exact one-time approval, fail-closed global read-only.
+- M5 Slice 2 — write-specific credential resolver, revocation, no fallback, redaction across result/audit/brain boundaries.
 
 Detailed status: [`docs/status.md`](docs/status.md). Fresh-thread continuation checkpoint: [`docs/handoff.md`](docs/handoff.md).
 
-## What M4 proved
-
-```text
-owner durable fact
- -> canonical MemoryRecord + provenance
- -> SQLite
- -> restart-safe retrieval
-
-owner correction
- -> append OWNER_CORRECTION
- -> supersede old claim atomically
- -> history stays reconstructable
-
-project request
- -> current memories
- -> authority/provenance/lifecycle filtering
- -> deterministic hard bounds
- -> prepared Loren memory data
- -> BrainContext
-
-owner forget
- -> purge full correction chain transactionally
- -> restart
- -> forgotten claim stays absent
-
-adversarial content
- -> MODEL_INFERENCE / EXTERNAL_CONTENT cannot silently become owner truth
- -> provenance remains data, never action authorization
-```
-
-M4 merged through PRs #18–#22. PR #23 then hardened Windows SQLite integration cleanup and added a permanent `windows-latest` integration job. PR #23 merged at `1cdd849126310745652d87f1d100c34aed624079`; PR CI #162 / `33893832128`, main CI #163 / `33894104116`, and the owner's local Windows integration suite all passed.
-
 ## Gate D / ADR-004 [PASSED]
-
-PR #24 merged to `main` at `b8649cb563e30af845a0b383103797632bed79a4`. Exact-head CI #164 / `33896004193` passed the Ubuntu full gate and Windows integration.
 
 Gate D freezes the first write-capable trust boundary:
 
 ```text
 brain requests write
  -> canonical target resolution
- -> deterministic policy
- -> exact Loren-owned owner approval
- -> one-time atomic consume / replay rejection
- -> host-controlled global read-only
+ -> deterministic policy / global read-only
+ -> explicit exact owner approval
+ -> atomic one-time consume / replay rejection
  -> write-specific credential resolver
- -> controlled executor
+ -> trusted controlled executor
  -> independent post-write verification
  -> correlated redacted audit
 ```
 
-Authentication proves owner identity; it is **not** write approval. Every first-version real GitHub mutation requires explicit owner approval. Model/external content cannot create approval, broaden it, select credentials, disable read-only, or declare a write verified.
+Authentication proves owner identity; it is **not** write approval. Model/external content cannot create approval, broaden it, select credentials, disable read-only, select a different canonical repository, or declare a write verified.
 
-Allowed v0.1 mutation scope after the required M5 foundations are green:
+Allowed v0.1 mutation scope:
 
 ```text
 create non-default branch
@@ -113,11 +79,9 @@ secret-management actions
 production deployment
 ```
 
-## M5 Slice 1 — policy + one-time approval foundation [COMPLETE]
+## M5 Slice 1 — policy + one-time approval [COMPLETE]
 
-PR #25 merged to `main` at `caa65fbbd7c3828b68aa198dad625e73e9c096b4`.
-
-Final evidence:
+PR #25 merged at `caa65fbbd7c3828b68aa198dad625e73e9c096b4`.
 
 ```text
 frozen PR head: c9bfb9f82b70963c196a689d4b0be2feb9bfedb5
@@ -125,47 +89,73 @@ PR CI #194 / 33973579862: Ubuntu full gate PASS + Windows integration PASS
 post-merge main CI #195 / 33973694524: Ubuntu full gate PASS + Windows integration PASS
 ```
 
-Delivered:
+Key properties:
 
-- typed `ActionAccessClass`: `READ`, `REVERSIBLE_WRITE`, `EXTERNAL_WRITE`, `PRIVILEGED_WRITE`;
-- trusted `ActionAuthorizationContext` carrying canonical Project/Repository target outside model-visible action arguments;
-- model-visible action arguments and trusted normalized-target data are defensive immutable snapshots, preventing TOCTOU mutation between approval fingerprinting and executor use;
-- deterministic SHA-256 action-intent fingerprint over action/access/canonical target/owner/normalized target/model arguments;
-- Loren-owned `ApprovalId`, `ActionApproval`, and provider-neutral `IActionApprovalStore`;
-- `GateDActionPolicy` and an ActionGateway invariant requiring approval for every non-read action even if a permissive policy accidentally returns `Allow`;
-- executor registration is checked before consuming approval, so host misconfiguration cannot burn an otherwise valid approval;
-- exact one-time approval consume immediately before the first consequential executor attempt;
-- missing, expired, revoked, mismatched, unknown, or replayed approvals fail closed;
+- typed `ActionAccessClass`;
+- trusted `ActionAuthorizationContext` outside model-visible arguments;
+- immutable snapshots for proposed + trusted normalized target data;
+- deterministic SHA-256 exact-intent fingerprint;
+- SQLite-backed `ActionApproval` / `IActionApprovalStore`;
+- every non-read action requires approval even if policy accidentally returns `Allow`;
+- executor existence is checked before approval consumption;
+- exact atomic one-time consume immediately before the consequential executor attempt;
+- missing/expired/revoked/mismatched/replayed approval fails closed;
 - model-visible `approvalId` text has no authority;
-- SQLite `ActionApprovals` via migration `202609040003_AddActionApprovals`;
-- atomic compare-and-consume with exactly one concurrent winner;
-- fail-closed host configuration `LOREN_ENABLE_WRITES`;
-- permanent EF migration-drift regression test.
+- `LOREN_ENABLE_WRITES` defaults to read-only.
 
-Safe default:
+Approval is intentionally consumed before the first consequential executor attempt. A retry after failure/ambiguity needs fresh approval.
+
+## M5 Slice 2 — credential boundary [COMPLETE]
+
+PR #26 merged at `f7fb36bae324dbd7bb8d12e02daf3fe0dd98e7da`.
 
 ```text
-LOREN_ENABLE_WRITES missing/false/malformed -> read-only
-LOREN_ENABLE_WRITES=true -> eligible writes may reach approval evaluation
-production still has no GitHub mutation executor
+frozen PR head: e9e2b07378e1435e62e6090829619603ac7df42b
+PR CI #201 / 34027113298: Ubuntu full gate PASS + Windows integration PASS
+post-merge main CI #202 / 34027255592: Ubuntu full gate PASS + Windows integration PASS
 ```
 
-One important rule is intentional: approval is consumed before the first consequential executor attempt. An independent retry after failure or ambiguity needs fresh approval, preventing one approval from becoming a replay token.
+Key properties:
 
-## Current — M5 Slice 2 credential boundary
+- provider-neutral `CredentialPurpose` / `CredentialReference`;
+- dedicated GitHub write identity `github.write / github.write.local-v0.1`;
+- local secret contract `GITHUB_WRITE_TOKEN`;
+- `LOREN_GITHUB_WRITE_CREDENTIAL_REVOKED=true` overrides an already-approved intent;
+- malformed revocation state fails closed;
+- no fallback to `OLLAMA_API_KEY`, read credentials, or a broader token;
+- secret material exists only inside the credential-bound executor callback;
+- executor result/exception data is redacted before gateway/audit/brain consumption.
 
-Before the first real GitHub mutation executor is added, Slice 2 must prove:
+## M5 Slice 3 — verified create branch [CURRENT CHECKPOINT]
 
-- a write-specific credential resolver abstraction;
-- an opaque write credential purpose/reference separate from the secret value;
-- secret values exist only inside the controlled executor boundary;
-- read/write credential purposes remain logically separated;
-- missing/revoked credentials fail closed with no broader-token fallback;
-- revocation overrides already-approved intent;
-- secret redaction across logs, exceptions, audit, action results, and brain context;
-- deterministic acceptance tests without a live mutation.
+The first real mutation is intentionally narrow:
 
-Only after Slices 1–2 are green on `main` does Loren proceed to verified create-branch, controlled file/commit, and open-PR slices.
+```text
+authenticated owner
+ -> explicit “Approve & create branch”
+ -> resolve canonical Project + GitHub Repository
+ -> freeze exact branch + existing 40-char source SHA
+ -> create 5-minute exact ActionApproval
+ -> policy + trusted-executor check
+ -> fingerprint + atomic consume
+ -> github.write credential resolution
+ -> GET repository/default branch preflight
+ -> reject default/unsafe branch
+ -> POST git/refs
+ -> GET exact created ref
+ -> require verified SHA == approved source SHA
+ -> return redacted result + audit
+```
+
+Slice 3 introduces `ITrustedActionExecutor`: a non-read executor must receive Loren-owned `ActionExecutionRequest`, not only model-visible `ActionRequest`. A legacy non-read executor is rejected before approval is burned. Canonical GitHub owner/repository comes from `ActionAuthorizationContext.RepositoryLocator`; write execution does not trust model-proposed repository identity.
+
+The owner console now includes:
+
+- a bootstrap form to save one canonical GitHub Project/Repository into a fresh local database;
+- an explicit `Approve & create branch` form;
+- the existing read/chat console and audit display.
+
+Deterministic acceptance covers request order, safe ref validation, default-branch rejection, exact SHA validation, verification mismatch, credential redaction, owner approval consumption, and revoked-credential zero-HTTP behavior.
 
 ## Canonical storage
 
@@ -176,16 +166,7 @@ override: LOREN_DATA_DIRECTORY
 migrations: automatic at host startup
 ```
 
-A fresh database currently has no configured Projects; owner-facing Project CRUD/configuration, memory management, and approval UX remain later v0.1 UI work.
-
-## Run locally
-
-```bash
-export LOREN_OWNER_PASSWORD='choose-a-local-owner-password'
-export OLLAMA_API_KEY='your-provider-secret'
-export LOREN_ENABLE_WRITES='false'
-dotnet run --project src/Loren.Web/Loren.Web.csproj
-```
+## Run locally — read-only
 
 PowerShell:
 
@@ -196,7 +177,42 @@ $env:LOREN_ENABLE_WRITES='false'
 dotnet run --project src/Loren.Web/Loren.Web.csproj
 ```
 
-Do not commit real secrets. `LOREN_ENABLE_WRITES=false` is the recommended current posture; setting it true does not create a mutation capability by itself because no production mutation executor exists yet.
+Bash:
+
+```bash
+export LOREN_OWNER_PASSWORD='choose-a-local-owner-password'
+export OLLAMA_API_KEY='your-provider-secret'
+export LOREN_ENABLE_WRITES='false'
+dotnet run --project src/Loren.Web/Loren.Web.csproj
+```
+
+## Run the first write checkpoint
+
+Only enable this when you intentionally want to test branch creation on the configured repository.
+
+PowerShell:
+
+```powershell
+$env:LOREN_OWNER_PASSWORD='choose-a-local-owner-password'
+$env:LOREN_ENABLE_WRITES='true'
+$env:GITHUB_WRITE_TOKEN='your-write-token'
+$env:LOREN_GITHUB_WRITE_CREDENTIAL_REVOKED='false'
+dotnet run --project src/Loren.Web/Loren.Web.csproj
+```
+
+Bash:
+
+```bash
+export LOREN_OWNER_PASSWORD='choose-a-local-owner-password'
+export LOREN_ENABLE_WRITES='true'
+export GITHUB_WRITE_TOKEN='your-write-token'
+export LOREN_GITHUB_WRITE_CREDENTIAL_REVOKED='false'
+dotnet run --project src/Loren.Web/Loren.Web.csproj
+```
+
+Then sign in to the owner console, bootstrap the canonical repository if the database is empty, enter an **existing exact 40-character source commit SHA**, choose a **new non-default branch name**, review the confirmation, and press **Approve & create branch**.
+
+Do not commit real secrets. `OLLAMA_API_KEY` and `GITHUB_WRITE_TOKEN` are intentionally separate credentials.
 
 ## Test
 
@@ -207,6 +223,19 @@ dotnet test Loren.slnx --configuration Release --no-build --no-restore
 ```
 
 Windows is a first-class integration-test CI platform in addition to the Ubuntu full gate.
+
+## Next narrow M5 target
+
+After the create-branch checkpoint is green on `main`:
+
+```text
+controlled file/commit path on an approved non-default branch
+ -> bind exact path/content/branch intent
+ -> forbid default-branch write
+ -> verify commit SHA + branch ref + content identity
+```
+
+Open-PR write capability comes after that slice.
 
 ## Version path
 
@@ -231,8 +260,6 @@ v1.0  stable personal daily driver
 - [`docs/security.md`](docs/security.md) — active security baseline
 - [`docs/plans/master-plan.md`](docs/plans/master-plan.md) — version milestones and gates
 - [`docs/plans/v0.1.md`](docs/plans/v0.1.md) — detailed v0.1 implementation plan
-- [`docs/decisions/003-canonical-state-and-memory-lifecycle.md`](docs/decisions/003-canonical-state-and-memory-lifecycle.md)
 - [`docs/decisions/004-action-approval-and-credential-boundary.md`](docs/decisions/004-action-approval-and-credential-boundary.md)
-- [`docs/memory.md`](docs/memory.md)
 
 This repository is the source of truth for Loren's product decisions, architecture, delivery plans, implementation, progress, and release history.

@@ -72,43 +72,100 @@ internal static class OwnerPages
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Loren — M3 Owner Console</title>
+  <title>Loren — v0.1 Owner Console</title>
   <style>
-    :root { color-scheme: light dark; font-family: Inter, system-ui, sans-serif; }
+    :root { color-scheme: dark; font-family: Inter, system-ui, sans-serif; }
     body { margin: 0; background: #0f172a; color: #f8fafc; }
     header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 24px; border-bottom: 1px solid #334155; background: #111827; }
     header h1 { margin: 0; font-size: 22px; }
     header button { width: auto; margin: 0; }
-    main { width: min(1100px, calc(100% - 32px)); margin: 28px auto 48px; display: grid; gap: 20px; }
+    main { width: min(1120px, calc(100% - 32px)); margin: 28px auto 48px; display: grid; gap: 20px; }
     section { border: 1px solid #334155; border-radius: 16px; background: #111827; padding: 20px; }
     h2 { margin-top: 0; font-size: 18px; }
+    h3 { margin: 18px 0 8px; font-size: 15px; color: #cbd5e1; }
     label { display: block; margin: 0 0 8px; font-weight: 600; }
     input, textarea, button { box-sizing: border-box; border-radius: 10px; border: 1px solid #475569; padding: 12px 14px; font: inherit; }
     input, textarea { width: 100%; background: #0f172a; color: #f8fafc; }
     input { margin-bottom: 14px; }
     textarea { min-height: 100px; resize: vertical; }
     button { cursor: pointer; background: #f8fafc; color: #0f172a; font-weight: 700; }
+    button.danger { background: #f59e0b; color: #111827; }
     button:disabled { opacity: .55; cursor: wait; }
-    .hint { margin: -6px 0 14px; color: #94a3b8; font-size: 13px; }
-    .actions { display: flex; gap: 10px; align-items: center; margin-top: 12px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0 14px; }
+    .hint { margin: -6px 0 14px; color: #94a3b8; font-size: 13px; line-height: 1.5; }
+    .warning { padding: 12px 14px; border: 1px solid #92400e; border-radius: 10px; background: #451a03; color: #fde68a; line-height: 1.5; }
+    .actions { display: flex; gap: 10px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
     .status { color: #94a3b8; }
     pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.55; }
+    .result { margin-top: 14px; padding: 12px; min-height: 22px; border-radius: 10px; background: #0f172a; }
     .meta { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-bottom: 14px; color: #cbd5e1; font-size: 14px; }
     table { width: 100%; border-collapse: collapse; font-size: 14px; }
     th, td { text-align: left; vertical-align: top; border-bottom: 1px solid #334155; padding: 10px 8px; overflow-wrap: anywhere; }
     th { color: #cbd5e1; }
     .empty { color: #64748b; }
     .error { color: #fca5a5; }
+    code { color: #bfdbfe; }
   </style>
 </head>
 <body>
   <header>
-    <h1>Loren owner console · v0.1 M3</h1>
+    <h1>Loren owner console · v0.1 M5</h1>
     <button id="logout" type="button">Sign out</button>
   </header>
   <main>
     <section>
-      <h2>Request</h2>
+      <h2>1. Bootstrap a canonical GitHub project</h2>
+      <p class="hint">Use this once on a fresh Loren database. Existing aliases are never silently rebound.</p>
+      <div class="grid">
+        <div>
+          <label for="bootstrap-project-name">Project name</label>
+          <input id="bootstrap-project-name" placeholder="Loren" />
+        </div>
+        <div>
+          <label for="bootstrap-project-alias">Project alias</label>
+          <input id="bootstrap-project-alias" placeholder="loren" />
+        </div>
+        <div>
+          <label for="bootstrap-github-owner">GitHub owner</label>
+          <input id="bootstrap-github-owner" placeholder="rua-den" />
+        </div>
+        <div>
+          <label for="bootstrap-github-repository">GitHub repository</label>
+          <input id="bootstrap-github-repository" placeholder="loren" />
+        </div>
+      </div>
+      <button id="bootstrap" type="button">Save canonical project</button>
+      <pre id="bootstrap-result" class="result empty">Not configured in this session.</pre>
+    </section>
+
+    <section>
+      <h2>2. Approve & create a non-default GitHub branch</h2>
+      <p class="warning"><strong>External write.</strong> This button is the explicit owner approval for the exact project/repository, branch name and source SHA shown below. Loren consumes that approval once, resolves <code>GITHUB_WRITE_TOKEN</code> only inside the executor boundary, creates the branch, then independently fetches the ref and verifies the exact SHA.</p>
+      <div class="grid">
+        <div>
+          <label for="write-project-alias">Project alias</label>
+          <input id="write-project-alias" placeholder="loren" />
+        </div>
+        <div>
+          <label for="write-repository-id">Repository ID (optional)</label>
+          <input id="write-repository-id" placeholder="Leave blank when project has one GitHub repo" />
+        </div>
+        <div>
+          <label for="write-branch">New branch</label>
+          <input id="write-branch" placeholder="loren/manual-smoke" />
+        </div>
+        <div>
+          <label for="write-source-sha">Exact source commit SHA</label>
+          <input id="write-source-sha" placeholder="40-character Git commit SHA" maxlength="40" />
+        </div>
+      </div>
+      <p class="hint">Host must have <code>LOREN_ENABLE_WRITES=true</code>, <code>GITHUB_WRITE_TOKEN</code> set, and <code>LOREN_GITHUB_WRITE_CREDENTIAL_REVOKED=false</code>. Default-branch creation/replacement is blocked.</p>
+      <button id="create-branch" class="danger" type="button">Approve &amp; create branch</button>
+      <pre id="write-result" class="result empty">No write attempted.</pre>
+    </section>
+
+    <section>
+      <h2>3. Run Loren</h2>
       <label for="project-alias">Project alias</label>
       <input id="project-alias" placeholder="Optional exact configured alias, e.g. wedding-online" />
       <p class="hint">When set, Loren resolves this alias to canonical Project/Repository state before the model runs.</p>
@@ -146,14 +203,101 @@ internal static class OwnerPages
   </main>
 
   <script>
+    const logout = document.getElementById('logout');
+    const bootstrap = document.getElementById('bootstrap');
+    const bootstrapResult = document.getElementById('bootstrap-result');
+    const createBranch = document.getElementById('create-branch');
+    const writeResult = document.getElementById('write-result');
     const projectAlias = document.getElementById('project-alias');
     const message = document.getElementById('message');
     const send = document.getElementById('send');
-    const logout = document.getElementById('logout');
     const status = document.getElementById('status');
     const answer = document.getElementById('answer');
     const meta = document.getElementById('meta');
     const audit = document.getElementById('audit');
+
+    async function postJson(url, payload) {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (response.status === 401) {
+        location.assign('/login');
+        throw new Error('Owner session expired.');
+      }
+
+      const body = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(body?.error ?? `HTTP ${response.status}`);
+      }
+
+      return body;
+    }
+
+    function showJson(element, value) {
+      element.className = 'result';
+      element.textContent = JSON.stringify(value, null, 2);
+    }
+
+    function showError(element, error) {
+      element.className = 'result error';
+      element.textContent = error instanceof Error ? error.message : String(error);
+    }
+
+    bootstrap.addEventListener('click', async () => {
+      bootstrap.disabled = true;
+      try {
+        const result = await postJson('/api/projects/bootstrap', {
+          projectName: document.getElementById('bootstrap-project-name').value,
+          projectAlias: document.getElementById('bootstrap-project-alias').value,
+          gitHubOwner: document.getElementById('bootstrap-github-owner').value,
+          gitHubRepository: document.getElementById('bootstrap-github-repository').value
+        });
+        showJson(bootstrapResult, result);
+        document.getElementById('write-project-alias').value = result.aliases?.[0] ?? '';
+        document.getElementById('write-repository-id').value = result.repositoryId ?? '';
+        projectAlias.value = result.aliases?.[0] ?? '';
+      } catch (error) {
+        showError(bootstrapResult, error);
+      } finally {
+        bootstrap.disabled = false;
+      }
+    });
+
+    createBranch.addEventListener('click', async () => {
+      const alias = document.getElementById('write-project-alias').value.trim();
+      const repositoryId = document.getElementById('write-repository-id').value.trim();
+      const branch = document.getElementById('write-branch').value.trim();
+      const sourceSha = document.getElementById('write-source-sha').value.trim();
+
+      if (!alias || !branch || !sourceSha) {
+        showError(writeResult, new Error('Project alias, branch and exact source SHA are required.'));
+        return;
+      }
+
+      if (!confirm(`Approve one-time GitHub branch creation?\n\nProject: ${alias}\nRepository ID: ${repositoryId || '(single GitHub repo)'}\nBranch: ${branch}\nSource SHA: ${sourceSha}`)) {
+        return;
+      }
+
+      createBranch.disabled = true;
+      writeResult.className = 'result';
+      writeResult.textContent = 'Executing approved action…';
+      try {
+        const result = await postJson('/api/github/create-branch', {
+          projectAlias: alias,
+          repositoryId: repositoryId || null,
+          branch,
+          sourceSha
+        });
+        showJson(writeResult, result);
+      } catch (error) {
+        showError(writeResult, error);
+      } finally {
+        createBranch.disabled = false;
+      }
+    });
 
     function addMeta(label, value) {
       const item = document.createElement('span');
@@ -180,26 +324,10 @@ internal static class OwnerPages
 
       try {
         const alias = projectAlias.value.trim();
-        const response = await fetch('/api/run', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            message: text,
-            projectAlias: alias || null
-          })
+        const result = await postJson('/api/run', {
+          message: text,
+          projectAlias: alias || null
         });
-
-        if (response.status === 401) {
-          location.assign('/login');
-          return;
-        }
-
-        if (!response.ok) {
-          const body = await response.text();
-          throw new Error(`HTTP ${response.status}: ${body}`);
-        }
-
-        const result = await response.json();
         answer.textContent = result.finalOutput;
         addMeta('runId', result.runId);
         addMeta('turns', result.turns);
