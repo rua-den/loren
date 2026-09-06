@@ -170,7 +170,7 @@ public sealed class LorenProjectContextBuilder
         return false;
     }
 
-    private IReadOnlyList<BrainMessage> PrepareHistory(
+    private List<BrainMessage> PrepareHistory(
         IReadOnlyList<LorenConversationMessage>? history)
     {
         if (history is null || history.Count == 0)
