@@ -109,7 +109,7 @@ public sealed class EnvironmentActionCredentialResolverTests
     }
 
     private static EnvironmentActionCredentialResolver CreateResolver(
-        IReadOnlyDictionary<string, string?> environment)
+        Dictionary<string, string?> environment)
     {
         EnvironmentCredentialBinding binding = new(
             Purpose,
