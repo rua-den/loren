@@ -44,11 +44,18 @@ app.MapPost(
         async (
             LorenRunRequest request,
             LorenRunService runService,
+            HttpContext context,
             CancellationToken cancellationToken) =>
         {
             if (string.IsNullOrWhiteSpace(request.Message))
             {
                 return Results.BadRequest(new { error = "message is required" });
+            }
+
+            string? ownerPrincipalReference = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(ownerPrincipalReference))
+            {
+                return Results.Unauthorized();
             }
 
             try
@@ -57,6 +64,7 @@ app.MapPost(
                     request.Message,
                     request.ProjectAlias,
                     request.History,
+                    ownerPrincipalReference,
                     cancellationToken);
                 return Results.Ok(result);
             }
