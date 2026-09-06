@@ -191,6 +191,13 @@ public sealed class OwnerCreateBranchWorkflowTests
                 StringComparer.Ordinal);
             return Task.FromResult<ProjectSnapshot?>(matches ? snapshot : null);
         }
+
+        public Task<IReadOnlyList<ProjectSnapshot>> ListAsync(
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult<IReadOnlyList<ProjectSnapshot>>([snapshot]);
+        }
     }
 
     private sealed class RecordingApprovalStore : IActionApprovalStore
