@@ -157,7 +157,7 @@ public sealed class ActionGateway : IActionGateway
             if (trustedExecutor is null)
             {
                 const string reason =
-                    "Non-read action executor is not registered for trusted execution context.";
+                    "Non-public-read action executor is not registered for trusted execution context.";
                 await AppendAuditAsync(
                     execution,
                     AuditEventKind.ActionCompleted,
@@ -174,7 +174,9 @@ public sealed class ActionGateway : IActionGateway
         }
 
         bool requiresApproval =
-            definition.AccessClass is not ActionAccessClass.Read
+            definition.AccessClass is ActionAccessClass.ReversibleWrite
+                or ActionAccessClass.ExternalWrite
+                or ActionAccessClass.PrivilegedWrite
             || decision.Kind is PolicyDecisionKind.RequireApproval;
 
         if (requiresApproval)
