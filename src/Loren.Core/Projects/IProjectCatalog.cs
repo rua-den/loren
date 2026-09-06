@@ -13,4 +13,7 @@ public interface IProjectCatalog
     Task<ProjectSnapshot?> FindByAliasAsync(
         string projectAlias,
         CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<ProjectSnapshot>> ListAsync(
+        CancellationToken cancellationToken = default);
 }

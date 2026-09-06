@@ -121,6 +121,20 @@ public sealed class SqliteProjectCatalog : IProjectCatalog
             : await GetAsync(new ProjectId(projectId.Value), cancellationToken);
     }
 
+    public async Task<IReadOnlyList<ProjectSnapshot>> ListAsync(
+        CancellationToken cancellationToken = default)
+    {
+        ProjectRow[] projectRows = await _dbContext.Projects
+            .AsNoTracking()
+            .Include(project => project.Aliases)
+            .Include(project => project.Repositories)
+            .OrderBy(project => project.Name)
+            .ThenBy(project => project.Id)
+            .ToArrayAsync(cancellationToken);
+
+        return projectRows.Select(Map).ToArray();
+    }
+
     private static ProjectSnapshot Map(ProjectRow row)
     {
         Project project = new(

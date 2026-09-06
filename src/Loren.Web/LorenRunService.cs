@@ -32,11 +32,18 @@ public sealed class LorenRunService
     public Task<LorenRunResult> RunAsync(
         string message,
         CancellationToken cancellationToken) =>
-        RunAsync(message, null, cancellationToken);
+        RunAsync(message, null, null, cancellationToken);
+
+    public Task<LorenRunResult> RunAsync(
+        string message,
+        string? projectAlias,
+        CancellationToken cancellationToken) =>
+        RunAsync(message, projectAlias, null, cancellationToken);
 
     public async Task<LorenRunResult> RunAsync(
         string message,
         string? projectAlias,
+        IReadOnlyList<LorenConversationMessage>? history,
         CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(message);
@@ -46,6 +53,7 @@ public sealed class LorenRunService
             : await _projectContextBuilder.BuildAsync(
                 message,
                 projectAlias,
+                history,
                 cancellationToken);
 
         AgentRunResult result = await _agentLoop.RunAsync(
@@ -78,7 +86,8 @@ public sealed class LorenRunService
 
 public sealed record LorenRunRequest(
     string Message,
-    string? ProjectAlias = null);
+    string? ProjectAlias = null,
+    IReadOnlyList<LorenConversationMessage>? History = null);
 
 public sealed record LorenRunResult(
     string FinalOutput,
