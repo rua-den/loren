@@ -3,6 +3,7 @@ using Loren.Core.Credentials;
 using Loren.Infrastructure.Credentials;
 using Loren.Runtime;
 using Loren.Tools.GitHub;
+using Loren.Tools.Web;
 using Loren.Web;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,7 +14,7 @@ namespace Loren.IntegrationTests;
 public sealed class CredentialBoundaryHostCompositionTests
 {
     [Fact]
-    public void ProductionHostRegistersOnlyReadAndTrustedCreateBranchExecutors()
+    public void ProductionHostRegistersReadExecutorsAndOnlyOneTrustedMutationExecutor()
     {
         string dataDirectory = Path.Combine(
             Path.GetTempPath(),
@@ -26,6 +27,7 @@ public sealed class CredentialBoundaryHostCompositionTests
                 {
                     ["LOREN_DATA_DIRECTORY"] = dataDirectory,
                     ["LOREN_ENABLE_WRITES"] = "true",
+                    ["OLLAMA_API_KEY"] = "host-composition-test-key",
                 })
                 .Build();
             ServiceCollection services = new();
@@ -44,7 +46,7 @@ public sealed class CredentialBoundaryHostCompositionTests
 
             Assert.IsType<EnvironmentActionCredentialResolver>(resolver);
             Assert.False(writeSafetyState.IsReadOnly);
-            Assert.Equal(2, executors.Length);
+            Assert.Equal(3, executors.Length);
 
             IActionExecutor createBranchExecutor = Assert.Single(
                 executors,
@@ -52,14 +54,20 @@ public sealed class CredentialBoundaryHostCompositionTests
             Assert.IsType<GitHubCreateBranchActionExecutor>(createBranchExecutor);
             Assert.IsAssignableFrom<ITrustedActionExecutor>(createBranchExecutor);
 
-            IActionExecutor readExecutor = Assert.Single(
+            IActionExecutor repositoryReadExecutor = Assert.Single(
                 executors,
                 executor => executor.ActionName == GitHubActions.ReadRepository.Name);
-            Assert.IsType<GitHubReadRepositoryExecutor>(readExecutor);
+            Assert.IsType<GitHubReadRepositoryExecutor>(repositoryReadExecutor);
 
-            Assert.All(
-                executors.Where(executor => executor.ActionName != GitHubActions.ReadRepository.Name),
-                executor => Assert.Equal(GitHubActions.CreateBranch.Name, executor.ActionName));
+            IActionExecutor webSearchExecutor = Assert.Single(
+                executors,
+                executor => executor.ActionName == WebActions.Search.Name);
+            Assert.IsType<OllamaWebSearchExecutor>(webSearchExecutor);
+
+            IActionExecutor mutationExecutor = Assert.Single(
+                executors,
+                executor => executor is ITrustedActionExecutor);
+            Assert.Equal(GitHubActions.CreateBranch.Name, mutationExecutor.ActionName);
         }
         finally
         {
