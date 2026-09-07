@@ -1,0 +1,48 @@
+# .NET build output
+**/bin/
+**/obj/
+artifacts/
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+coverage/
+
+# IDE / editor state
+.vs/
+.idea/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Local secrets and environment overrides
+.env
+.env.local
+.env.*.local
+*.secrets.json
+
+# Loren local runtime state
+**/loren.db
+**/loren.db-shm
+**/loren.db-wal
+**/loren.db-journal
+
+# Logs / temporary files
+*.log
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+
+# NuGet/package output
+packages/
+*.nupkg
+*.snupkg
+
+# OS metadata
+.DS_Store
+Thumbs.db
+Desktop.ini
