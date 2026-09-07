@@ -19,4 +19,5 @@ public sealed record ActionExecutionRequest(
     ActionId ActionId,
     ActionRequest Request,
     ActionAuthorizationContext? AuthorizationContext = null,
-    ApprovalId? ApprovalId = null);
+    ApprovalId? ApprovalId = null,
+    AuthenticatedOwnerContext? OwnerContext = null);

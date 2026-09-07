@@ -1,124 +1,66 @@
 # Loren Project Status
 
-**Last updated:** 2026-09-06  
-**Current version phase:** `v0.1 — Useful Trustworthy Assistant`  
-**Current product target:** `M6A.2 — Current-information / web read`  
-**Write expansion status:** `M5 Slices 4–6 paused after Slice 3 proof`  
+**Last updated:** 2026-09-07  
+**Current version:** `v0.1 — Useful Trustworthy Assistant`  
+**Current product target:** `M6A.4 — Notes / Decisions / Tasks`  
+**Next target after merge:** `M6A.5 — Conversational approval`  
+**Write expansion:** `M5 Slices 4–6 paused after verified create-branch proof`  
 **Decision gates passed:** `Gate A`, `Gate B`, `Gate C`, `Gate D`
 
-This file is the authoritative progress ledger. Read [`handoff.md`](handoff.md) immediately after this file when continuing in a fresh thread.
+This file is the authoritative progress ledger. Read [`handoff.md`](handoff.md) next in a fresh thread.
 
-> **Roadmap correction:** Loren is a personal secretary / Jarvis-like assistant first. Natural conversation is now the primary surface; current information, research, durable organization, and conversational approval come before additional GitHub write primitives.
+> Loren is a persistent personal secretary / Jarvis-like assistant first. Conversation, memory, current information, research, organization and explicit conversational approval come before broader automation.
 
 ---
 
 # 1. Completed foundations
 
 ```text
-v0.0 Architecture / Feasibility            ✓ complete
-M1 Engineering Foundation                  ✓ complete
-M2 Conversation/tool Walking Skeleton      ✓ complete
-M3 Canonical Project/Repository State      ✓ complete
-M4 Trusted Durable Memory                  ✓ complete
-Gate D Action/Approval/Credential Policy   ✓ passed
-M5 Slice 1 write policy/approval            ✓ complete
-M5 Slice 2 credential isolation/redaction  ✓ complete
-M5 Slice 3 verified create branch          ✓ complete
-M6A.1 conversation primary surface         ✓ complete
+v0.0 Architecture / Feasibility                ✓ complete
+M1 Engineering Foundation                      ✓ complete
+M2 Conversation/tool Walking Skeleton          ✓ complete
+M3 Canonical Project/Repository State          ✓ complete
+M4 Trusted Durable Memory                      ✓ complete
+Gate D Action/Approval/Credential Policy       ✓ passed
+M5 Slice 1 policy + one-time approval           ✓ complete
+M5 Slice 2 credential isolation/redaction      ✓ complete
+M5 Slice 3 verified create branch              ✓ complete
+M6A.1 conversation primary surface             ✓ complete
+M6A.2 current-information web search           ✓ complete
+M6A.3 source-aware bounded research            ✓ complete
 ```
 
-## M2 proved
-
-Authenticated owner -> real brain -> real GitHub read -> structured tool result -> natural final answer -> correlated audit.
-
-## M3 proved
-
-Loren owns canonical Project/Repository IDs and aliases independent of provider/session identity.
-
-## M4 proved
-
-- owner memory survives restart;
-- corrections append/supersede rather than destructively rewrite history;
-- forgotten correction chains do not resurrect;
-- prepared memory is bounded and provenance-aware;
-- model/external text cannot silently become owner truth or authority.
-
----
-
-# 2. Gate D + M5 safety proof
-
-Gate D / ADR-004 locks:
+## Proven safety foundation
 
 ```text
 canonical target
  -> deterministic policy
- -> explicit owner approval
+ -> explicit owner approval for consequential external writes
  -> exact intent fingerprint
  -> atomic one-time consume
  -> write-specific credential boundary
- -> controlled executor
+ -> controlled trusted executor
  -> post-write verification
  -> redacted audit
 ```
 
-Authentication is not approval. Model/external content cannot authorize itself, choose credentials, disable read-only, broaden target scope, or declare success.
+Authentication is not external-write approval. Model/external content cannot authorize itself, choose write credentials, disable read-only, broaden a target or declare an unverified write successful.
 
-## M5 Slice 1 [COMPLETE]
-
-PR #25 merged:
+M5 evidence:
 
 ```text
-merge: caa65fbbd7c3828b68aa198dad625e73e9c096b4
-PR CI #194 / 33973579862: PASS Ubuntu + Windows
-post-merge main CI #195 / 33973694524: PASS Ubuntu + Windows
+PR #25 merge caa65fbbd7c3828b68aa198dad625e73e9c096b4
+PR #26 merge f7fb36bae324dbd7bb8d12e02daf3fe0dd98e7da
+PR #27 merge bd0220550592a3ba55a2c722192e43df6e8ca321
+PR #27 exact-head CI #217 / 34029409983 PASS Ubuntu + Windows
+post-merge main CI #218 / 34029500883 PASS Ubuntu + Windows
 ```
 
-Delivered typed access classes, trusted authorization context, exact fingerprint, SQLite one-time approvals, replay/expiry/revocation/mismatch rejection, fail-closed `LOREN_ENABLE_WRITES`, and migration drift tests.
-
-## M5 Slice 2 [COMPLETE]
-
-PR #26 merged:
-
-```text
-merge: f7fb36bae324dbd7bb8d12e02daf3fe0dd98e7da
-PR CI #201 / 34027113298: PASS Ubuntu + Windows
-post-merge main CI #202 / 34027255592: PASS Ubuntu + Windows
-```
-
-Delivered dedicated GitHub write credential purpose/reference, `GITHUB_WRITE_TOKEN`, revocation, no fallback, and redaction across result/audit/brain boundaries.
-
-## M5 Slice 3 [COMPLETE — WRITE PROOF]
-
-PR #27 merged:
-
-```text
-frozen PR head: 658fc550f5fd1660a05590a06c4285add4e50490
-merge: bd0220550592a3ba55a2c722192e43df6e8ca321
-PR CI #217 / 34029409983: PASS Ubuntu + Windows
-post-merge main CI #218 / 34029500883: PASS Ubuntu + Windows
-```
-
-Delivered the first narrow real write capability:
-
-```text
-explicit owner request
- -> canonical Project/Repository
- -> exact branch + source SHA intent
- -> one-time approval
- -> trusted executor
- -> dedicated credential
- -> GET default-branch preflight
- -> reject unsafe/default branch
- -> POST git/refs
- -> GET exact branch
- -> verified SHA must equal approved SHA
-```
-
-The branch-create owner form is a **technical harness / safety proof**, not the intended final Loren UX.
+The existing create-branch form is a safety harness, not the intended daily UX.
 
 ---
 
-# 3. Product roadmap rebaseline
+# 2. M6A assistant-first execution
 
 Correct capability order:
 
@@ -134,23 +76,9 @@ CONVERSE
  -> later BACKGROUND / PROACTIVE / VOICE
 ```
 
-Therefore:
-
-```text
-M5 Slice 4 file/commit   PAUSED
-M5 Slice 5 open PR       PAUSED
-M5 Slice 6 write E2E     PAUSED as a broadening track
-```
-
-Existing write foundations remain valid and will be reused after the assistant interaction checkpoint.
-
----
-
-# 4. Current milestone — M6A Conversational Secretary + Information Layer
-
 ## M6A.1 — Conversation primary surface [COMPLETE]
 
-PR #29 merged:
+PR #29:
 
 ```text
 merge: a1652b2451fe2e706aa83373932b210178f63ebe
@@ -158,152 +86,194 @@ PR CI #224 / 34042192552: PASS Ubuntu + Windows
 post-merge main CI #225 / 34042352724: PASS Ubuntu + Windows
 ```
 
-Delivered:
+Delivered conversation-first owner UI, bounded multi-turn history, Loren identity context, friendly project selection, deterministic project inference, trusted memory in the normal chat path, browser-history role hardening and secondary tool/audit UI.
 
-- authenticated login lands on conversation-first Loren UI;
-- normal turns carry bounded multi-turn user/assistant history;
-- Loren identity guidance is always present;
-- canonical project context can be selected by friendly alias/name or inferred deterministically;
-- ambiguous project inference does not guess;
-- `Mày là Loren đúng không?` does not accidentally activate a project named Loren;
-- trusted project-scoped memory remains in the normal conversation path;
-- browser history cannot inject a system role;
-- tool/audit activity is secondary UI;
-- bootstrap and write proof controls live under Advanced / safety harness.
+## M6A.2 — Current-information web read [COMPLETE]
 
-## M6A.2 — Current-information / web read [ACTIVE — PR #30]
-
-Current implementation adds read-only `web.search` backed by Ollama Web Search using the existing `OLLAMA_API_KEY`.
-
-Trust/quality contract:
+PR #30:
 
 ```text
-brain requests web.search
- -> ActionGateway READ policy
- -> Ollama Web Search
- -> bounded response
- -> validate source URLs
- -> bounded source title/content
- -> mark evidence as untrusted external data
- -> brain synthesizes
- -> owner-visible answer includes source URLs
+merge: a8d3e7bbc94c9a468ebc234deb1fe87dcb7d23e9
+PR exact-head CI #237 / 34044530005: PASS Ubuntu + Windows
+post-merge main CI #238 / 34044641072: PASS Ubuntu + Windows
 ```
 
-Implemented coverage includes:
+Delivered read-only `web.search` through Ollama Web Search using the existing `OLLAMA_API_KEY`, bounded search evidence, safe source URLs, secret-safe failures and deterministic current-information acceptance.
 
-- Bearer credential use without secret exposure;
-- missing credential fails before external call;
-- bounded query/result/content size;
-- invalid/overlong source URLs are excluded rather than surfaced as broken citations;
-- failure response bodies are never surfaced;
-- deterministic agent-loop acceptance from current-info question to sourced final answer;
-- production host exposes `github.read_repository` + `web.search` as read actions while keeping `github.create_branch` as the only trusted mutation executor.
+## M6A.3 — Source-aware bounded research [COMPLETE]
 
-M6A.2 is not complete until PR #30 exact-head CI and post-merge `main` are green.
+PR #31:
 
-## M6A.3 — Source-aware research/synthesis [NEXT AFTER M6A.2]
+```text
+frozen PR head: 6f2b5d1ea5739b84b369f689214db95745071cb1
+merge: d789ccc7f7540cb802b14f677d317db3e571a7d3
+PR exact-head CI #240 / 34045079047: PASS Ubuntu + Windows
+post-merge main CI #241 / 34052513007: PASS Ubuntu + Windows
+```
 
-- multiple searches/sources;
-- page fetch for deeper evidence where needed;
-- compare/merge/deduplicate;
-- sourced fact vs inference distinction;
-- stale/conflicting information surfaced;
-- bounded iterative retrieval.
+Delivered:
 
-## M6A.4 — Notes / Decisions / Tasks
+```text
+web.search
+ -> select sources
+ -> web.fetch
+ -> bounded page evidence
+ -> compare / synthesize in existing bounded AgentLoop
+ -> sourced facts + explicit Loren inference
+```
 
-Add durable owner-facing organization primitives usable through conversation:
+`PublicWebUrlPolicy` rejects unsafe schemes, credentials, localhost/private literal IPs and non-standard ports before fetch. Search/fetch evidence stays inert untrusted data. Provider failure bodies and secrets are not surfaced.
+
+---
+
+# 3. M6A.4 — Notes / Decisions / Tasks [READY TO MERGE — PR #32]
+
+Branch: `feat/m6a4-organization-state`  
+PR: `#32 — feat: add durable conversation organization state`
+
+Implemented owner-visible state:
 
 ```text
 Note
 Decision
 Task
-TaskStatus
-optional Project scope
-provenance/timestamps
+TaskStatus = Open | Completed
+optional canonical Project scope
+source/provenance
+created / updated / completed timestamps
 ```
 
-No background reminder execution yet; Gate E is required before trusted scheduler behavior.
-
-## M6A.5 — Conversational approval
-
-Reuse existing safe `github.create_branch` implementation to prove the intended UX:
+Conversation actions:
 
 ```text
-Owner: "Tạo branch abc cho Loren."
- -> brain proposes typed action
- -> Loren resolves exact target
- -> UI/conversation shows proposal
- -> owner approves
- -> existing one-time approval + credential boundary
- -> verified create branch
- -> natural-language completion
+organization.create_note
+organization.record_decision
+organization.create_task
+organization.list
+organization.complete_task
+organization.reopen_task
 ```
 
-No new GitHub write primitive is needed for this slice.
+Trust boundary:
+
+```text
+public external read          -> READ
+private Loren owner state read -> OWNER_STATE_READ
+private Loren owner state write -> OWNER_STATE_WRITE
+external mutation             -> REVERSIBLE/EXTERNAL/PRIVILEGED_WRITE
+```
+
+`OWNER_STATE_READ/WRITE` require authenticated Loren-owned owner context and an `ITrustedActionExecutor`. They do **not** require GitHub write credentials or external-write one-time approval because they mutate only Loren-owned local state. `LOREN_ENABLE_WRITES` remains an external-write kill switch and does not disable the owner's own local notes/tasks. ActionGateway independently enforces owner context so a permissive policy cannot expose private owner state.
+
+Durability:
+
+- SQLite `OrganizationItems` migration `202609070001_AddOrganizationItems`;
+- opaque Loren IDs;
+- project foreign key with restrict semantics;
+- SQLite-native Unix-millisecond lifecycle timestamps for deterministic bounded sorting;
+- note/decision/task state survives process/database restart;
+- complete/reopen task lifecycle is persisted.
+
+Acceptance coverage includes:
+
+```text
+owner chat
+ -> create project task
+ -> list open project tasks
+ -> complete exact task
+ -> durable SQLite state
+ -> no external-write approval artifact
+```
+
+Security/reliability coverage proves missing owner context fails closed, owner-state executors must be trusted, and external GitHub write semantics remain unchanged.
+
+Latest implementation CI before final documentation sync:
+
+```text
+CI #247 / 34053503945: PASS Ubuntu full gate + Windows integration
+```
+
+A final exact-head CI is required after documentation synchronization before PR #32 merges.
+
+No background scheduler/reminder execution is introduced. Gate E remains required for background behavior.
 
 ---
 
-# 5. Next owner test checkpoint
+# 4. M6A.5 — Conversational approval [NEXT]
 
-The next time the owner should pull `main` specifically to evaluate v0.1, Loren must support:
+Reuse the already-safe `github.create_branch` implementation through the intended owner UX:
 
 ```text
-1. Normal conversation as the default surface.
-2. Stable knowledge/reasoning question.
-3. Current-information question with grounded external retrieval + sources.
-4. Source-aware multi-step research.
-5. Project question combining canonical context + memory + live GitHub read.
-6. Teach a durable fact/decision, restart, recall it.
-7. Create/list/complete a task through chat.
-8. Ask to create a branch in natural language.
-9. Review exact approval proposal and approve.
-10. Receive verified completion naturally and inspect why/audit.
+Owner: "Tạo branch abc cho Loren từ main."
+ -> brain understands/proposes intent
+ -> Loren resolves canonical project/repository + exact source SHA
+ -> conversation shows exact proposal + risk
+ -> owner explicitly clicks Approve
+ -> Loren creates exact one-time approval
+ -> existing credential-bound trusted executor runs
+ -> GitHub branch state is independently verified
+ -> Loren reports completion naturally + audit context
 ```
 
-**Do not resume controlled file/commit or open-PR work before this checkpoint is usable.**
+The chat message is intent, **not** Gate D approval. No new GitHub write primitive is needed for this slice.
 
 ---
 
-# 6. After M6A checkpoint
+# 5. v0.1 owner checkpoint
 
-Then reassess highest-value next capability rather than automatically continuing GitHub automation.
-
-Likely options:
+Do not ask the owner to pull specifically for the v0.1 product test until Loren supports the complete natural workflow:
 
 ```text
-A. resume M5 Slice 4 controlled file/commit
+1. Chat normally as the default surface.
+2. Ask stable knowledge/reasoning questions.
+3. Ask current-information questions and get grounded sources.
+4. Perform bounded source-aware research.
+5. Combine project context + durable memory + live reads.
+6. Record/retrieve durable notes or decisions across restart.
+7. Create/list/complete tasks through chat.
+8. Ask for branch creation in natural language.
+9. Review exact proposal and explicitly approve.
+10. Receive verified completion and inspect why/audit.
+```
+
+**Do not resume controlled file/commit/open-PR mutation expansion before this checkpoint is usable.**
+
+---
+
+# 6. After M6A
+
+Reassess the highest-value next capability instead of automatically adding GitHub writes. Candidates:
+
+```text
+A. recovery/security closeout for v0.1
 B. richer read-only personal integrations
-C. recovery/security closeout
+C. resume M5 Slice 4 controlled file/commit if still highest value
 ```
 
----
-
-# 7. Version direction
+Version direction:
 
 ```text
 v0.1 useful trustworthy assistant        <- current
-v0.2 personal secretary integrations     Calendar/Gmail/files/tasks richer reads
-v0.3 personal/project operations         approved writes + background after Gate E
+v0.2 personal secretary integrations
+v0.3 personal/project operations
 v0.4 voice + device presence
 v0.5 proactive/background Loren
 v0.6+ daily-use hardening
 v1.0 stable personal daily driver
 ```
 
-Read-before-write is the default integration rule.
-
 ---
 
-# 8. Progress-update rule
+# 7. Progress-update rule
 
-Any merge that changes capability, milestone completion, ADR status, validated dependencies/providers, or next execution target must synchronize:
+Any capability merge must synchronize:
 
 1. `docs/status.md`;
 2. `README.md`;
 3. `README.vi.md`;
 4. `docs/plans/master-plan.md`;
 5. `docs/plans/v0.1.md`;
-6. `docs/handoff.md`.
+6. `docs/handoff.md`;
+7. architecture/development docs when the boundary or configuration changes.
 
-A milestone is not closed until implementation/tests and repository documentation agree.
+A milestone is not closed until implementation, tests and repository documentation agree.

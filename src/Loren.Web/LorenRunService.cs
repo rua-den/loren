@@ -1,5 +1,7 @@
+using Loren.Core.Actions;
 using Loren.Core.Audit;
 using Loren.Core.Brains;
+using Loren.Core.Projects;
 using Loren.Infrastructure.Audit;
 using Loren.Runtime;
 using Loren.Tools.GitHub;
@@ -33,18 +35,26 @@ public sealed class LorenRunService
     public Task<LorenRunResult> RunAsync(
         string message,
         CancellationToken cancellationToken) =>
-        RunAsync(message, null, null, cancellationToken);
+        RunAsync(message, null, null, null, cancellationToken);
 
     public Task<LorenRunResult> RunAsync(
         string message,
         string? projectAlias,
         CancellationToken cancellationToken) =>
-        RunAsync(message, projectAlias, null, cancellationToken);
+        RunAsync(message, projectAlias, null, null, cancellationToken);
+
+    public Task<LorenRunResult> RunAsync(
+        string message,
+        string? projectAlias,
+        IReadOnlyList<LorenConversationMessage>? history,
+        CancellationToken cancellationToken) =>
+        RunAsync(message, projectAlias, history, null, cancellationToken);
 
     public async Task<LorenRunResult> RunAsync(
         string message,
         string? projectAlias,
         IReadOnlyList<LorenConversationMessage>? history,
+        string? ownerPrincipalReference,
         CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(message);
@@ -57,9 +67,28 @@ public sealed class LorenRunService
                 history,
                 cancellationToken);
 
+        AuthenticatedOwnerContext? ownerContext = string.IsNullOrWhiteSpace(ownerPrincipalReference)
+            ? null
+            : new AuthenticatedOwnerContext(
+                ownerPrincipalReference,
+                preparedContext.Project is null
+                    ? null
+                    : ProjectId.Parse(preparedContext.Project.ProjectId));
+
         AgentRunResult result = await _agentLoop.RunAsync(
             preparedContext.BrainContext,
-            [GitHubActions.ReadRepository, WebActions.Search, WebActions.Fetch],
+            [
+                GitHubActions.ReadRepository,
+                WebActions.Search,
+                WebActions.Fetch,
+                OrganizationActions.CreateNote,
+                OrganizationActions.RecordDecision,
+                OrganizationActions.CreateTask,
+                OrganizationActions.List,
+                OrganizationActions.CompleteTask,
+                OrganizationActions.ReopenTask,
+            ],
+            ownerContext,
             cancellationToken);
 
         LorenAuditEntry[] auditEntries = _audit

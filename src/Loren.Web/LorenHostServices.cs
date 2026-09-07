@@ -4,6 +4,7 @@ using Loren.Core.Audit;
 using Loren.Core.Brains;
 using Loren.Core.Credentials;
 using Loren.Core.Memories;
+using Loren.Core.Organization;
 using Loren.Core.Projects;
 using Loren.Infrastructure.Audit;
 using Loren.Infrastructure.CanonicalState;
@@ -51,6 +52,7 @@ public static class LorenHostServices
             options.UseSqlite(connectionStringBuilder.ConnectionString));
         services.AddScoped<IProjectCatalog, SqliteProjectCatalog>();
         services.AddScoped<IMemoryStore, SqliteMemoryStore>();
+        services.AddScoped<IOrganizationStore, SqliteOrganizationStore>();
         services.AddScoped<IActionApprovalStore, SqliteActionApprovalStore>();
         services.AddSingleton(new LorenMemoryContextOptions());
         services.AddScoped<LorenMemoryContextBuilder>();
@@ -122,6 +124,15 @@ public static class LorenHostServices
                 provider.GetRequiredService<IActionCredentialResolver>(),
                 provider.GetRequiredService<GitHubCreateBranchClient>()));
 
+        foreach (ActionDefinition action in OrganizationActions.All)
+        {
+            string actionName = action.Name;
+            services.AddScoped<IActionExecutor>(provider =>
+                new OrganizationActionExecutor(
+                    actionName,
+                    provider.GetRequiredService<IOrganizationStore>()));
+        }
+
         services.AddSingleton<IBrain>(provider =>
         {
             IHttpClientFactory httpClientFactory = provider.GetRequiredService<IHttpClientFactory>();
@@ -147,6 +158,12 @@ public static class LorenHostServices
                     GitHubActions.ReadRepository,
                     WebActions.Search,
                     WebActions.Fetch,
+                    OrganizationActions.CreateNote,
+                    OrganizationActions.RecordDecision,
+                    OrganizationActions.CreateTask,
+                    OrganizationActions.List,
+                    OrganizationActions.CompleteTask,
+                    OrganizationActions.ReopenTask,
                     GitHubActions.CreateBranch,
                 ],
                 provider.GetServices<IActionExecutor>(),

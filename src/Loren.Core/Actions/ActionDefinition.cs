@@ -11,6 +11,8 @@ public enum ActionParameterType
 public enum ActionAccessClass
 {
     Read,
+    OwnerStateRead,
+    OwnerStateWrite,
     ReversibleWrite,
     ExternalWrite,
     PrivilegedWrite,
@@ -58,7 +60,7 @@ public sealed record ActionDefinition
 
     public ActionAccessClass AccessClass { get; }
 
-    public bool IsReadOnly => AccessClass is ActionAccessClass.Read;
+    public bool IsReadOnly => AccessClass is ActionAccessClass.Read or ActionAccessClass.OwnerStateRead;
 
     public IReadOnlyList<ActionParameterDefinition> Parameters { get; }
 }

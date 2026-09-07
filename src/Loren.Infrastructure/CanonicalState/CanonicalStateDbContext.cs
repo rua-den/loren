@@ -19,6 +19,8 @@ public sealed class CanonicalStateDbContext : DbContext
 
     internal DbSet<ActionApprovalRow> ActionApprovals => Set<ActionApprovalRow>();
 
+    internal DbSet<OrganizationItemRow> OrganizationItems => Set<OrganizationItemRow>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         CanonicalStateModel.Configure(modelBuilder);
@@ -141,6 +143,31 @@ internal static class CanonicalStateModel
                 .HasForeignKey(approval => approval.RepositoryId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
+
+        modelBuilder.Entity<OrganizationItemRow>(entity =>
+        {
+            entity.ToTable("OrganizationItems");
+            entity.HasKey(item => item.Id);
+            entity.Property(item => item.Kind).HasMaxLength(32).IsRequired();
+            entity.Property(item => item.Title).HasMaxLength(500);
+            entity.Property(item => item.Content).IsRequired();
+            entity.Property(item => item.TaskStatus).HasMaxLength(32);
+            entity.Property(item => item.SourceReference).HasMaxLength(1000).IsRequired();
+            entity.Property(item => item.CreatedAtUnixMs).IsRequired();
+            entity.Property(item => item.UpdatedAtUnixMs).IsRequired();
+            entity.Property(item => item.CompletedAtUnixMs).IsRequired(false);
+            entity.HasIndex(item => item.ProjectId);
+            entity.HasIndex(item => item.Kind);
+            entity.HasIndex(item => item.TaskStatus);
+            entity.HasIndex(item => item.UpdatedAtUnixMs);
+            entity.HasIndex(item => new { item.ProjectId, item.Kind, item.TaskStatus });
+
+            entity
+                .HasOne<ProjectRow>()
+                .WithMany()
+                .HasForeignKey(item => item.ProjectId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
     }
 }
 
@@ -233,4 +260,27 @@ internal sealed class ActionApprovalRow
     public long? ConsumedAtUnixMs { get; set; }
 
     public long? RevokedAtUnixMs { get; set; }
+}
+
+internal sealed class OrganizationItemRow
+{
+    public Guid Id { get; set; }
+
+    public string Kind { get; set; } = string.Empty;
+
+    public string? Title { get; set; }
+
+    public string Content { get; set; } = string.Empty;
+
+    public Guid? ProjectId { get; set; }
+
+    public string? TaskStatus { get; set; }
+
+    public string SourceReference { get; set; } = string.Empty;
+
+    public long CreatedAtUnixMs { get; set; }
+
+    public long UpdatedAtUnixMs { get; set; }
+
+    public long? CompletedAtUnixMs { get; set; }
 }

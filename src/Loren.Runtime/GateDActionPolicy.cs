@@ -19,6 +19,16 @@ public sealed class GateDActionPolicy(IWriteSafetyState writeSafetyState) : IAct
         PolicyDecision decision = definition.AccessClass switch
         {
             ActionAccessClass.Read => PolicyDecision.Allow("Read action is allowed."),
+            ActionAccessClass.OwnerStateRead when execution.OwnerContext is null =>
+                PolicyDecision.Deny(
+                    "Owner-state read requires authenticated owner execution context."),
+            ActionAccessClass.OwnerStateRead => PolicyDecision.Allow(
+                "Authenticated owner-state read is allowed."),
+            ActionAccessClass.OwnerStateWrite when execution.OwnerContext is null =>
+                PolicyDecision.Deny(
+                    "Owner-state write requires authenticated owner execution context."),
+            ActionAccessClass.OwnerStateWrite => PolicyDecision.Allow(
+                "Authenticated owner-state write is allowed without external-write approval."),
             ActionAccessClass.PrivilegedWrite => PolicyDecision.Deny(
                 "Privileged writes are outside the v0.1 write surface."),
             _ when execution.AuthorizationContext is null => PolicyDecision.Deny(
