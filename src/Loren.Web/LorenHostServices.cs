@@ -80,12 +80,15 @@ public static class LorenHostServices
                         "LOREN_GITHUB_WRITE_CREDENTIAL_REVOKED"),
                 ]));
 
-        services.AddSingleton<IActionExecutor>(provider =>
+        services.AddSingleton<GitHubRepositoryReadClient>(provider =>
         {
             IHttpClientFactory httpClientFactory = provider.GetRequiredService<IHttpClientFactory>();
-            return new GitHubReadRepositoryExecutor(
+            return new GitHubRepositoryReadClient(
                 httpClientFactory.CreateClient(GitHubReadHttpClientName));
         });
+        services.AddSingleton<IActionExecutor>(provider =>
+            new GitHubReadRepositoryExecutor(
+                provider.GetRequiredService<GitHubRepositoryReadClient>()));
 
         services.AddSingleton<IActionExecutor>(provider =>
         {

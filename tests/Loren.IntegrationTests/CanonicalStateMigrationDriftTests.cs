@@ -12,6 +12,17 @@ namespace Loren.IntegrationTests;
 public sealed class CanonicalStateMigrationDriftTests
 {
     [Fact]
+    public async Task LatestProposalMigrationIsPresent()
+    {
+        DbContextOptions<CanonicalStateDbContext> options = new DbContextOptionsBuilder<CanonicalStateDbContext>()
+            .UseSqlite($"Data Source=file:drift-{Guid.NewGuid():N}?mode=memory&cache=shared")
+            .Options;
+        await using CanonicalStateDbContext context = new(options);
+        await CanonicalStateDatabase.MigrateAsync(context, TestContext.Current.CancellationToken);
+        Assert.Contains("202609070002_AddCreateBranchProposals", await context.Database.GetAppliedMigrationsAsync(TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
     public void SnapshotMatchesCurrentCanonicalStateModel()
     {
         DbContextOptions<CanonicalStateDbContext> options =

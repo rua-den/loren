@@ -21,6 +21,8 @@ public sealed class CanonicalStateDbContext : DbContext
 
     internal DbSet<OrganizationItemRow> OrganizationItems => Set<OrganizationItemRow>();
 
+    internal DbSet<CreateBranchProposalRow> CreateBranchProposals => Set<CreateBranchProposalRow>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         CanonicalStateModel.Configure(modelBuilder);
@@ -168,6 +170,29 @@ internal static class CanonicalStateModel
                 .HasForeignKey(item => item.ProjectId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
+
+        modelBuilder.Entity<CreateBranchProposalRow>(entity =>
+        {
+            entity.ToTable("CreateBranchProposals");
+            entity.HasKey(proposal => proposal.Id);
+            entity.Property(proposal => proposal.OwnerPrincipalReference).HasMaxLength(256).IsRequired();
+            entity.Property(proposal => proposal.RepositoryProvider).HasMaxLength(100).IsRequired();
+            entity.Property(proposal => proposal.RepositoryNamespace).HasMaxLength(200).IsRequired();
+            entity.Property(proposal => proposal.RepositoryName).HasMaxLength(200).IsRequired();
+            entity.Property(proposal => proposal.Branch).HasMaxLength(255).IsRequired();
+            entity.Property(proposal => proposal.SourceRef).HasMaxLength(255).IsRequired();
+            entity.Property(proposal => proposal.SourceSha).HasMaxLength(40).IsRequired();
+            entity.Property(proposal => proposal.IntentFingerprint).HasMaxLength(128).IsRequired();
+            entity.Property(proposal => proposal.Status).HasMaxLength(32).IsRequired();
+            entity.Property(proposal => proposal.CreatedAtUnixMs).IsRequired();
+            entity.Property(proposal => proposal.ExpiresAtUnixMs).IsRequired();
+            entity.Property(proposal => proposal.DecidedAtUnixMs).IsRequired(false);
+            entity.HasIndex(proposal => new { proposal.OwnerPrincipalReference, proposal.Status, proposal.ExpiresAtUnixMs });
+            entity.HasIndex(proposal => new { proposal.ProjectId, proposal.RepositoryId });
+            entity.HasIndex(proposal => proposal.RepositoryId);
+            entity.HasOne<ProjectRow>().WithMany().HasForeignKey(proposal => proposal.ProjectId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<RepositoryRow>().WithMany().HasForeignKey(proposal => proposal.RepositoryId).OnDelete(DeleteBehavior.Restrict);
+        });
     }
 }
 
@@ -283,4 +308,23 @@ internal sealed class OrganizationItemRow
     public long UpdatedAtUnixMs { get; set; }
 
     public long? CompletedAtUnixMs { get; set; }
+}
+
+internal sealed class CreateBranchProposalRow
+{
+    public Guid Id { get; set; }
+    public string OwnerPrincipalReference { get; set; } = string.Empty;
+    public Guid ProjectId { get; set; }
+    public Guid RepositoryId { get; set; }
+    public string RepositoryProvider { get; set; } = string.Empty;
+    public string RepositoryNamespace { get; set; } = string.Empty;
+    public string RepositoryName { get; set; } = string.Empty;
+    public string Branch { get; set; } = string.Empty;
+    public string SourceRef { get; set; } = string.Empty;
+    public string SourceSha { get; set; } = string.Empty;
+    public string IntentFingerprint { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public long CreatedAtUnixMs { get; set; }
+    public long ExpiresAtUnixMs { get; set; }
+    public long? DecidedAtUnixMs { get; set; }
 }
