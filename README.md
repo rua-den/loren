@@ -107,7 +107,9 @@ canonical target
 
 The first real write proof is verified creation of a **non-default GitHub branch**. Broader GitHub writes remain paused.
 
-## Current execution — M6A.4
+## Current execution — M6A.5 Task 3
+
+The conversational proposal and explicit approval flow is locally ready in [draft PR #33](https://github.com/rua-den/loren/pull/33). The brain can propose a branch, Loren resolves and freezes the canonical repository/source SHA, and authenticated ID-only approval/cancel routes feed the existing verified write path. Parent review, 180 tests, build, format and authentication smoke pass. [CI #257](https://github.com/rua-den/loren/actions/runs/34245561821) passed Ubuntu and Windows for `fe75c2c`; live-provider proof remains pending.
 
 PR #32 adds durable Loren-owned organization state:
 

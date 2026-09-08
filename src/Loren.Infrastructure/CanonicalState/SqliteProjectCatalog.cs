@@ -46,9 +46,20 @@ public sealed class SqliteProjectCatalog : IProjectCatalog
                 .Where(projectAlias => projectAlias.ProjectId == snapshot.Project.Id.Value)
                 .ExecuteDeleteAsync(cancellationToken);
 
-            await _dbContext.Repositories
+            RepositoryRow[] existingRepositories = await _dbContext.Repositories
                 .Where(repository => repository.ProjectId == snapshot.Project.Id.Value)
-                .ExecuteDeleteAsync(cancellationToken);
+                .ToArrayAsync(cancellationToken);
+            HashSet<Guid> incomingRepositoryIds = snapshot.Repositories
+                .Select(repository => repository.Id.Value)
+                .ToHashSet();
+
+            foreach (RepositoryRow existingRepository in existingRepositories)
+            {
+                if (!incomingRepositoryIds.Contains(existingRepository.Id))
+                {
+                    _dbContext.Repositories.Remove(existingRepository);
+                }
+            }
 
             foreach (string projectAlias in snapshot.Project.Aliases)
             {
@@ -63,18 +74,20 @@ public sealed class SqliteProjectCatalog : IProjectCatalog
 
             foreach (CanonicalRepository repository in snapshot.Repositories)
             {
-                _dbContext.Repositories.Add(
-                    new RepositoryRow
-                    {
-                        Id = repository.Id.Value,
-                        ProjectId = repository.ProjectId.Value,
-                        Name = repository.Name,
-                        Provider = repository.Locator.Provider,
-                        ExternalNamespace = repository.Locator.ExternalNamespace,
-                        ExternalName = repository.Locator.ExternalName,
-                        CreatedAt = repository.CreatedAt,
-                        UpdatedAt = repository.UpdatedAt,
-                    });
+                RepositoryRow? existingRepository = existingRepositories
+                    .SingleOrDefault(candidate => candidate.Id == repository.Id.Value);
+                if (existingRepository is null)
+                {
+                    _dbContext.Repositories.Add(ToRow(repository));
+                    continue;
+                }
+
+                existingRepository.Name = repository.Name;
+                existingRepository.Provider = repository.Locator.Provider;
+                existingRepository.ExternalNamespace = repository.Locator.ExternalNamespace;
+                existingRepository.ExternalName = repository.Locator.ExternalName;
+                existingRepository.CreatedAt = repository.CreatedAt;
+                existingRepository.UpdatedAt = repository.UpdatedAt;
             }
 
             await _dbContext.SaveChangesAsync(cancellationToken);
@@ -85,6 +98,18 @@ public sealed class SqliteProjectCatalog : IProjectCatalog
             _dbContext.ChangeTracker.Clear();
         }
     }
+
+    private static RepositoryRow ToRow(CanonicalRepository repository) => new()
+    {
+        Id = repository.Id.Value,
+        ProjectId = repository.ProjectId.Value,
+        Name = repository.Name,
+        Provider = repository.Locator.Provider,
+        ExternalNamespace = repository.Locator.ExternalNamespace,
+        ExternalName = repository.Locator.ExternalName,
+        CreatedAt = repository.CreatedAt,
+        UpdatedAt = repository.UpdatedAt,
+    };
 
     public async Task<ProjectSnapshot?> GetAsync(
         ProjectId projectId,

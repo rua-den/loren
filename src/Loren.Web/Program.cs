@@ -108,9 +108,9 @@ app.MapPost(
     .RequireAuthorization();
 
 app.MapPost(
-        "/api/github/create-branch",
+        "/api/action-proposals/{proposalId}/approve",
         async (
-            OwnerCreateBranchRequest request,
+            string proposalId,
             LorenOwnerGitHubWriteService service,
             HttpContext context,
             CancellationToken cancellationToken) =>
@@ -121,29 +121,31 @@ app.MapPost(
                 return Results.Unauthorized();
             }
 
-            try
+            OwnerActionProposalDecisionResult result = await service.ApproveProposalAndCreateBranchAsync(proposalId, ownerPrincipalReference, cancellationToken);
+            return result.Status switch
             {
-                OwnerCreateBranchResult result = await service.ApproveAndCreateBranchAsync(
-                    request.ProjectAlias,
-                    request.RepositoryId,
-                    request.Branch,
-                    request.SourceSha,
-                    ownerPrincipalReference,
-                    cancellationToken);
-                return Results.Ok(result);
-            }
-            catch (UnknownProjectAliasException exception)
+                "unknown" => Results.NotFound(new { error = result.Message }),
+                "owner_mismatch" => Results.Forbid(),
+                "approved" => Results.Ok(result),
+                _ => Results.Conflict(new { error = result.Message }),
+            };
+        })
+    .RequireAuthorization();
+
+app.MapPost(
+        "/api/action-proposals/{proposalId}/cancel",
+        async (string proposalId, LorenOwnerGitHubWriteService service, HttpContext context, CancellationToken cancellationToken) =>
+        {
+            string? owner = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(owner)) return Results.Unauthorized();
+            OwnerActionProposalDecisionResult result = await service.CancelProposalAsync(proposalId, owner, cancellationToken);
+            return result.Status switch
             {
-                return Results.NotFound(new { error = exception.Message });
-            }
-            catch (ArgumentException exception)
-            {
-                return Results.BadRequest(new { error = exception.Message });
-            }
-            catch (InvalidOperationException exception)
-            {
-                return Results.BadRequest(new { error = exception.Message });
-            }
+                "unknown" => Results.NotFound(new { error = result.Message }),
+                "ownermismatch" or "owner_mismatch" => Results.Forbid(),
+                "cancelled" => Results.Ok(result),
+                _ => Results.Conflict(new { error = result.Message }),
+            };
         })
     .RequireAuthorization();
 

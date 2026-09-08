@@ -1,6 +1,6 @@
 # Loren Project Status
 
-**Last updated:** 2026-09-07  
+**Last updated:** 2026-09-08
 **Current version:** `v0.1 — Useful Trustworthy Assistant`  
 **Current product target:** `M6A.5 — Conversational approval`  
 **Write expansion:** `M5 Slices 4–6 paused until the v0.1 owner checkpoint`  
@@ -13,6 +13,8 @@ This file is the authoritative progress ledger. Read [`handoff.md`](handoff.md) 
 ---
 
 # 1. Green baseline on main
+
+M6A.5 is locally ready in [draft PR #33](https://github.com/rua-den/loren/pull/33), branch `codex/m6a5-conversational-approval`. Parent review and verification passed 180/180 tests, build, format, dependency scan and real-host authentication smoke. The implementation includes trusted conversational proposals, authenticated ID-only decisions, frozen exact targets, one-time approval, verified execution and audit. [CI #257](https://github.com/rua-den/loren/actions/runs/34245561821) passed Ubuntu and Windows for implementation commit `fe75c2c`. Separately authorized live-provider proof remains pending; the milestone is not closed yet.
 
 ```text
 v0.0 Architecture / Feasibility                ✓ complete
@@ -189,24 +191,7 @@ branch to keep:       main
 stale/history branches eligible for prune: 39
 ```
 
-The connector used for this audit does not expose remote branch deletion, so the 39 stale refs were **not physically deleted** from GitHub. Local continuation should prune them before/while starting M6A.5.
-
-Recommended local cleanup:
-
-```powershell
-git fetch --prune
-
-git branch -r |
-  Where-Object { $_ -match 'origin/' -and $_ -notmatch 'origin/main$' -and $_ -notmatch 'origin/HEAD' } |
-  ForEach-Object {
-    $branch = ($_ -replace '^\s*origin/', '').Trim()
-    git push origin --delete $branch
-  }
-
-git fetch --prune
-```
-
-Do not delete `main`.
+The owner explicitly chose to keep all 39 historical remote branches. None were deleted. Do not retry remote cleanup. Continue on `codex/m6a5-conversational-approval`; do not create a replacement branch from main.
 
 ---
 
@@ -238,12 +223,12 @@ Gate E is still required before trusted background scheduler/reminder behavior.
 For Astra/local work:
 
 ```text
-1. Pull main at or after 5dbfa332baca3aba614af8302dfd284b52f244af.
-2. Read docs/status.md and docs/handoff.md first.
-3. Prune stale remote branches; keep main.
-4. Create one fresh feature branch from main for M6A.5.
-5. Implement conversational proposal -> explicit owner approval -> existing verified create-branch executor.
-6. Add deterministic acceptance/security tests before live-provider behavior.
+1. Read docs/status.md and docs/handoff.md first.
+2. Inspect current branch, working changes and CI before continuing.
+3. Keep all 39 historical remote branches unchanged.
+4. Continue codex/m6a5-conversational-approval; preserve existing work.
+5. Finish the recorded review/verification gates, then obtain CI evidence.
+6. Perform live-provider proof only with a concrete separately approved proposal.
 7. Keep Gate D invariants unchanged.
 8. Do not broaden GitHub writes before the v0.1 checkpoint.
 ```
