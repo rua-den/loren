@@ -4,6 +4,16 @@ namespace Loren.Tools.GitHub;
 
 public static class GitHubActions
 {
+    public static readonly ActionDefinition ProposeCreateBranch = new(
+        "github.propose_create_branch",
+        "Propose a non-default GitHub branch for explicit owner approval.",
+        ActionAccessClass.OwnerStateWrite,
+        [
+            new ActionParameterDefinition("branch", "New branch name.", ActionParameterType.Text, true),
+            new ActionParameterDefinition("repository_id", "Optional canonical repository ID.", ActionParameterType.Text, false),
+            new ActionParameterDefinition("source_ref", "Optional source branch or refs/heads ref.", ActionParameterType.Text, false),
+        ]);
+
     public static readonly ActionDefinition ReadRepository = new(
         "github.read_repository",
         "Read current GitHub repository metadata.",

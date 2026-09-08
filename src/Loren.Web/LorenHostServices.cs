@@ -54,6 +54,8 @@ public static class LorenHostServices
         services.AddScoped<IMemoryStore, SqliteMemoryStore>();
         services.AddScoped<IOrganizationStore, SqliteOrganizationStore>();
         services.AddScoped<IActionApprovalStore, SqliteActionApprovalStore>();
+        services.AddScoped<ICreateBranchProposalStore, SqliteCreateBranchProposalStore>();
+        services.AddScoped<ICurrentRunProposalCollector, CurrentRunProposalCollector>();
         services.AddSingleton(new LorenMemoryContextOptions());
         services.AddScoped<LorenMemoryContextBuilder>();
         services.AddScoped<LorenProjectContextBuilder>();
@@ -126,6 +128,12 @@ public static class LorenHostServices
             new GitHubCreateBranchActionExecutor(
                 provider.GetRequiredService<IActionCredentialResolver>(),
                 provider.GetRequiredService<GitHubCreateBranchClient>()));
+        services.AddScoped<IActionExecutor>(provider =>
+            new GitHubCreateBranchProposalExecutor(
+                provider.GetRequiredService<IProjectCatalog>(),
+                provider.GetRequiredService<GitHubRepositoryReadClient>(),
+                provider.GetRequiredService<ICreateBranchProposalStore>(),
+                provider.GetRequiredService<ICurrentRunProposalCollector>()));
 
         foreach (ActionDefinition action in OrganizationActions.All)
         {
@@ -167,6 +175,7 @@ public static class LorenHostServices
                     OrganizationActions.List,
                     OrganizationActions.CompleteTask,
                     OrganizationActions.ReopenTask,
+                    GitHubActions.ProposeCreateBranch,
                     GitHubActions.CreateBranch,
                 ],
                 provider.GetServices<IActionExecutor>(),

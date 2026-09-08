@@ -47,7 +47,7 @@ public sealed class CredentialBoundaryHostCompositionTests
 
             Assert.IsType<EnvironmentActionCredentialResolver>(resolver);
             Assert.False(writeSafetyState.IsReadOnly);
-            Assert.Equal(10, executors.Length);
+            Assert.Equal(11, executors.Length);
 
             IActionExecutor createBranchExecutor = Assert.Single(
                 executors,
@@ -82,6 +82,13 @@ public sealed class CredentialBoundaryHostCompositionTests
             Assert.Single(
                 executors,
                 executor => executor.ActionName == GitHubActions.CreateBranch.Name);
+
+            IActionExecutor proposalExecutor = Assert.Single(
+                executors,
+                executor => executor.ActionName == GitHubActions.ProposeCreateBranch.Name);
+            Assert.IsType<GitHubCreateBranchProposalExecutor>(proposalExecutor);
+            Assert.IsAssignableFrom<ITrustedActionExecutor>(proposalExecutor);
+            Assert.DoesNotContain("Credential", proposalExecutor.GetType().GetFields(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).Select(field => field.FieldType.Name));
         }
         finally
         {

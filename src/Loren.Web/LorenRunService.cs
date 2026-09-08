@@ -14,6 +14,8 @@ public sealed class LorenRunService
     private readonly AgentLoop _agentLoop;
     private readonly InMemoryAuditSink _audit;
     private readonly LorenProjectContextBuilder? _projectContextBuilder;
+    private readonly ICurrentRunProposalCollector _proposalCollector;
+    private readonly ICreateBranchProposalStore? _proposalStore;
 
     public LorenRunService(
         AgentLoop agentLoop,
@@ -25,11 +27,15 @@ public sealed class LorenRunService
     public LorenRunService(
         AgentLoop agentLoop,
         InMemoryAuditSink audit,
-        LorenProjectContextBuilder? projectContextBuilder)
+        LorenProjectContextBuilder? projectContextBuilder,
+        ICurrentRunProposalCollector? proposalCollector = null,
+        ICreateBranchProposalStore? proposalStore = null)
     {
         _agentLoop = agentLoop ?? throw new ArgumentNullException(nameof(agentLoop));
         _audit = audit ?? throw new ArgumentNullException(nameof(audit));
         _projectContextBuilder = projectContextBuilder;
+        _proposalCollector = proposalCollector ?? new CurrentRunProposalCollector();
+        _proposalStore = proposalStore;
     }
 
     public Task<LorenRunResult> RunAsync(
@@ -75,10 +81,12 @@ public sealed class LorenRunService
                     ? null
                     : ProjectId.Parse(preparedContext.Project.ProjectId));
 
+        _proposalCollector.Start();
         AgentRunResult result = await _agentLoop.RunAsync(
             preparedContext.BrainContext,
             [
                 GitHubActions.ReadRepository,
+                GitHubActions.ProposeCreateBranch,
                 WebActions.Search,
                 WebActions.Fetch,
                 OrganizationActions.CreateNote,
@@ -90,6 +98,19 @@ public sealed class LorenRunService
             ],
             ownerContext,
             cancellationToken);
+
+        List<PendingCreateBranchProposal> proposals = [];
+        if (_proposalStore is not null)
+        {
+            foreach (CreateBranchProposalId proposalId in _proposalCollector.Drain())
+            {
+                CreateBranchProposal? proposal = await _proposalStore.GetAsync(proposalId, cancellationToken);
+                if (proposal is not null)
+                {
+                    proposals.Add(new PendingCreateBranchProposal(proposal.Id.ToString(), proposal.ActionName, proposal.RepositoryLocator.FullName, proposal.Branch, proposal.SourceRef, proposal.SourceSha, proposal.AccessClass.ToString(), proposal.CreatedAt, proposal.ExpiresAt));
+                }
+            }
+        }
 
         LorenAuditEntry[] auditEntries = _audit
             .Snapshot()
@@ -103,7 +124,8 @@ public sealed class LorenRunService
             result.Turns,
             result.ActionCount,
             auditEntries,
-            preparedContext.Project);
+            preparedContext.Project,
+            proposals);
     }
 
     private static LorenAuditEntry ToAuditEntry(AuditEvent auditEvent) => new(
@@ -125,7 +147,8 @@ public sealed record LorenRunResult(
     int Turns,
     int ActionCount,
     IReadOnlyList<LorenAuditEntry> Audit,
-    LorenProjectContext? Project = null);
+    LorenProjectContext? Project = null,
+    IReadOnlyList<PendingCreateBranchProposal>? Proposals = null);
 
 public sealed record LorenAuditEntry(
     string ActionId,

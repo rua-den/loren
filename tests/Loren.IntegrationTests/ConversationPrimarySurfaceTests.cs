@@ -1,3 +1,4 @@
+using System.Reflection;
 using Loren.Core.Brains;
 using Loren.Core.Memories;
 using Loren.Core.Projects;
@@ -11,6 +12,25 @@ namespace Loren.IntegrationTests;
 
 public sealed class ConversationPrimarySurfaceTests
 {
+    [Fact]
+    public void ConversationalApprovalSurfaceRendersAllProposalsSafelyAndUsesIdOnlyDecisions()
+    {
+        Type ownerPages = typeof(LorenRunService).Assembly.GetType("Loren.Web.OwnerPages")!;
+        FieldInfo consoleField = ownerPages.GetField("Console", BindingFlags.Static | BindingFlags.Public)!;
+        Assert.NotNull(consoleField);
+        string html = (string)consoleField.GetRawConstantValue()!;
+        Assert.Contains("function renderProposals(proposals)", html, StringComparison.Ordinal);
+        Assert.Contains("for (const proposal of proposals ?? [])", html, StringComparison.Ordinal);
+        Assert.Contains("textContent = `Repository:", html, StringComparison.Ordinal);
+        Assert.Contains("approve.disabled = true; cancel.disabled = true", html, StringComparison.Ordinal);
+        Assert.Contains("/api/action-proposals/${encodeURIComponent(proposal.proposalId)}/${kind}", html, StringComparison.Ordinal);
+        Assert.Contains("renderActivity({ runId: 'decision'", html, StringComparison.Ordinal);
+        Assert.Contains("addMessage('assistant', result.textContent)", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("/api/github/create-branch", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("confirm(", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("write-source-sha", html, StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task ProjectCueInfersCanonicalContextMemoryAndBoundedRecentHistory()
     {

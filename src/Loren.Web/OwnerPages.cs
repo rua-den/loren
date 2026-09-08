@@ -188,18 +188,6 @@ internal static class OwnerPages
           <pre id="bootstrap-result" class="result empty">Not configured in this session.</pre>
         </section>
 
-        <section>
-          <h2>Create-branch safety harness</h2>
-          <p class="warning"><strong>External write.</strong> This remains the explicit low-level M5 test harness. M6A.5 will replace normal use with a conversational approval card.</p>
-          <div class="grid">
-            <div><label for="write-project-alias">Project alias</label><input id="write-project-alias" placeholder="loren" /></div>
-            <div><label for="write-repository-id">Repository ID (optional)</label><input id="write-repository-id" placeholder="Only for disambiguation" /></div>
-            <div><label for="write-branch">New branch</label><input id="write-branch" placeholder="loren/manual-smoke" /></div>
-            <div><label for="write-source-sha">Exact source commit SHA</label><input id="write-source-sha" placeholder="40-character Git commit SHA" maxlength="40" /></div>
-          </div>
-          <button id="create-branch" class="danger" type="button">Approve &amp; create branch</button>
-          <pre id="write-result" class="result empty">No write attempted.</pre>
-        </section>
       </div>
     </details>
   </main>
@@ -227,8 +215,6 @@ internal static class OwnerPages
     const logout = document.getElementById('logout');
     const bootstrap = document.getElementById('bootstrap');
     const bootstrapResult = document.getElementById('bootstrap-result');
-    const createBranch = document.getElementById('create-branch');
-    const writeResult = document.getElementById('write-result');
 
     let history = [];
     let projects = [];
@@ -350,6 +336,38 @@ internal static class OwnerPages
       }
     }
 
+    function renderProposals(proposals) {
+      for (const proposal of proposals ?? []) {
+        const card = document.createElement('section');
+        card.className = 'panel proposal-card';
+        const title = document.createElement('h2');
+        title.textContent = 'Đề xuất thay đổi GitHub';
+        card.appendChild(title);
+        const details = document.createElement('p');
+        details.textContent = `Repository: ${proposal.repository} · Branch: ${proposal.branch} · Source: ${proposal.sourceRef} (${proposal.sourceSha}) · Hết hạn: ${proposal.expiresAt}`;
+        card.appendChild(details);
+        const note = document.createElement('p');
+        note.textContent = 'Thay đổi GitHub bên ngoài; cần mày duyệt một lần.';
+        card.appendChild(note);
+        const approve = document.createElement('button'); approve.textContent = 'Duyệt';
+        const cancel = document.createElement('button'); cancel.textContent = 'Huỷ';
+        const result = document.createElement('p');
+        const decide = async (kind) => {
+          approve.disabled = true; cancel.disabled = true;
+          try {
+            const response = await postJson(`/api/action-proposals/${encodeURIComponent(proposal.proposalId)}/${kind}`, {});
+            result.textContent = response.message ?? (kind === 'cancel' ? 'Đã huỷ; không có thay đổi GitHub nào được thực hiện.' : 'Đã xử lý đề xuất.');
+            addMessage('assistant', result.textContent);
+            if (response.audit) renderActivity({ runId: 'decision', turns: 0, actionCount: 0, audit: response.audit });
+          } catch (error) { result.textContent = error instanceof Error ? error.message : String(error); }
+        };
+        approve.addEventListener('click', () => void decide('approve'));
+        cancel.addEventListener('click', () => void decide('cancel'));
+        card.append(approve, cancel, result);
+        chat.appendChild(card);
+      }
+    }
+
     async function sendMessage() {
       const text = message.value.trim();
       if (!text || send.disabled) return;
@@ -370,6 +388,12 @@ internal static class OwnerPages
         });
         pending.remove();
         addMessage('assistant', result.finalOutput);
+        renderProposals(result.proposals);
+        for (const proposal of result.proposals ?? []) {
+          const outcome = document.createElement('p');
+          outcome.textContent = `Đề xuất ${proposal.repository} / ${proposal.branch} đang chờ duyệt.`;
+          chat.appendChild(outcome);
+        }
         history.push({ role: 'user', content: text });
         history.push({ role: 'assistant', content: result.finalOutput });
         renderActivity(result);
@@ -418,49 +442,12 @@ internal static class OwnerPages
         bootstrapResult.className = 'result';
         bootstrapResult.textContent = JSON.stringify(result, null, 2);
         const alias = result.aliases?.[0] ?? '';
-        document.getElementById('write-project-alias').value = alias;
-        document.getElementById('write-repository-id').value = result.repositoryId ?? '';
         await loadProjects(alias);
       } catch (error) {
         bootstrapResult.className = 'result error';
         bootstrapResult.textContent = error instanceof Error ? error.message : String(error);
       } finally {
         bootstrap.disabled = false;
-      }
-    });
-
-    createBranch.addEventListener('click', async () => {
-      const alias = document.getElementById('write-project-alias').value.trim();
-      const repositoryId = document.getElementById('write-repository-id').value.trim();
-      const branch = document.getElementById('write-branch').value.trim();
-      const sourceSha = document.getElementById('write-source-sha').value.trim();
-
-      if (!alias || !branch || !sourceSha) {
-        writeResult.className = 'result error';
-        writeResult.textContent = 'Project alias, branch and exact source SHA are required.';
-        return;
-      }
-
-      if (!confirm(`Approve one-time GitHub branch creation?\n\nProject: ${alias}\nRepository ID: ${repositoryId || '(single GitHub repo)'}\nBranch: ${branch}\nSource SHA: ${sourceSha}`)) {
-        return;
-      }
-
-      createBranch.disabled = true;
-      writeResult.className = 'result';
-      writeResult.textContent = 'Executing approved action…';
-      try {
-        const result = await postJson('/api/github/create-branch', {
-          projectAlias: alias,
-          repositoryId: repositoryId || null,
-          branch,
-          sourceSha
-        });
-        writeResult.textContent = JSON.stringify(result, null, 2);
-      } catch (error) {
-        writeResult.className = 'result error';
-        writeResult.textContent = error instanceof Error ? error.message : String(error);
-      } finally {
-        createBranch.disabled = false;
       }
     });
 
