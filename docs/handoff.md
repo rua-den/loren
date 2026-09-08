@@ -5,7 +5,7 @@
 **Source of truth:** `docs/status.md` + this file  
 **Current phase:** `v0.1 — Useful Trustworthy Assistant`  
 **Current target:** `M6A.5 — Conversational approval`  
-**Current open PRs:** `none`
+**Current open PR:** [draft PR #33](https://github.com/rua-den/loren/pull/33)
 
 This is the compact continuation checkpoint for Astra/local work or a fresh thread.
 
@@ -117,7 +117,7 @@ The only real mutation needed for M6A.5 already exists: verified `github.create_
 
 ## NEXT — M6A.5 conversational approval
 
-Implementation is locally ready on `codex/m6a5-conversational-approval` (foundation `e65668a`). Parent review and verification passed 180/180 tests, build, full format, dependency scan and real-host authentication smoke. Review fixes include safe empty-ID handling and repository updates that preserve proposal foreign keys. Real HTTP tests cover chat → frozen proposals → explicit approval/cancel → Gate D → fake provider write/read-back/audit, including replay and adversarial input. CI and separately authorized live GitHub proof remain pending. Keep all 39 old remote branches unchanged, as the owner requested.
+Implementation is locally ready on `codex/m6a5-conversational-approval` (foundation `e65668a`, implementation `fe75c2c`). Parent review and verification passed 180/180 tests, build, full format, dependency scan and real-host authentication smoke. Review fixes include safe empty-ID handling and repository updates that preserve proposal foreign keys. Real HTTP tests cover chat → frozen proposals → explicit approval/cancel → Gate D → fake provider write/read-back/audit, including replay and adversarial input. [CI #257](https://github.com/rua-den/loren/actions/runs/34245561821) passed Ubuntu and Windows for `fe75c2c`; check PR #33 for subsequent documentation-head checks. Separately authorized live GitHub proof remains pending. Keep all 39 old remote branches unchanged, as the owner requested.
 
 Do **not** add another GitHub mutation primitive.
 
