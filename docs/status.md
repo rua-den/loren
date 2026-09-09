@@ -1,9 +1,9 @@
 # Loren Project Status
 
 **Last updated:** 2026-09-08
-**Current version:** `v0.1 — Useful Trustworthy Assistant`  
-**Current product target:** `M6A.5 — Conversational approval`  
-**Write expansion:** `M5 Slices 4–6 paused until the v0.1 owner checkpoint`  
+**Current version:** `v0.1 — Useful Trustworthy Assistant`
+**Current product target:** `M6A.5 live proof → v0.1 owner checkpoint`
+**Write expansion:** `M5 Slices 4–6 paused until the v0.1 owner checkpoint`
 **Decision gates passed:** `Gate A`, `Gate B`, `Gate C`, `Gate D`
 
 This file is the authoritative progress ledger. Read [`handoff.md`](handoff.md) next when continuing locally or in a fresh thread.
@@ -14,7 +14,7 @@ This file is the authoritative progress ledger. Read [`handoff.md`](handoff.md) 
 
 # 1. Green baseline on main
 
-M6A.5 is locally ready in [draft PR #33](https://github.com/rua-den/loren/pull/33), branch `codex/m6a5-conversational-approval`. Parent review and verification passed 180/180 tests, build, format, dependency scan and real-host authentication smoke. The implementation includes trusted conversational proposals, authenticated ID-only decisions, frozen exact targets, one-time approval, verified execution and audit. [CI #257](https://github.com/rua-den/loren/actions/runs/34245561821) passed Ubuntu and Windows for implementation commit `fe75c2c`. Separately authorized live-provider proof remains pending; the milestone is not closed yet.
+M6A.5 implementation is merged through [PR #33](https://github.com/rua-den/loren/pull/33). Parent verification passed 180/180 tests, build, format, dependency scan and real-host authentication smoke. PR CI #258 and post-merge main CI #259 passed Ubuntu and Windows. Next: [live proof and the owner checkpoint](owner-checkpoint.md). M6A.5/v0.1 are not closed until that evidence is recorded.
 
 ```text
 v0.0 Architecture / Feasibility                ✓ complete
@@ -30,15 +30,16 @@ M6A.1 conversation primary surface             ✓ complete
 M6A.2 current-information web search           ✓ complete
 M6A.3 source-aware bounded research            ✓ complete
 M6A.4 Notes / Decisions / Tasks                ✓ complete
+M6A.5 conversational approval                  ✓ merged; live proof pending
 ```
 
 Latest green main baseline:
 
 ```text
-PR #32 — M6A.4 durable organization state
-merge: 5dbfa332baca3aba614af8302dfd284b52f244af
-PR exact-head CI #253 / 34094209539: PASS Ubuntu + Windows
-post-merge main CI #254 / 34094698595: PASS Ubuntu + Windows
+PR #33 — M6A.5 conversational approval
+implementation merge: 1cb4fd7f3c21d11118051c5170ae17e9fdd0cbdf
+PR exact-head CI #258 / 34245950311: PASS Ubuntu + Windows
+post-merge main CI #259 / 34246514926: PASS Ubuntu + Windows
 ```
 
 PR #32 also added the repository root `.gitignore` for .NET build output, IDE state, local `.env` files, SQLite runtime files including `loren.db*`, logs/temp artifacts and OS junk. `.env.example` remains tracked.
@@ -137,7 +138,7 @@ Existing real mutation proof: verified creation of a non-default GitHub branch f
 
 ---
 
-# 4. Current target — M6A.5 Conversational approval
+# 4. Current target — M6A.5 live proof
 
 Do **not** add another GitHub mutation primitive. Reuse the existing verified `github.create_branch` path.
 
@@ -176,22 +177,21 @@ owner authentication
 conversation-first OwnerPages UI
 ```
 
-Before implementing source-SHA proposal resolution, inspect/reuse the existing GitHub read path for live repository/default-branch state.
+This flow is implemented and covered by authenticated HTTP tests. Next run it with real providers, inspect and explicitly decide the frozen proposal, independently verify the GitHub ref, and record evidence using [owner-checkpoint.md](owner-checkpoint.md). Do not rebuild the existing proposal/approval path.
 
 ---
 
 # 5. Branch audit / repository hygiene
 
-Audit performed 2026-09-07:
+Cleanup verified 2026-09-08 after the owner authorized removal:
 
 ```text
-remote branches found: 40
-open PRs:             0
-branch to keep:       main
-stale/history branches eligible for prune: 39
+obsolete remote branches deleted: 40 (39 historical + merged PR #33 branch)
+remaining remote/local branch at cleanup: main
+main preserved: 1cb4fd7f3c21d11118051c5170ae17e9fdd0cbdf
 ```
 
-The owner explicitly chose to keep all 39 historical remote branches. None were deleted. Do not retry remote cleanup. Continue on `codex/m6a5-conversational-approval`; do not create a replacement branch from main.
+All deleted branches were integrated: 11 ancestors of main, 27 exact merged PR heads, two ancestors of a merged PR head. No open PR depended on them. Deletion used exact SHA leases and an atomic push. Local recovery artifacts: `.git/branch-cleanup-before-20260908.bundle` and `.git/branch-cleanup-verified.json`. The later cleanup authorization superseded the earlier keep-39 instruction. Do not resume the deleted feature branch.
 
 ---
 
@@ -225,10 +225,10 @@ For Astra/local work:
 ```text
 1. Read docs/status.md and docs/handoff.md first.
 2. Inspect current branch, working changes and CI before continuing.
-3. Keep all 39 historical remote branches unchanged.
-4. Continue codex/m6a5-conversational-approval; preserve existing work.
-5. Finish the recorded review/verification gates, then obtain CI evidence.
-6. Perform live-provider proof only with a concrete separately approved proposal.
+3. Start from current main; historical branches have been cleaned up.
+4. Follow docs/owner-checkpoint.md; configure providers locally without exposing secrets.
+5. Run real-provider conversational approval proof and the owner checklist.
+6. Record evidence; delegate any code fixes to Luna medium, then review/test/PR/merge.
 7. Keep Gate D invariants unchanged.
 8. Do not broaden GitHub writes before the v0.1 checkpoint.
 ```

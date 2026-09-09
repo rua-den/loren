@@ -38,11 +38,11 @@ Read/understand comes before broad external mutation.
 
 ## Current status
 
-**Last updated:** 2026-09-07  
-**Phase:** `v0.1 — Useful Trustworthy Assistant`  
-**Completed:** `M1–M4`, `Gate D`, `M5 write-safety Slices 1–3`, `M6A.1`, `M6A.2`, `M6A.3`  
-**Ready to merge:** `M6A.4 — Notes / Decisions / Tasks` via PR #32  
-**Next:** `M6A.5 — Conversational approval`  
+**Last updated:** 2026-09-07
+**Phase:** `v0.1 — Useful Trustworthy Assistant`
+**Completed:** `M1–M4`, `Gate D`, `M5 write-safety Slices 1–3`, `M6A.1`, `M6A.2`, `M6A.3`
+**Merged:** `M6A.5 — Conversational approval` via PR #33
+**Next:** UI polish, then real-provider proof and owner acceptance
 **Paused:** `M5 file/commit/PR write expansion` until the v0.1 owner checkpoint is usable
 
 Detailed status: [`docs/status.md`](docs/status.md). Fresh-thread continuation: [`docs/handoff.md`](docs/handoff.md).
@@ -107,9 +107,9 @@ canonical target
 
 The first real write proof is verified creation of a **non-default GitHub branch**. Broader GitHub writes remain paused.
 
-## Current execution — M6A.5 Task 3
+## Current execution — M6A.5 merged; owner checkpoint pending
 
-The conversational proposal and explicit approval flow is locally ready in [draft PR #33](https://github.com/rua-den/loren/pull/33). The brain can propose a branch, Loren resolves and freezes the canonical repository/source SHA, and authenticated ID-only approval/cancel routes feed the existing verified write path. Parent review, 180 tests, build, format and authentication smoke pass. [CI #257](https://github.com/rua-den/loren/actions/runs/34245561821) passed Ubuntu and Windows for `fe75c2c`; live-provider proof remains pending.
+The conversational approval flow is merged through [PR #33](https://github.com/rua-den/loren/pull/33). The brain proposes a branch; Loren freezes the canonical repository/source SHA; ID-only owner decisions use the existing verified write path. Parent review, 180 tests, build, format and authentication smoke pass. [Post-merge CI #259](https://github.com/rua-den/loren/actions/runs/34246514926) passed Ubuntu and Windows. Next: [real-provider proof and the owner checklist](docs/owner-checkpoint.md).
 
 PR #32 adds durable Loren-owned organization state:
 
@@ -139,7 +139,7 @@ State is stored in SQLite through migration `202609070001_AddOrganizationItems`;
 
 No background scheduling/reminder delivery is introduced; Gate E remains required for background execution.
 
-## Next — M6A.5 conversational approval
+## Next — M6A.5 live proof and owner acceptance
 
 Reuse the already-safe `github.create_branch` executor through the intended UX:
 
