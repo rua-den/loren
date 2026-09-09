@@ -3,7 +3,7 @@
 **Updated:** 2026-09-09
 **Repository:** `rua-den/loren`
 **Read:** `docs/status.md` → this file → `docs/owner-checkpoint.md`
-**Next:** Owner-requested graphite/cyan UI polish, then M6A.5 real-provider proof and the v0.1 owner checkpoint.
+**Next:** Owner visual review of the first graphite/cyan UI iteration, then M6A.5 real-provider proof and the v0.1 owner checkpoint.
 
 ## Verified implementation baseline
 
@@ -34,6 +34,12 @@ Follow [owner-checkpoint.md](owner-checkpoint.md):
 5. Independently verify the real GitHub ref/SHA, natural outcome, audit and one-time behavior; record evidence without secrets.
 6. Delegate bounded implementation fixes to Luna medium, then review and independently test before push/PR/merge.
 7. Close M6A.5 only after live proof. Evaluate the full owner checklist before resuming broader writes; recovery/security/release gates still apply before v0.1.0.
+
+## UI iteration for owner review
+
+The first graphite/cyan UI iteration is implemented in `OwnerPages.cs`: responsive chat and activity/setup panel, Vietnamese controls, bounded DOM-based Markdown and styled proposal cards. No persistent conversation history, separate task board or streaming is added in this iteration.
+
+Parent browser verification used real-host login plus deterministic local UI fixture data to exercise Markdown, blocked unsafe links/raw HTML, copy-code, cancellation and mobile context disclosure. This is UI verification, not live-provider acceptance. The optional ignored fixture `artifacts/ui-preview-server.cjs` serves actual console markup at `http://127.0.0.1:5093`; its responses are simulated and its banner identifies that fact.
 
 ## Owner setup observed
 
