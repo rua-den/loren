@@ -10,5 +10,6 @@ public sealed class CanonicalStateDbContextModelSnapshot : ModelSnapshot
     {
         modelBuilder.HasAnnotation("ProductVersion", "10.0.11");
         CanonicalStateModel.Configure(modelBuilder);
+        modelBuilder.Entity<AuditEventRow>().Property(audit => audit.Id).ValueGeneratedOnAdd();
     }
 }
