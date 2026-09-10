@@ -3,6 +3,7 @@ using Loren.Core.Actions;
 using Loren.Core.Audit;
 using Loren.Core.Brains;
 using Loren.Core.Credentials;
+using Loren.Core.Conversations;
 using Loren.Core.Memories;
 using Loren.Core.Organization;
 using Loren.Core.Projects;
@@ -55,14 +56,17 @@ public static class LorenHostServices
         services.AddScoped<IOrganizationStore, SqliteOrganizationStore>();
         services.AddScoped<IActionApprovalStore, SqliteActionApprovalStore>();
         services.AddScoped<ICreateBranchProposalStore, SqliteCreateBranchProposalStore>();
+        services.AddScoped<IConversationStore, SqliteConversationStore>();
+        services.AddSingleton<ConversationExecutionGate>();
         services.AddScoped<ICurrentRunProposalCollector, CurrentRunProposalCollector>();
         services.AddSingleton(new LorenMemoryContextOptions());
         services.AddScoped<LorenMemoryContextBuilder>();
         services.AddScoped<LorenProjectContextBuilder>();
 
         services.AddSingleton<InMemoryAuditSink>();
-        services.AddSingleton<IAuditSink>(provider =>
-            provider.GetRequiredService<InMemoryAuditSink>());
+        services.AddScoped<DurableAuditSink>();
+        services.AddScoped<IAuditSink>(provider =>
+            provider.GetRequiredService<DurableAuditSink>());
 
         bool writesEnabled = string.Equals(
             configuration["LOREN_ENABLE_WRITES"],

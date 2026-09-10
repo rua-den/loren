@@ -23,6 +23,7 @@ coverage/
 .env.*.local
 *.secrets.json
 **/appsettings.Local.json
+/src/Loren.Web/appsettings.json
 
 # Loren local runtime state
 **/loren.db

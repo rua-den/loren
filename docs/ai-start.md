@@ -1,6 +1,6 @@
 # Start here: contributing to Loren
 
-> Current checkpoint (2026-09-10): UI/theme PR #34 is merged on main as `aa154f1`. The next setup change, on `codex/appsettings-config`, adds ignored `appsettings.Local.json` with environment overrides, including GitHub write credentials. See README and owner-checkpoint for setup. Earlier UI branch references below are historical. Real-provider acceptance remains pending.
+> WIP checkpoint: `codex/conversation-continuity` contains unfinished history, launcher and recovery work. Current build is blocked by unresolved ProjectAlias in LogicalStateRecovery; prior EF migration drift remains unverified. Read the WIP continuation section in [handoff.md](handoff.md) before coding. Last green main is `e9e8165` (183 tests); do not merge this checkpoint.
 
 
 Updated 2026-09-10. Read [status.md](status.md), then [handoff.md](handoff.md). These are the current ledger and continuation instructions; older plans/reports are historical evidence.
@@ -8,7 +8,7 @@ Updated 2026-09-10. Read [status.md](status.md), then [handoff.md](handoff.md). 
 ## Locate the current work
 
 - Repository: `rua-den/loren`.
-- Current development branch: `codex/cyber-ui`. UI implementation through `a4d36de`, preceded by `8cc3cea`; checkpoint docs started at `ab0b6b1`.
+- Historical UI branch: `codex/cyber-ui` (merged). UI implementation through `a4d36de`, preceded by `8cc3cea`; checkpoint docs started at `ab0b6b1`.
 - The pre-UI main baseline was M6A.5 merge `1cb4fd7` (PR #33). UI/theme integration is tracked in [PR #34](https://github.com/rua-den/loren/pull/34). After it is merged, fetch and use current main; until then use the PR head.
 - Read `git status --short` and preserve others' changes. Give each concurrent coding task its own branch/worktree and clear file ownership. Do not let multiple agents edit `OwnerPages.cs` simultaneously.
 
@@ -16,7 +16,7 @@ Updated 2026-09-10. Read [status.md](status.md), then [handoff.md](handoff.md). 
 
 Loren is a personal secretary you talk to and catch up with. Conversation comes first. Saved facts, decisions and tasks support continuity. Project selection, tool activity and setup live behind **Chi tiết**. GitHub proposals appear only when relevant and require explicit owner decisions.
 
-Keep the existing web UI and local .NET host for now. A one-click launcher and desktop packaging are possible follow-ups, not implemented or approved architecture changes. No desktop framework has been selected. Do not start a rewrite based on the earlier Jarvis analogy.
+Keep the existing web UI and local .NET host for now. A one-click Windows launcher is approved in the continuity plan. Desktop packaging remains deferred. No desktop framework has been selected. Do not start a rewrite based on the earlier Jarvis analogy.
 
 ## What exists and where
 
@@ -38,7 +38,7 @@ Keep the existing web UI and local .NET host for now. A one-click launcher and d
 3. Complete the live M6A.5 Cancel → fresh proposal → Approve → independent GitHub SHA read-back proof.
 4. Fix findings in bounded slices, with code review and relevant verification. Broader product writes stay paused until the owner checkpoint.
 
-Persistent conversation history, a separate task board, streaming, automatic catch-up, desktop packaging and background delivery are **not implemented**. These are candidate future scopes, not concurrent assignments. Background execution requires Gate E; v0.1 release gates remain open.
+Persistent conversation history, a separate task board, streaming, automatic catch-up, desktop packaging and background delivery are **not implemented**. Conversation persistence is now approved and in progress; the other features remain deferred. Background execution requires Gate E; v0.1 release gates remain open.
 
 ## Working agreement
 

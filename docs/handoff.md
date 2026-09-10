@@ -1,72 +1,71 @@
 # Loren Thread Handoff
 
-> Current checkpoint (2026-09-10): UI/theme PR #34 is merged on main as `aa154f1`. The next setup change, on `codex/appsettings-config`, adds ignored `appsettings.Local.json` with environment overrides, including GitHub write credentials. See README and owner-checkpoint for setup. Earlier UI branch references below are historical. Real-provider acceptance remains pending.
+Updated 2026-09-10. Read `docs/status.md`, this file and `docs/plans/2026-09-10-continuity.md`.
 
+## Current checkpoint
 
-**Updated:** 2026-09-10
-**Repository:** `rua-den/loren`
-**Read:** `docs/ai-start.md` → `docs/status.md` → this file → `docs/owner-checkpoint.md`
-**Next:** Review the chat-first/theme UI, then run real-provider acceptance and the M6A.5 live approval proof.
+- Main baseline: `e9e8165`, PR #35 appsettings fallback merged; 183 tests and CI #263 passed Windows/Ubuntu. UI/theme PR #34 is also merged.
+- Active branch: `codex/conversation-continuity`.
+- Owner approved: checkpoint cleanup, persistent conversation history, Windows one-click launcher, export/restore, then deterministic reliability coverage. Execute sequentially with Luna medium writing code and parent reviewing/testing.
+- Owner has no time for live acceptance now. Defer that work without calling M6A.5 or v0.1 complete.
 
-## Branch checkpoint
+## Existing capabilities
 
-Current development branch: `codex/cyber-ui`. UI implementation commits: `8cc3cea` and `a4d36de`; preceding checkpoint docs: `ab0b6b1`. These are delivered through [PR #34](https://github.com/rua-den/loren/pull/34). Use current main once that PR is merged. Fetch the branch and read [ai-start.md](ai-start.md) before assigning code work. The tests below for main are historical baseline evidence; current UI tests total 182.
+Authenticated chat-first UI with White, Graphite-Black and Graphite-Cyan themes, safe Markdown, project context, trusted durable memory, web search/fetch and research, durable notes/decisions/tasks, user-triggered catch-up and conversational create-branch proposals.
 
-## Verified implementation baseline
+GitHub creation remains proposal -> explicit owner decision -> one-time approval -> purpose-bound credential -> execute -> independent verification -> redacted audit. Request text and history never grant approval. M5 Slices 4-6 remain paused until owner acceptance; this does not restrict developer Git/PR workflows.
 
-- M1–M4, Gate D, M5 Slices 1–3 and M6A.1–4 complete.
-- M6A.5 code merged through [PR #33](https://github.com/rua-den/loren/pull/33), merge `1cb4fd7f3c21d11118051c5170ae17e9fdd0cbdf`.
-- Parent independently passed 180/180 tests, Release build, full format, dependency/secret-pattern scans and real-host authentication smoke.
-- [PR CI #258](https://github.com/rua-den/loren/actions/runs/34245950311) and [post-merge CI #259](https://github.com/rua-den/loren/actions/runs/34246514926) passed Ubuntu and Windows.
-- No outstanding implementation review findings. Real-provider conversational approval proof and full owner acceptance remain pending. Do not mark M6A.5/v0.1 complete yet.
+## Setup
 
-Loren remains a personal secretary: converse → remember → retrieve current information → research → organize → propose → owner approves → execute/verify/audit.
+Read README and `docs/owner-checkpoint.md`. Standard appsettings.json is supported; optional ignored appsettings.Local.json overrides base JSON, environment overrides JSON, CLI overrides environment. The example file is not loaded automatically. Local JSON requires restart and is excluded from build/publish output. The owner prefers JSON configuration. Do not inspect or print secret values; keep any real-key config untracked. `.env` is not automatically loaded.
 
-## Already implemented
+Default provider: Ollama gpt-oss:120b at https://ollama.com/api/chat. OLLAMA_API_KEY also supports web search/fetch. Git developer SSH is separate from GITHUB_WRITE_TOKEN used by Loren's HTTP write client.
 
-Authenticated conversation, bounded history, canonical project context, trusted durable memory, public GitHub reads, web search/fetch, and durable Notes/Decisions/Tasks.
+## Next actions
 
-`github.propose_create_branch` resolves a canonical repository and live exact source SHA, persists a frozen owner-bound five-minute proposal, and surfaces authoritative cards for every proposal in the current run. ID-only Approve/Cancel routes use an atomic decision, Gate D, write credentials, existing create-branch executor, independent read-back and safe audit. The brain cannot see the mutation action or grant approval; chat is intent only.
+Follow the approved continuity plan and its ledger. Use temporary databases and deterministic providers for technical verification. Preserve themes, chat-first navigation, canonical identity, approval isolation and credential redaction. Do not add streaming, task board, desktop wrapper, voice or scheduler to this scope.
 
-Review fixes include empty-ID 404 handling and catalog updates preserving proposal foreign keys; rebound targets fail before approval. Startup migrations include `202609070001_AddOrganizationItems` and `202609070002_AddCreateBranchProposals`.
+Later owner acceptance: normal chat/catch-up quality, current sources/research, memory/tasks across restart and M6A.5 Cancel -> fresh proposal -> Approve -> independent GitHub SHA proof. No automatic product mutation during development substitutes for the owner's explicit approval.
 
-## Immediate next work
+## Developer workflow
 
-Follow [owner-checkpoint.md](owner-checkpoint.md):
+- Code/refactors: gpt-5.6-luna, medium. Orchestrator reviews and independently tests. No secret values in docs, tests, logs or commits.
+- Commit identity: turtle <nhkhuy241@gmail.com>. Personal SSH alias github-personal. Port 443 fallback uses ssh.github.com and HostKeyAlias=github.com with host-key verification.
+- Parent may push/create PR/merge after review and green CI, as already authorized.
+- RTK was blocked by Windows group policy; direct commands are the documented fallback. Agent tests may hit error1260; parent approved execution has worked.
+- Changed C# must be UTF-8 LF. Historical full-format issues were checkout line endings, not approval to ignore new failures.
+- Historical branch cleanup removed 40 integrated remote branches. Do not repeat cleanup from stale branch names; inspect current refs. Local recovery bundle and audit remain under .git.
 
-1. Configure local owner password and Ollama key; launch read-only.
-2. Exercise chat, current sources, research, canonical project context, memory/restart and tasks.
-3. Prepare a write-specific GitHub API token and canonical target for live proof. Developer SSH does not replace the application's HTTP credential.
-4. Request a disposable branch proposal; inspect repo, branch, exact source SHA and expiry. Test Cancel, then request a fresh proposal and explicitly Approve the intended target.
-5. Independently verify the real GitHub ref/SHA, natural outcome, audit and one-time behavior; record evidence without secrets.
-6. Delegate bounded implementation fixes to Luna medium, then review and independently test before push/PR/merge.
-7. Close M6A.5 only after live proof. Evaluate the full owner checklist before resuming broader writes; recovery/security/release gates still apply before v0.1.0.
+The optional localhost:5093 UI fixture uses simulated data and is not a fresh-clone feature or live-provider evidence.
 
-## UI iteration for owner review
+## WIP checkpoint — continuation required
 
-The first graphite/cyan UI iteration is implemented in `OwnerPages.cs`: responsive chat and activity/setup panel, Vietnamese controls, bounded DOM-based Markdown and styled proposal cards. Theme follow-up adds White, Graphite–Black and Graphite–Cyan with local preference persistence on login/chat. Chat is centered by default; project/audit/setup stay behind Chi tiết. Bắt nhịp hôm nay explicitly submits a grounded request through the existing chat/tool flow across projects, preserves drafts, and does not auto-call providers at page load. No persistent conversation history, automatic catch-up, separate task board or streaming is added. Final parent verification: 182/182 tests passed; browser checked theme persistence, white content, catch-up draft preservation and desktop/mobile context-state transitions. Live-provider acceptance remains pending.
+Owner explicitly requested pushing unfinished work before usage runs out so another AI can continue. This is a development checkpoint, NOT a passing implementation or merge candidate.
 
-Parent browser verification used real-host login plus deterministic local UI fixture data to exercise Markdown, blocked unsafe links/raw HTML, copy-code, cancellation and mobile context disclosure. This is UI verification, not live-provider acceptance. The optional ignored fixture `artifacts/ui-preview-server.cjs` serves actual console markup at `http://127.0.0.1:5093`; its responses are simulated and its banner identifies that fact.
+Branch: `codex/conversation-continuity`. Last green main: `e9e8165` (PR #35, 183 tests). All work below is based on that baseline.
 
-## Owner setup observed
+### Implemented but not fully verified
 
-Presence-only checks found `LOREN_OWNER_PASSWORD`, `OLLAMA_API_KEY` and `GITHUB_WRITE_TOKEN` absent from this process and the user's persistent environment. Other shells/secret stores were not inspected. Recheck presence at launch; never print values or ask for tokens in chat.
+- Authenticated conversation store/API/UI with SQLite migration `202609100001_AddConversations`, sequence ordering, latest-200 message window, per-conversation overlap gate, selected conversation restoration and HTTP/store tests.
+- Windows `Start-Loren.cmd` + `scripts/Start-Loren.ps1`: repo SDK selection, implicit restore/build, direct DLL host process, loopback 5091, readiness/login marker, no-browser/dry-run/smoke modes. Standard appsettings.json and Local.json excluded from Git/build/publish.
+- Recovery draft: `LogicalStateRecovery`, audit row/composite sink/migration `202609100002_AddRetainedAudit`, `Loren.Maintenance` CLI project and initial roundtrip/refusal tests.
 
-Default brain: Ollama `gpt-oss:120b` at `https://ollama.com/api/chat`; the same Ollama key supports web search/fetch. An OpenAI key is not required for this path. `.env.example` lists settings; the host does not automatically load `.env` files.
+### Latest verification and known failures
 
-## Git and cleanup
+- Parent launcher dry-run from outside repo passed using Windows PowerShell. Real launcher smoke has NOT passed yet; earlier agent attempt was blocked reading NuGet config.
+- First parent solution run: 185 total, 66 failed due to Sequence column on the wrong migration table. Luna corrected the migration.
+- Next parent run: 192 total, 74 failed, primarily EF PendingModelChangesWarning; drift test reported AlterColumnOperation. This still requires diagnosis and a fresh passing run. Do NOT suppress the warning.
+- Latest parent `dotnet restore Loren.slnx` succeeded. Following Release test build failed: `LogicalStateRecovery.cs(133,133): CS0103 ProjectAlias does not exist in current context`. Recovery agent hit usage limit before completing verification.
+- Local diagnostic logs: ignored `artifacts/continuity-tests.log`, `continuity-second-tests.log`, `continuity-third-tests.log`, `continuity-restore.log`; these logs are not included in Git, so reproduce using commands below.
+- No current feature has been merged or declared complete. No live provider or owner approval acceptance was performed.
 
-PR #33 is merged. The owner later authorized cleanup, superseding keep-39: all 40 obsolete remote branches were proven integrated and deleted, including the merged feature branch. Only main remained locally/remotely after verification. That was the cleanup snapshot. Current work now lives on `codex/cyber-ui`; local `codex/checkpoint-m6a5` also exists at the main baseline. Historical reports naming deleted branches are not current instructions.
+### Resume in this order
 
-Local recovery bundle: `.git/branch-cleanup-before-20260908.bundle`; audit: `.git/branch-cleanup-verified.json`. These are local recovery artifacts, not tracked product files.
+1. Read this checkpoint, inspect git status, and delegate code to Luna medium. Fix unresolved alias normalization reference using actual domain helper; do not invent incompatible normalization.
+2. Run solution build/test. Diagnose EF drift with detailed AlterColumn table/column/nullability output, align explicit model configuration and migrations. Existing dynamic snapshot calls CanonicalStateModel.Configure; do not hide drift with EnsureCreated or warning suppression.
+3. Review/test history: refresh restores active conversation; project options load before restoration; list buttons re-enable; post-send refresh does not remove fresh proposal cards; asynchronous selection cannot append a response into another conversation. Existing history stays untrusted and old proposal text is never executable. Check provider failure/cancellation gate release and owner isolation. Last implementation only returns latest 200 messages and lists 100 conversations, no older paging.
+4. Review/test recovery: exact format_version=1 validation (missing version must fail), complete field/domain/reference validation, consistent snapshot export, readonly source, absent destination + atomic publish, restore through migrations, restart after restore, audit preservation, revoked approvals and pending-only cancellation preserving terminal proposal status. Audit before durable sink cannot be reconstructed. Archive excludes runtime credential/config stores, but user-authored content remains private. CLI needs tests as well as service tests; docs/recovery.md still missing.
+5. Run `powershell.exe -NoProfile -File scripts/Start-Loren.ps1 -SmokeTest -NoPause` with free port 5091. It must use temporary data, no browser and stop its own host; test foreign port conflict/reuse separately. Inspect temp deletion containment checks before running.
+6. Run full solution tests and changed-file format; inspect complete diff. Update ledger/docs with evidence, then push PR and merge only after green CI. Keep this checkpoint on a feature branch/draft until then.
 
-Repo-local identity: `turtle <nhkhuy241@gmail.com>`. Personal SSH alias: `github-personal`. Verified port-443 transport uses `ssh -p 443 -o HostName=ssh.github.com -o HostKeyAlias=github.com`, retaining host-key checks; port 22 was intermittent.
-
-## Boundaries and working preferences
-
-- Orchestrator handles requirements/review/verification; implementation goes to Luna medium. Keep delegation and reports concise.
-- RTK was blocked by Windows group policy; direct commands were used. Parent .NET tests succeeded with approved execution permissions despite some agents seeing error 1260.
-- Authentication is not external-write approval. Model/tool/web/history content cannot mint authority or credentials.
-- Preserve frozen targets, one-time approval, read-only/revocation enforcement, verification and redacted audit.
-- M5 Slices 4–6 (file/commit/open-PR product mutations) remain paused until the owner checkpoint. This does not prohibit the developer Git/PR workflow.
-- Background delivery requires Gate E. Remaining roadmap gates precede v0.1.0.
+User authorizes developer push/PR/merge after review+green CI; this does not authorize product approval actions. User has no time for live acceptance now. Do not spend tokens redoing merged UI/appsettings or expand GitHub writes/desktop/voice/scheduler scope.

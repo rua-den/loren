@@ -1,6 +1,6 @@
 # Loren Project Status
 
-> Current checkpoint (2026-09-10): UI/theme PR #34 is merged on main as `aa154f1`. The next setup change, on `codex/appsettings-config`, adds ignored `appsettings.Local.json` with environment overrides, including GitHub write credentials. See README and owner-checkpoint for setup. Earlier UI branch references below are historical. Real-provider acceptance remains pending.
+> WIP checkpoint: `codex/conversation-continuity` contains unfinished history, launcher and recovery work. Current build is blocked by unresolved ProjectAlias in LogicalStateRecovery; prior EF migration drift remains unverified. Read the WIP continuation section in [handoff.md](handoff.md) before coding. Last green main is `e9e8165` (183 tests); do not merge this checkpoint.
 
 
 **Last updated:** 2026-09-10
@@ -17,7 +17,7 @@ This file is the authoritative progress ledger. Read [`handoff.md`](handoff.md) 
 
 ## Current development checkpoint — UI and themes
 
-The active development branch is `codex/cyber-ui`, with UI implementation through `a4d36de` (themes/chat-first) and `8cc3cea` (first UI polish). This work is delivered through [PR #34](https://github.com/rua-den/loren/pull/34). Use current main once that PR is merged. See [ai-start.md](ai-start.md) for onboarding, code locations and collaboration rules.
+The merged UI implementation came from `codex/cyber-ui`, with UI implementation through `a4d36de` (themes/chat-first) and `8cc3cea` (first UI polish). This work is delivered through [PR #34](https://github.com/rua-den/loren/pull/34). Use current main once that PR is merged. See [ai-start.md](ai-start.md) for onboarding, code locations and collaboration rules.
 
 - White, Graphite–Black and Graphite–Cyan themes; local preference persistence on login/chat.
 - Chat-first welcome; project/audit/setup hidden behind **Chi tiết**.
@@ -241,7 +241,7 @@ For Astra/local work:
 ```text
 1. Read docs/status.md and docs/handoff.md first.
 2. Inspect current branch, working changes and CI before continuing.
-3. Fetch and inspect `codex/cyber-ui` for the latest UI/theme work; main remains the merged M6A.5 baseline. See `docs/ai-start.md` before concurrent work.
+3. Use the active branch and approved continuity plan at the top of this file. UI and appsettings are already merged; do not resume historical UI branches.
 4. Follow docs/owner-checkpoint.md; configure providers locally without exposing secrets.
 5. Run real-provider conversational approval proof and the owner checklist.
 6. Record evidence; delegate any code fixes to Luna medium, then review/test/PR/merge.

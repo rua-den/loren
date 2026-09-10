@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Loren.Core.Conversations;
 using Loren.Infrastructure.CanonicalState;
 using Loren.Web;
 
@@ -40,11 +41,46 @@ app.MapGet(
         })
     .RequireAuthorization();
 
+app.MapGet(
+        "/api/conversations",
+        async (IConversationStore store, HttpContext context, CancellationToken cancellationToken) =>
+        {
+            string? owner = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
+            return string.IsNullOrWhiteSpace(owner)
+                ? Results.Unauthorized()
+                : Results.Ok(await store.ListAsync(owner, cancellationToken));
+        })
+    .RequireAuthorization();
+
+app.MapPost(
+        "/api/conversations",
+        async (CreateConversationRequest request, IConversationStore store, HttpContext context, CancellationToken cancellationToken) =>
+        {
+            string? owner = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(owner)) return Results.Unauthorized();
+            ConversationRecord conversation = await store.CreateAsync(owner, request.Title, request.ProjectAlias, cancellationToken);
+            return Results.Ok(conversation);
+        })
+    .RequireAuthorization();
+
+app.MapGet(
+        "/api/conversations/{conversationId:guid}",
+        async (Guid conversationId, IConversationStore store, HttpContext context, CancellationToken cancellationToken) =>
+        {
+            string? owner = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(owner)) return Results.Unauthorized();
+            ConversationRecord? conversation = await store.GetAsync(owner, conversationId, cancellationToken);
+            return conversation is null ? Results.NotFound() : Results.Ok(conversation);
+        })
+    .RequireAuthorization();
+
 app.MapPost(
         "/api/run",
         async (
             LorenRunRequest request,
             LorenRunService runService,
+            IConversationStore conversationStore,
+            ConversationExecutionGate executionGate,
             HttpContext context,
             CancellationToken cancellationToken) =>
         {
@@ -61,15 +97,47 @@ app.MapPost(
 
             try
             {
-                LorenRunResult result = await runService.RunAsync(
-                    request.Message,
-                    request.ProjectAlias,
-                    request.History,
-                    ownerPrincipalReference,
-                    cancellationToken);
-                return Results.Ok(result);
+                ConversationRecord conversation;
+                if (request.ConversationId is Guid conversationId)
+                {
+                    conversation = await conversationStore.GetAsync(ownerPrincipalReference, conversationId, cancellationToken)
+                        ?? throw new KeyNotFoundException("Conversation was not found.");
+                }
+                else
+                {
+                    conversation = await conversationStore.CreateAsync(ownerPrincipalReference, request.Message, request.ProjectAlias, cancellationToken);
+                }
+
+                if (!executionGate.TryEnter(conversation.Id, out IDisposable lease))
+                {
+                    return Results.Conflict(new { error = "Conversation is already processing another message." });
+                }
+
+                using (lease)
+                {
+                    conversation = await conversationStore.GetAsync(ownerPrincipalReference, conversation.Id, cancellationToken)
+                        ?? throw new KeyNotFoundException("Conversation was not found.");
+                    string? effectiveProjectAlias = request.ClearProjectContext
+                        ? null
+                        : request.ProjectAlias ?? conversation.ProjectAlias;
+                    IReadOnlyList<LorenConversationMessage>? history = conversation.Messages.Count == 0
+                        ? request.ConversationId is null ? request.History : null
+                        : conversation.Messages.Select(message => new LorenConversationMessage(message.Role, message.Content)).ToArray();
+                    LorenRunResult result = await runService.RunAsync(
+                        request.Message,
+                        effectiveProjectAlias,
+                        history,
+                        ownerPrincipalReference,
+                        cancellationToken);
+                    await conversationStore.AppendTurnAsync(ownerPrincipalReference, conversation.Id, request.Message, result.FinalOutput, effectiveProjectAlias, cancellationToken, request.ClearProjectContext);
+                    return Results.Ok(result with { ConversationId = conversation.Id });
+                }
             }
             catch (UnknownProjectAliasException exception)
+            {
+                return Results.NotFound(new { error = exception.Message });
+            }
+            catch (KeyNotFoundException exception)
             {
                 return Results.NotFound(new { error = exception.Message });
             }
