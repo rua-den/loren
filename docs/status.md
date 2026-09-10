@@ -14,14 +14,14 @@ This file is the authoritative progress ledger. Read [`handoff.md`](handoff.md) 
 
 ## Current development checkpoint — UI and themes
 
-The active development branch is `codex/cyber-ui`, with UI implementation through `a4d36de` (themes/chat-first) and `8cc3cea` (first UI polish). This work is not merged into main. See [ai-start.md](ai-start.md) for onboarding, code locations and collaboration rules.
+The active development branch is `codex/cyber-ui`, with UI implementation through `a4d36de` (themes/chat-first) and `8cc3cea` (first UI polish). This work is delivered through [PR #34](https://github.com/rua-den/loren/pull/34). Use current main once that PR is merged. See [ai-start.md](ai-start.md) for onboarding, code locations and collaboration rules.
 
 - White, Graphite–Black and Graphite–Cyan themes; local preference persistence on login/chat.
 - Chat-first welcome; project/audit/setup hidden behind **Chi tiết**.
 - User-triggered **Bắt nhịp hôm nay** uses the existing chat/tool path for saved tasks/decisions across projects and preserves drafts. No automatic provider call at page load.
 - Bounded safe Markdown, code copy and authoritative proposal cards.
 - Parent verification on 2026-09-10: **182/182 tests**, changed-file format, and browser verification of themes/persistence and desktop/mobile context state. Full-repo format previously exposed CRLF in untouched checkout files; do not present changed-file checks as a full-repo pass.
-- No UI-branch CI or real-provider acceptance recorded. The ignored localhost:5093 preview uses simulated data and is not part of a fresh clone.
+- PR #34 provides integration CI; inspect its latest exact-head result. Real-provider acceptance remains pending. The ignored localhost:5093 preview uses simulated data and is not part of a fresh clone.
 
 Owner direction: prioritize natural conversation and useful continuity. Keep web/local host for the present; desktop packaging is a recommendation for later, with no framework decision or implementation. Persistent chat history, automatic catch-up, streaming and a separate task board remain future work.
 

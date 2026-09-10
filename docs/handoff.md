@@ -7,7 +7,7 @@
 
 ## Branch checkpoint
 
-Current development branch: `codex/cyber-ui`. UI implementation commits: `8cc3cea` and `a4d36de`; preceding checkpoint docs: `ab0b6b1`. These are not merged into main. Fetch the branch and read [ai-start.md](ai-start.md) before assigning code work. The tests below for main are historical baseline evidence; current UI tests total 182.
+Current development branch: `codex/cyber-ui`. UI implementation commits: `8cc3cea` and `a4d36de`; preceding checkpoint docs: `ab0b6b1`. These are delivered through [PR #34](https://github.com/rua-den/loren/pull/34). Use current main once that PR is merged. Fetch the branch and read [ai-start.md](ai-start.md) before assigning code work. The tests below for main are historical baseline evidence; current UI tests total 182.
 
 ## Verified implementation baseline
 

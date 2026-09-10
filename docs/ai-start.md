@@ -6,7 +6,7 @@ Updated 2026-09-10. Read [status.md](status.md), then [handoff.md](handoff.md). 
 
 - Repository: `rua-den/loren`.
 - Current development branch: `codex/cyber-ui`. UI implementation through `a4d36de`, preceded by `8cc3cea`; checkpoint docs started at `ab0b6b1`.
-- `main` is still at M6A.5 merge `1cb4fd7` (PR #33). The UI/theme work is not merged. Fetch and inspect branch state before editing; do not assume main contains the latest UI.
+- The pre-UI main baseline was M6A.5 merge `1cb4fd7` (PR #33). UI/theme integration is tracked in [PR #34](https://github.com/rua-den/loren/pull/34). After it is merged, fetch and use current main; until then use the PR head.
 - Read `git status --short` and preserve others' changes. Give each concurrent coding task its own branch/worktree and clear file ownership. Do not let multiple agents edit `OwnerPages.cs` simultaneously.
 
 ## Product direction
@@ -45,7 +45,7 @@ Persistent conversation history, a separate task board, streaming, automatic cat
 - `.env` is not automatically loaded. Runtime setup is documented in [owner-checkpoint.md](owner-checkpoint.md).
 - C# files must be UTF-8 with LF. Windows checkout CRLF can cause format failures in untouched files; distinguish those from the actual diff.
 
-Last verified UI head: 182/182 tests; changed-file format passed; browser checked themes/persistence, Markdown safety, draft preservation and responsive context toggling. No UI-branch CI or live-provider success is claimed.
+Last verified UI head: 182/182 tests; changed-file format passed; browser checked themes/persistence, Markdown safety, draft preservation and responsive context toggling. Inspect PR #34 for current integration CI; live-provider success is not claimed.
 
 ## Return a useful handoff
 
