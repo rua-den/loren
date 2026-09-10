@@ -14,7 +14,7 @@ namespace Loren.IntegrationTests;
 public sealed class CredentialBoundaryHostCompositionTests
 {
     [Fact]
-    public void ProductionHostRegistersPublicReadsOwnerStateAndOnlyNarrowExternalMutation()
+    public async Task ProductionHostRegistersPublicReadsOwnerStateAndOnlyNarrowExternalMutation()
     {
         string dataDirectory = Path.Combine(
             Path.GetTempPath(),
@@ -28,6 +28,8 @@ public sealed class CredentialBoundaryHostCompositionTests
                     ["LOREN_DATA_DIRECTORY"] = dataDirectory,
                     ["LOREN_ENABLE_WRITES"] = "true",
                     ["OLLAMA_API_KEY"] = "host-composition-test-key",
+                    ["GITHUB_WRITE_TOKEN"] = "host-composition-token",
+                    ["LOREN_GITHUB_WRITE_CREDENTIAL_REVOKED"] = "false",
                 })
                 .Build();
             ServiceCollection services = new();
@@ -38,6 +40,11 @@ public sealed class CredentialBoundaryHostCompositionTests
 
             IActionCredentialResolver resolver =
                 provider.GetRequiredService<IActionCredentialResolver>();
+            CredentialResolution credentialResolution = await resolver.ResolveAsync(
+                new CredentialResolutionRequest(
+                    GitHubCredentials.WritePurpose,
+                    GitHubCredentials.LocalV01WriteReference),
+                TestContext.Current.CancellationToken);
             IActionExecutor[] executors = scope.ServiceProvider
                 .GetServices<IActionExecutor>()
                 .OrderBy(executor => executor.ActionName, StringComparer.Ordinal)
@@ -46,6 +53,10 @@ public sealed class CredentialBoundaryHostCompositionTests
                 provider.GetRequiredService<IWriteSafetyState>();
 
             Assert.IsType<EnvironmentActionCredentialResolver>(resolver);
+            Assert.True(credentialResolution.IsResolved);
+            Assert.Equal(
+                "host-composition-token",
+                Assert.IsType<CredentialLease>(credentialResolution.Lease).Use(value => value));
             Assert.False(writeSafetyState.IsReadOnly);
             Assert.Equal(11, executors.Length);
 

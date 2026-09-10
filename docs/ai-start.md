@@ -1,5 +1,8 @@
 # Start here: contributing to Loren
 
+> Current checkpoint (2026-09-10): UI/theme PR #34 is merged on main as `aa154f1`. The next setup change, on `codex/appsettings-config`, adds ignored `appsettings.Local.json` with environment overrides, including GitHub write credentials. See README and owner-checkpoint for setup. Earlier UI branch references below are historical. Real-provider acceptance remains pending.
+
+
 Updated 2026-09-10. Read [status.md](status.md), then [handoff.md](handoff.md). These are the current ledger and continuation instructions; older plans/reports are historical evidence.
 
 ## Locate the current work

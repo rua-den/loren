@@ -1,5 +1,7 @@
 using Loren.Core.Credentials;
 using Loren.Infrastructure.Credentials;
+using Loren.Web;
+using Microsoft.Extensions.Configuration;
 using Xunit;
 
 namespace Loren.IntegrationTests;
@@ -106,6 +108,99 @@ public sealed class EnvironmentActionCredentialResolverTests
         Assert.False(resolution.IsResolved);
         Assert.Null(resolution.Lease);
         Assert.DoesNotContain(secret, resolution.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ConfigurationOverrideWinsForSecretAndRevocation()
+    {
+        string directory = Path.Combine(Path.GetTempPath(), $"loren-config-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        string secretEnvironmentVariable = "LOREN_TEST_WRITE_TOKEN";
+        string revocationEnvironmentVariable = "LOREN_TEST_WRITE_REVOKED";
+        string? previousSecret = Environment.GetEnvironmentVariable(secretEnvironmentVariable);
+        string? previousRevocation = Environment.GetEnvironmentVariable(revocationEnvironmentVariable);
+
+        try
+        {
+            Environment.SetEnvironmentVariable(secretEnvironmentVariable, null);
+            Environment.SetEnvironmentVariable(revocationEnvironmentVariable, null);
+            File.WriteAllText(
+                Path.Combine(directory, "appsettings.Local.json"),
+                "{\"LOREN_TEST_WRITE_TOKEN\":\"local-token\",\"LOREN_TEST_WRITE_REVOKED\":\"false\"}");
+            using (ConfigurationManager localConfiguration = new())
+            {
+                localConfiguration.SetBasePath(directory);
+                LorenConfiguration.AddLocalConfigurationBeforeEnvironmentOverrides(localConfiguration, []);
+                CredentialResolution localResolution = await CreateResolver(localConfiguration, secretEnvironmentVariable, revocationEnvironmentVariable)
+                    .ResolveAsync(new CredentialResolutionRequest(Purpose, Reference), TestContext.Current.CancellationToken);
+
+                Assert.Equal(CredentialResolutionStatus.Resolved, localResolution.Status);
+                Assert.Equal("local-token", Assert.IsType<CredentialLease>(localResolution.Lease).Use(value => value));
+            }
+
+            File.Delete(Path.Combine(directory, "appsettings.Local.json"));
+            using (ConfigurationManager missingLocalConfiguration = new())
+            {
+                missingLocalConfiguration.SetBasePath(directory);
+                LorenConfiguration.AddLocalConfigurationBeforeEnvironmentOverrides(missingLocalConfiguration, []);
+                CredentialResolution missingResolution = await CreateResolver(missingLocalConfiguration, secretEnvironmentVariable, revocationEnvironmentVariable)
+                    .ResolveAsync(new CredentialResolutionRequest(Purpose, Reference), TestContext.Current.CancellationToken);
+
+                Assert.Equal(CredentialResolutionStatus.Missing, missingResolution.Status);
+            }
+
+            File.WriteAllText(
+                Path.Combine(directory, "appsettings.Local.json"),
+                "{\"LOREN_TEST_WRITE_TOKEN\":\"local-token\",\"LOREN_TEST_WRITE_REVOKED\":\"false\"}");
+
+            Environment.SetEnvironmentVariable(secretEnvironmentVariable, "environment-token");
+            Environment.SetEnvironmentVariable(revocationEnvironmentVariable, "true");
+            using (ConfigurationManager environmentConfiguration = new())
+            {
+                environmentConfiguration.SetBasePath(directory);
+                LorenConfiguration.AddLocalConfigurationBeforeEnvironmentOverrides(environmentConfiguration, []);
+                CredentialResolution environmentResolution = await CreateResolver(environmentConfiguration, secretEnvironmentVariable, revocationEnvironmentVariable)
+                    .ResolveAsync(new CredentialResolutionRequest(Purpose, Reference), TestContext.Current.CancellationToken);
+
+                Assert.Equal(CredentialResolutionStatus.Revoked, environmentResolution.Status);
+                Assert.Equal("environment-token", environmentConfiguration[secretEnvironmentVariable]);
+                Assert.Equal("true", environmentConfiguration[revocationEnvironmentVariable]);
+            }
+
+            Environment.SetEnvironmentVariable(revocationEnvironmentVariable, "false");
+            using (ConfigurationManager commandLineConfiguration = new())
+            {
+                commandLineConfiguration.SetBasePath(directory);
+                LorenConfiguration.AddLocalConfigurationBeforeEnvironmentOverrides(
+                    commandLineConfiguration,
+                    [$"--{secretEnvironmentVariable}=command-line-token"]);
+                CredentialResolution commandLineResolution = await CreateResolver(commandLineConfiguration, secretEnvironmentVariable, revocationEnvironmentVariable)
+                    .ResolveAsync(new CredentialResolutionRequest(Purpose, Reference), TestContext.Current.CancellationToken);
+
+                Assert.Equal(CredentialResolutionStatus.Resolved, commandLineResolution.Status);
+                Assert.Equal("command-line-token", Assert.IsType<CredentialLease>(commandLineResolution.Lease).Use(value => value));
+            }
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(secretEnvironmentVariable, previousSecret);
+            Environment.SetEnvironmentVariable(revocationEnvironmentVariable, previousRevocation);
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    private static EnvironmentActionCredentialResolver CreateResolver(
+        ConfigurationManager configuration,
+        string secretEnvironmentVariable,
+        string revocationEnvironmentVariable)
+    {
+        return new EnvironmentActionCredentialResolver(
+            [new EnvironmentCredentialBinding(
+                Purpose,
+                Reference,
+                secretEnvironmentVariable,
+                revocationEnvironmentVariable)],
+            key => configuration[key]);
     }
 
     private static EnvironmentActionCredentialResolver CreateResolver(

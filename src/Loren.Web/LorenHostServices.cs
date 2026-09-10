@@ -80,7 +80,8 @@ public static class LorenHostServices
                         GitHubCredentials.LocalV01WriteReference,
                         "GITHUB_WRITE_TOKEN",
                         "LOREN_GITHUB_WRITE_CREDENTIAL_REVOKED"),
-                ]));
+                ],
+                key => configuration[key]));
 
         services.AddSingleton<GitHubRepositoryReadClient>(provider =>
         {

@@ -3,6 +3,7 @@ using Loren.Infrastructure.CanonicalState;
 using Loren.Web;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+LorenConfiguration.AddLocalConfigurationBeforeEnvironmentOverrides(builder.Configuration, args);
 builder.Services.AddLorenM2ReadPath(builder.Configuration);
 builder.Services.AddLorenOwnerAuthentication(builder.Configuration);
 
