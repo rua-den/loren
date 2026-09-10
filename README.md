@@ -178,7 +178,17 @@ The next pull specifically for product testing happens only when Loren can:
 
 ## Run locally
 
-Read-only external-write posture:
+For local setup, copy `src/Loren.Web/appsettings.Local.example.json` to
+`src/Loren.Web/appsettings.Local.json` and edit the owner password, Ollama key,
+model/endpoints, `LOREN_ENABLE_WRITES=false`, and optional
+`LOREN_DATA_DIRECTORY`. The local file is ignored by Git, excluded from build and
+publish output, and is read at startup; restart the host after editing it.
+Published deployments must provide their own configuration or environment values.
+Environment variables and command-line values override local JSON. Add `GITHUB_WRITE_TOKEN` and
+`LOREN_GITHUB_WRITE_CREDENTIAL_REVOKED=false` only when preparing the optional
+GitHub proof.
+
+Read-only external-write posture can also be supplied through the process environment:
 
 ```powershell
 $env:LOREN_OWNER_PASSWORD='choose-a-local-owner-password'

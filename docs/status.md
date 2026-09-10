@@ -1,5 +1,8 @@
 # Loren Project Status
 
+> Current checkpoint (2026-09-10): UI/theme PR #34 is merged on main as `aa154f1`. The next setup change, on `codex/appsettings-config`, adds ignored `appsettings.Local.json` with environment overrides, including GitHub write credentials. See README and owner-checkpoint for setup. Earlier UI branch references below are historical. Real-provider acceptance remains pending.
+
+
 **Last updated:** 2026-09-10
 **Current version:** `v0.1 — Useful Trustworthy Assistant`
 **Current product target:** `M6A.5 live proof → v0.1 owner checkpoint`

@@ -8,12 +8,11 @@ The owner configures secrets locally, logs in, evaluates useful responses and ex
 
 ## 1. Read-only session
 
-In PowerShell, set the local password and Ollama key. The configured adapter does not require an OpenAI key. Copying `.env.example` to `.env` alone does not load settings.
+For local setup, copy `src/Loren.Web/appsettings.Local.example.json` to `src/Loren.Web/appsettings.Local.json` and edit the local values. The file is ignored by Git and is loaded at startup. It supports the owner password, Ollama key/model, brain and web endpoints, `LOREN_ENABLE_WRITES=false`, and an optional data directory. The configured adapter does not require an OpenAI key.
+
+Environment variables and command-line settings override the local JSON values. Restart the host after editing the file; local JSON is intentionally not reloaded while the process runs.
 
 ```powershell
-$env:LOREN_OWNER_PASSWORD = Read-Host 'Local Loren password' -MaskInput
-$env:OLLAMA_API_KEY = Read-Host 'Ollama API key' -MaskInput
-$env:LOREN_ENABLE_WRITES = 'false'
 dotnet run --project src/Loren.Web/Loren.Web.csproj --configuration Release --urls http://127.0.0.1:5091
 ```
 
@@ -34,7 +33,7 @@ These steps require no external write. Local Notes/Decisions/Tasks work with wri
 
 The `github-personal` SSH key supports developer Git operations. Loren's create-branch client uses a separate `GITHUB_WRITE_TOKEN` for GitHub HTTP API calls. Configure a write-specific credential for the intended repository locally; it must not be reused as a model credential.
 
-Stop and restart the host in the same shell, preserving the password, provider settings and data directory:
+Add the optional write-only GitHub token and revocation setting to the ignored local JSON file, or set them in the process environment. Stop and restart the host after changing them:
 
 ```powershell
 $env:GITHUB_WRITE_TOKEN = Read-Host 'GitHub write token' -MaskInput

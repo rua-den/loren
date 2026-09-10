@@ -1,5 +1,8 @@
 # Loren Thread Handoff
 
+> Current checkpoint (2026-09-10): UI/theme PR #34 is merged on main as `aa154f1`. The next setup change, on `codex/appsettings-config`, adds ignored `appsettings.Local.json` with environment overrides, including GitHub write credentials. See README and owner-checkpoint for setup. Earlier UI branch references below are historical. Real-provider acceptance remains pending.
+
+
 **Updated:** 2026-09-10
 **Repository:** `rua-den/loren`
 **Read:** `docs/ai-start.md` → `docs/status.md` → this file → `docs/owner-checkpoint.md`
