@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Loren.Core.Projects;
 using Loren.Infrastructure.CanonicalState;
 using Microsoft.EntityFrameworkCore;
 
