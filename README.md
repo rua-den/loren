@@ -8,7 +8,7 @@ Loren is a long-lived personal secretary / intelligence system with persistent m
 
 ## Product direction
 
-Loren should feel like a private Jarvis-style secretary, not a GitHub automation bot.
+Loren is a private personal secretary centered on natural conversation, useful catch-up and trusted memory.
 
 ```text
 CONVERSE
@@ -38,14 +38,15 @@ Read/understand comes before broad external mutation.
 
 ## Current status
 
-**Last updated:** 2026-09-07
+**Last updated:** 2026-09-10
 **Phase:** `v0.1 — Useful Trustworthy Assistant`
 **Completed:** `M1–M4`, `Gate D`, `M5 write-safety Slices 1–3`, `M6A.1`, `M6A.2`, `M6A.3`
 **Merged:** `M6A.5 — Conversational approval` via PR #33
-**Next:** UI polish, then real-provider proof and owner acceptance
+**Development branch:** `codex/cyber-ui` — chat-first UI and three themes through `a4d36de`, 182 tests passed; not merged into main.
+**Next:** Owner UI review, real-provider proof and owner acceptance
 **Paused:** `M5 file/commit/PR write expansion` until the v0.1 owner checkpoint is usable
 
-Detailed status: [`docs/status.md`](docs/status.md). Fresh-thread continuation: [`docs/handoff.md`](docs/handoff.md).
+**Contributing with another AI? Start at [`docs/ai-start.md`](docs/ai-start.md).** Detailed status: [`docs/status.md`](docs/status.md). Continuation: [`docs/handoff.md`](docs/handoff.md).
 
 ## What is already proven
 

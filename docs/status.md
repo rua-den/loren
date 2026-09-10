@@ -1,6 +1,6 @@
 # Loren Project Status
 
-**Last updated:** 2026-09-08
+**Last updated:** 2026-09-10
 **Current version:** `v0.1 — Useful Trustworthy Assistant`
 **Current product target:** `M6A.5 live proof → v0.1 owner checkpoint`
 **Write expansion:** `M5 Slices 4–6 paused until the v0.1 owner checkpoint`
@@ -8,9 +8,22 @@
 
 This file is the authoritative progress ledger. Read [`handoff.md`](handoff.md) next when continuing locally or in a fresh thread.
 
-> Loren is a persistent personal secretary / Jarvis-like assistant first. Conversation, durable memory, current information, research, organization and explicit owner approval come before broader automation.
+> Loren is a persistent personal secretary centered on conversation and catch-up. Conversation, durable memory, current information, research, organization and explicit owner approval come before broader automation.
 
 ---
+
+## Current development checkpoint — UI and themes
+
+The active development branch is `codex/cyber-ui`, with UI implementation through `a4d36de` (themes/chat-first) and `8cc3cea` (first UI polish). This work is not merged into main. See [ai-start.md](ai-start.md) for onboarding, code locations and collaboration rules.
+
+- White, Graphite–Black and Graphite–Cyan themes; local preference persistence on login/chat.
+- Chat-first welcome; project/audit/setup hidden behind **Chi tiết**.
+- User-triggered **Bắt nhịp hôm nay** uses the existing chat/tool path for saved tasks/decisions across projects and preserves drafts. No automatic provider call at page load.
+- Bounded safe Markdown, code copy and authoritative proposal cards.
+- Parent verification on 2026-09-10: **182/182 tests**, changed-file format, and browser verification of themes/persistence and desktop/mobile context state. Full-repo format previously exposed CRLF in untouched checkout files; do not present changed-file checks as a full-repo pass.
+- No UI-branch CI or real-provider acceptance recorded. The ignored localhost:5093 preview uses simulated data and is not part of a fresh clone.
+
+Owner direction: prioritize natural conversation and useful continuity. Keep web/local host for the present; desktop packaging is a recommendation for later, with no framework decision or implementation. Persistent chat history, automatic catch-up, streaming and a separate task board remain future work.
 
 # 1. Green baseline on main
 
@@ -225,7 +238,7 @@ For Astra/local work:
 ```text
 1. Read docs/status.md and docs/handoff.md first.
 2. Inspect current branch, working changes and CI before continuing.
-3. Start from current main; historical branches have been cleaned up.
+3. Fetch and inspect `codex/cyber-ui` for the latest UI/theme work; main remains the merged M6A.5 baseline. See `docs/ai-start.md` before concurrent work.
 4. Follow docs/owner-checkpoint.md; configure providers locally without exposing secrets.
 5. Run real-provider conversational approval proof and the owner checklist.
 6. Record evidence; delegate any code fixes to Luna medium, then review/test/PR/merge.

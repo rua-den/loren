@@ -2,8 +2,12 @@
 
 **Updated:** 2026-09-10
 **Repository:** `rua-den/loren`
-**Read:** `docs/status.md` → this file → `docs/owner-checkpoint.md`
-**Next:** Owner visual review of the first graphite/cyan UI iteration, then M6A.5 real-provider proof and the v0.1 owner checkpoint.
+**Read:** `docs/ai-start.md` → `docs/status.md` → this file → `docs/owner-checkpoint.md`
+**Next:** Review the chat-first/theme UI, then run real-provider acceptance and the M6A.5 live approval proof.
+
+## Branch checkpoint
+
+Current development branch: `codex/cyber-ui`. UI implementation commits: `8cc3cea` and `a4d36de`; preceding checkpoint docs: `ab0b6b1`. These are not merged into main. Fetch the branch and read [ai-start.md](ai-start.md) before assigning code work. The tests below for main are historical baseline evidence; current UI tests total 182.
 
 ## Verified implementation baseline
 
@@ -49,7 +53,7 @@ Default brain: Ollama `gpt-oss:120b` at `https://ollama.com/api/chat`; the same 
 
 ## Git and cleanup
 
-PR #33 is merged. The owner later authorized cleanup, superseding keep-39: all 40 obsolete remote branches were proven integrated and deleted, including the merged feature branch. Only main remained locally/remotely after verification. Start from current main; historical reports naming deleted branches are not current instructions.
+PR #33 is merged. The owner later authorized cleanup, superseding keep-39: all 40 obsolete remote branches were proven integrated and deleted, including the merged feature branch. Only main remained locally/remotely after verification. That was the cleanup snapshot. Current work now lives on `codex/cyber-ui`; local `codex/checkpoint-m6a5` also exists at the main baseline. Historical reports naming deleted branches are not current instructions.
 
 Local recovery bundle: `.git/branch-cleanup-before-20260908.bundle`; audit: `.git/branch-cleanup-verified.json`. These are local recovery artifacts, not tracked product files.
 
