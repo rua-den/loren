@@ -45,16 +45,18 @@ public sealed class LogicalStateRecoveryTests
                 ConversationRecord conversation = await conversations.CreateAsync("owner", "Recovered", "recovery");
                 await conversations.AppendTurnAsync("owner", conversation.Id, "hello", "world", "recovery");
                 SqliteActionApprovalStore approvals = new(source);
+                DateTimeOffset approvalCreatedAt = DateTimeOffset.UtcNow;
                 await approvals.AddAsync(new ActionApproval(
                     new ApprovalId(Guid.NewGuid()), "owner", "github.create_branch",
                     projectKey, repositoryKey, "fingerprint",
-                    DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddMinutes(5)));
+                    approvalCreatedAt, approvalCreatedAt.AddMinutes(5)));
                 SqliteCreateBranchProposalStore proposals = new(source);
+                DateTimeOffset proposalCreatedAt = DateTimeOffset.UtcNow;
                 await proposals.AddAsync(new CreateBranchProposal(
                     new CreateBranchProposalId(Guid.NewGuid()), "owner", projectKey,
                     repositoryKey, new RepositoryLocator("github", "acme", "recovery"),
                     "feature/recovery", "refs/heads/main", new string('a', 40), "fingerprint",
-                    DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddMinutes(5)));
+                    proposalCreatedAt, proposalCreatedAt.AddMinutes(5)));
 
                 await using MemoryStream archive = new();
                 await LogicalStateRecovery.ExportAsync(source, archive);
@@ -87,6 +89,12 @@ public sealed class LogicalStateRecoveryTests
         {
             await using CanonicalStateDbContext context = Context(path);
             await context.Database.EnsureCreatedAsync();
+            DateTimeOffset now = DateTimeOffset.UtcNow;
+            ProjectId existingProjectId = new(Guid.NewGuid());
+            await new SqliteProjectCatalog(context).SaveAsync(new ProjectSnapshot(
+                new Project(existingProjectId, "Existing Project", ["existing"], now, now),
+                []));
+
             await Assert.ThrowsAsync<InvalidOperationException>(() => LogicalStateRecovery.RestoreAsync(
                 context,
                 new MemoryStream(Encoding.UTF8.GetBytes("{\"format_version\":1}")),
