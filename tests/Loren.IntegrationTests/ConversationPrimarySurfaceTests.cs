@@ -21,7 +21,8 @@ public sealed class ConversationPrimarySurfaceTests
         string html = (string)consoleField.GetRawConstantValue()!;
         Assert.Contains("function renderProposals(proposals)", html, StringComparison.Ordinal);
         Assert.Contains("for (const proposal of proposals ?? [])", html, StringComparison.Ordinal);
-        Assert.Contains("textContent = `Repository:", html, StringComparison.Ordinal);
+        Assert.Contains("['Repository', proposal.repository]", html, StringComparison.Ordinal);
+        Assert.Contains("['Source SHA', proposal.sourceSha]", html, StringComparison.Ordinal);
         Assert.Contains("approve.disabled = true; cancel.disabled = true", html, StringComparison.Ordinal);
         Assert.Contains("/api/action-proposals/${encodeURIComponent(proposal.proposalId)}/${kind}", html, StringComparison.Ordinal);
         Assert.Contains("renderActivity({ runId: 'decision'", html, StringComparison.Ordinal);
@@ -29,6 +30,40 @@ public sealed class ConversationPrimarySurfaceTests
         Assert.DoesNotContain("/api/github/create-branch", html, StringComparison.Ordinal);
         Assert.DoesNotContain("confirm(", html, StringComparison.Ordinal);
         Assert.DoesNotContain("write-source-sha", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ConversationalSurfaceRendersMarkdownThroughSafeAllowlistAndKeepsProposalTrustBoundary()
+    {
+        Type ownerPages = typeof(LorenRunService).Assembly.GetType("Loren.Web.OwnerPages")!;
+        FieldInfo consoleField = ownerPages.GetField("Console", BindingFlags.Static | BindingFlags.Public)!;
+        string html = (string)consoleField.GetRawConstantValue()!;
+
+        Assert.Contains("function renderMarkdown(text)", html, StringComparison.Ordinal);
+        Assert.Contains("document.createElement('a')", html, StringComparison.Ordinal);
+        Assert.Contains("/^https?:\\/\\//i", html, StringComparison.Ordinal);
+        Assert.Contains("document.createElement('pre')", html, StringComparison.Ordinal);
+        Assert.Contains("copy-code", html, StringComparison.Ordinal);
+        Assert.Contains("bubble.appendChild(renderMarkdown(text))", html, StringComparison.Ordinal);
+        Assert.Contains("proposal.status", html, StringComparison.Ordinal);
+        Assert.Contains("proposal.sourceSha", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("innerHTML =", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ConsoleOffersOnlyNamedLocalThemesAndGroundedCatchUpPrompt()
+    {
+        Type ownerPages = typeof(LorenRunService).Assembly.GetType("Loren.Web.OwnerPages")!;
+        FieldInfo consoleField = ownerPages.GetField("Console", BindingFlags.Static | BindingFlags.Public)!;
+        string html = (string)consoleField.GetRawConstantValue()!;
+
+        Assert.Contains("White", html, StringComparison.Ordinal);
+        Assert.Contains("Graphite–Black", html, StringComparison.Ordinal);
+        Assert.Contains("Graphite–Cyan", html, StringComparison.Ordinal);
+        Assert.Contains("localStorage.setItem('loren-theme', nextTheme)", html, StringComparison.Ordinal);
+        Assert.Contains("Bắt nhịp hôm nay trên tất cả project: hãy tóm tắt các task đang mở", html, StringComparison.Ordinal);
+        Assert.Contains("Nếu không có dữ liệu, nói rõ là chưa có", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("/api/history", html, StringComparison.Ordinal);
     }
 
     [Fact]
