@@ -1,6 +1,6 @@
 # Loren Thread Handoff
 
-**Updated:** 2026-09-09
+**Updated:** 2026-09-10
 **Repository:** `rua-den/loren`
 **Read:** `docs/status.md` → this file → `docs/owner-checkpoint.md`
 **Next:** Owner visual review of the first graphite/cyan UI iteration, then M6A.5 real-provider proof and the v0.1 owner checkpoint.
@@ -37,7 +37,7 @@ Follow [owner-checkpoint.md](owner-checkpoint.md):
 
 ## UI iteration for owner review
 
-The first graphite/cyan UI iteration is implemented in `OwnerPages.cs`: responsive chat and activity/setup panel, Vietnamese controls, bounded DOM-based Markdown and styled proposal cards. No persistent conversation history, separate task board or streaming is added in this iteration.
+The first graphite/cyan UI iteration is implemented in `OwnerPages.cs`: responsive chat and activity/setup panel, Vietnamese controls, bounded DOM-based Markdown and styled proposal cards. Theme follow-up adds White, Graphite–Black and Graphite–Cyan with local preference persistence on login/chat. Chat is centered by default; project/audit/setup stay behind Chi tiết. Bắt nhịp hôm nay explicitly submits a grounded request through the existing chat/tool flow across projects, preserves drafts, and does not auto-call providers at page load. No persistent conversation history, automatic catch-up, separate task board or streaming is added. Final parent verification: 182/182 tests passed; browser checked theme persistence, white content, catch-up draft preservation and desktop/mobile context-state transitions. Live-provider acceptance remains pending.
 
 Parent browser verification used real-host login plus deterministic local UI fixture data to exercise Markdown, blocked unsafe links/raw HTML, copy-code, cancellation and mobile context disclosure. This is UI verification, not live-provider acceptance. The optional ignored fixture `artifacts/ui-preview-server.cjs` serves actual console markup at `http://127.0.0.1:5093`; its responses are simulated and its banner identifies that fact.
 

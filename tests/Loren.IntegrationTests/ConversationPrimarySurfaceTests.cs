@@ -51,6 +51,22 @@ public sealed class ConversationPrimarySurfaceTests
     }
 
     [Fact]
+    public void ConsoleOffersOnlyNamedLocalThemesAndGroundedCatchUpPrompt()
+    {
+        Type ownerPages = typeof(LorenRunService).Assembly.GetType("Loren.Web.OwnerPages")!;
+        FieldInfo consoleField = ownerPages.GetField("Console", BindingFlags.Static | BindingFlags.Public)!;
+        string html = (string)consoleField.GetRawConstantValue()!;
+
+        Assert.Contains("White", html, StringComparison.Ordinal);
+        Assert.Contains("Graphite–Black", html, StringComparison.Ordinal);
+        Assert.Contains("Graphite–Cyan", html, StringComparison.Ordinal);
+        Assert.Contains("localStorage.setItem('loren-theme', nextTheme)", html, StringComparison.Ordinal);
+        Assert.Contains("Bắt nhịp hôm nay trên tất cả project: hãy tóm tắt các task đang mở", html, StringComparison.Ordinal);
+        Assert.Contains("Nếu không có dữ liệu, nói rõ là chưa có", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("/api/history", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task ProjectCueInfersCanonicalContextMemoryAndBoundedRecentHistory()
     {
         CancellationToken cancellationToken = TestContext.Current.CancellationToken;
