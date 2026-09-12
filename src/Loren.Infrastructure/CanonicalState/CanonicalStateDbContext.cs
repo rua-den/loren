@@ -23,6 +23,12 @@ public sealed class CanonicalStateDbContext : DbContext
 
     internal DbSet<CreateBranchProposalRow> CreateBranchProposals => Set<CreateBranchProposalRow>();
 
+    internal DbSet<ConversationRow> Conversations => Set<ConversationRow>();
+
+    internal DbSet<ConversationMessageRow> ConversationMessages => Set<ConversationMessageRow>();
+
+    internal DbSet<AuditEventRow> AuditEvents => Set<AuditEventRow>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         CanonicalStateModel.Configure(modelBuilder);
@@ -193,6 +199,44 @@ internal static class CanonicalStateModel
             entity.HasOne<ProjectRow>().WithMany().HasForeignKey(proposal => proposal.ProjectId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne<RepositoryRow>().WithMany().HasForeignKey(proposal => proposal.RepositoryId).OnDelete(DeleteBehavior.Restrict);
         });
+
+        modelBuilder.Entity<ConversationRow>(entity =>
+        {
+            entity.ToTable("Conversations");
+            entity.HasKey(conversation => conversation.Id);
+            entity.Property(conversation => conversation.OwnerPrincipalReference).HasMaxLength(256).IsRequired();
+            entity.Property(conversation => conversation.Title).HasMaxLength(200).IsRequired();
+            entity.Property(conversation => conversation.ProjectAlias).HasMaxLength(200);
+            entity.Property(conversation => conversation.CreatedAtUnixMs).IsRequired();
+            entity.Property(conversation => conversation.UpdatedAtUnixMs).IsRequired();
+            entity.HasIndex(conversation => new { conversation.OwnerPrincipalReference, conversation.UpdatedAtUnixMs });
+        });
+
+        modelBuilder.Entity<ConversationMessageRow>(entity =>
+        {
+            entity.ToTable("ConversationMessages");
+            entity.HasKey(message => message.Id);
+            entity.Property(message => message.Role).HasMaxLength(16).IsRequired();
+            entity.Property(message => message.Content).IsRequired();
+            entity.Property(message => message.CreatedAtUnixMs).IsRequired();
+            entity.Property(message => message.Sequence).IsRequired();
+            entity.HasIndex(message => new { message.ConversationId, message.Sequence }).IsUnique();
+            entity.HasOne<ConversationRow>().WithMany().HasForeignKey(message => message.ConversationId).IsRequired().OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AuditEventRow>(entity =>
+        {
+            entity.ToTable("AuditEvents");
+            entity.HasKey(audit => audit.Id);
+            entity.Property(audit => audit.RunId).HasMaxLength(64).IsRequired();
+            entity.Property(audit => audit.ActionId).HasMaxLength(64).IsRequired();
+            entity.Property(audit => audit.Kind).HasMaxLength(64).IsRequired();
+            entity.Property(audit => audit.ActionName).HasMaxLength(200).IsRequired();
+            entity.Property(audit => audit.Outcome).HasMaxLength(200).IsRequired();
+            entity.Property(audit => audit.Detail).HasMaxLength(4000);
+            entity.Property(audit => audit.OccurredAtUnixMs).IsRequired();
+            entity.HasIndex(audit => audit.OccurredAtUnixMs);
+        });
     }
 }
 
@@ -327,4 +371,24 @@ internal sealed class CreateBranchProposalRow
     public long CreatedAtUnixMs { get; set; }
     public long ExpiresAtUnixMs { get; set; }
     public long? DecidedAtUnixMs { get; set; }
+}
+
+internal sealed class ConversationRow
+{
+    public Guid Id { get; set; }
+    public string OwnerPrincipalReference { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
+    public string? ProjectAlias { get; set; }
+    public long CreatedAtUnixMs { get; set; }
+    public long UpdatedAtUnixMs { get; set; }
+}
+
+internal sealed class ConversationMessageRow
+{
+    public Guid Id { get; set; }
+    public Guid ConversationId { get; set; }
+    public string Role { get; set; } = string.Empty;
+    public string Content { get; set; } = string.Empty;
+    public long CreatedAtUnixMs { get; set; }
+    public long Sequence { get; set; }
 }

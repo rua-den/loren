@@ -7,6 +7,7 @@
   <Project Path="src/Loren.Tools.GitHub/Loren.Tools.GitHub.csproj" />
   <Project Path="src/Loren.Tools.Web/Loren.Tools.Web.csproj" />
   <Project Path="src/Loren.Web/Loren.Web.csproj" />
+  <Project Path="src/Loren.Maintenance/Loren.Maintenance.csproj" />
   <Project Path="tests/Loren.Core.Tests/Loren.Core.Tests.csproj" />
   <Project Path="tests/Loren.Runtime.Tests/Loren.Runtime.Tests.csproj" />
   <Project Path="tests/Loren.Brain.Ollama.Tests/Loren.Brain.Ollama.Tests.csproj" />

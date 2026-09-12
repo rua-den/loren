@@ -52,6 +52,10 @@ public sealed class CanonicalStateMigrationDriftTests
     {
         AddColumnOperation add => $"AddColumn {add.Table}.{add.Name} ({add.ClrType.Name})",
         DropColumnOperation drop => $"DropColumn {drop.Table}.{drop.Name}",
+        AlterColumnOperation alter =>
+            $"AlterColumn {alter.Table}.{alter.Name} "
+            + $"({alter.OldColumn.ClrType.Name}, nullable={alter.OldColumn.IsNullable}, type={alter.OldColumn.ColumnType ?? "<default>"} -> "
+            + $"{alter.ClrType.Name}, nullable={alter.IsNullable}, type={alter.ColumnType ?? "<default>"})",
         CreateIndexOperation index => $"CreateIndex {index.Table}.{index.Name}",
         DropIndexOperation index => $"DropIndex {index.Table}.{index.Name}",
         AddForeignKeyOperation foreignKey =>
