@@ -1,8 +1,8 @@
+using System.Text.Json;
 using Loren.Infrastructure.CanonicalState;
 using Loren.Infrastructure.Recovery;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using System.Text.Json;
 
 return await MaintenanceCli.RunAsync(args);
 
