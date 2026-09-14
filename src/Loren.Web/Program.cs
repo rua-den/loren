@@ -153,8 +153,11 @@ app.MapPost(
                         history,
                         ownerPrincipalReference,
                         cancellationToken);
+                    string? inferredProjectAlias = result.Project is { Aliases.Count: > 0 }
+                        ? result.Project.Aliases[0]
+                        : null;
                     string? persistedProjectAlias = request.ProjectAlias
-                        ?? result.Project?.Aliases.FirstOrDefault()
+                        ?? inferredProjectAlias
                         ?? (request.ClearProjectContext ? null : conversation.ProjectAlias);
                     bool clearStoredProjectAlias = request.ClearProjectContext
                         && persistedProjectAlias is null;
