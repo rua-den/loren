@@ -1,6 +1,6 @@
 # Continuity and local readiness
 
-Approved by owner on 2026-09-10. Code implementation goes to Luna medium; parent reviews and verifies each slice. Real-provider acceptance is deferred until the owner has time.
+Approved by owner on 2026-09-10. Real-provider acceptance remains deferred until the owner has time.
 
 ## Sequence
 
@@ -12,14 +12,19 @@ Approved by owner on 2026-09-10. Code implementation goes to Luna medium; parent
 
 ## Verification
 
-Each slice: parent diff review, relevant tests, changed-file format. Final integration CI before merge. Use temporary databases and deterministic providers; do not consume real provider credentials or create external product mutations.
+Each slice requires diff review, relevant tests and formatting. Final integration CI is the merge gate. Use temporary databases and deterministic providers; do not consume real provider credentials or create external product mutations.
 
 ## Ledger
 
-- Baseline: main e9e8165, PR #35 merged; 183 tests and CI #263 passed. UI PR #34 merged previously.
-- Checkpoint refresh: in progress.
-- Conversation persistence: delegated to Luna; implementation in progress.
-- Launcher, recovery, reliability: pending in the order above.
-- Deferred: streaming, task board, desktop wrapper, voice, scheduler; broader GitHub writes await owner checkpoint.
+- Baseline: main `e9e8165`, PR #35 merged; 183 tests and CI #263 passed before continuity work began.
+- Conversation persistence: implemented on draft PR #36.
+- Windows launcher: implemented on draft PR #36; source review found no additional launcher defect. Real smoke remains pending on a suitable Windows checkout.
+- Recovery: implementation present on draft PR #36; 2026-09-14 source review found lifecycle/validation/migration-path defects and prepared a corrective batch.
+- Reliability: overlap/provider-failure coverage exists; the corrective batch adds migration-backed recovery, invalid-history rejection, inferred-project persistence and SQLite non-pooling for endpoint tests.
+- EF drift: corrective batch removes the retained-audit `AUTOINCREMENT` annotation that existed only in the WIP migration/snapshot and not in the runtime model.
+- Documentation: `docs/recovery.md` added; status/handoff synchronized to the source-reviewed, not-yet-CI-verified state.
+- Deferred: streaming, task board, desktop wrapper, voice, scheduler; broader GitHub writes await the owner checkpoint.
 
-- WIP push requested by owner: history/launcher/recovery drafts exist; latest build fails unresolved ProjectAlias, previous EF drift unverified. See docs/handoff.md WIP section. No feature completion or merge claim.
+## Current gate
+
+The fix batch must land as one coherent commit on `codex/conversation-continuity`. After that exact HEAD exists, run restore/build/tests/format/dependency scan + Windows launcher smoke where available, then verify Ubuntu + Windows CI on that SHA. Do not merge PR #36 before all required checks are green.

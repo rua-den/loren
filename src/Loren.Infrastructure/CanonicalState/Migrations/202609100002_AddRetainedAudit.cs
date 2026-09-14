@@ -13,8 +13,7 @@ public sealed class AddRetainedAudit : Migration
             name: "AuditEvents",
             columns: table => new
             {
-                Id = table.Column<long>(type: "INTEGER", nullable: false)
-                    .Annotation("Sqlite:Autoincrement", true),
+                Id = table.Column<long>(type: "INTEGER", nullable: false),
                 RunId = table.Column<string>(type: "TEXT", maxLength: 64, nullable: false),
                 ActionId = table.Column<string>(type: "TEXT", maxLength: 64, nullable: false),
                 Kind = table.Column<string>(type: "TEXT", maxLength: 64, nullable: false),

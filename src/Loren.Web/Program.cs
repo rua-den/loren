@@ -57,8 +57,16 @@ app.MapPost(
         async (CreateConversationRequest request, IConversationStore store, HttpContext context, CancellationToken cancellationToken) =>
         {
             string? owner = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrWhiteSpace(owner)) return Results.Unauthorized();
-            ConversationRecord conversation = await store.CreateAsync(owner, request.Title, request.ProjectAlias, cancellationToken);
+            if (string.IsNullOrWhiteSpace(owner))
+            {
+                return Results.Unauthorized();
+            }
+
+            ConversationRecord conversation = await store.CreateAsync(
+                owner,
+                request.Title,
+                request.ProjectAlias,
+                cancellationToken);
             return Results.Ok(conversation);
         })
     .RequireAuthorization();
@@ -68,7 +76,11 @@ app.MapGet(
         async (Guid conversationId, IConversationStore store, HttpContext context, CancellationToken cancellationToken) =>
         {
             string? owner = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrWhiteSpace(owner)) return Results.Unauthorized();
+            if (string.IsNullOrWhiteSpace(owner))
+            {
+                return Results.Unauthorized();
+            }
+
             ConversationRecord? conversation = await store.GetAsync(owner, conversationId, cancellationToken);
             return conversation is null ? Results.NotFound() : Results.Ok(conversation);
         })
@@ -100,12 +112,19 @@ app.MapPost(
                 ConversationRecord conversation;
                 if (request.ConversationId is Guid conversationId)
                 {
-                    conversation = await conversationStore.GetAsync(ownerPrincipalReference, conversationId, cancellationToken)
+                    conversation = await conversationStore.GetAsync(
+                        ownerPrincipalReference,
+                        conversationId,
+                        cancellationToken)
                         ?? throw new KeyNotFoundException("Conversation was not found.");
                 }
                 else
                 {
-                    conversation = await conversationStore.CreateAsync(ownerPrincipalReference, request.Message, request.ProjectAlias, cancellationToken);
+                    conversation = await conversationStore.CreateAsync(
+                        ownerPrincipalReference,
+                        request.Message,
+                        request.ProjectAlias,
+                        cancellationToken);
                 }
 
                 if (!executionGate.TryEnter(conversation.Id, out IDisposable lease))
@@ -115,21 +134,38 @@ app.MapPost(
 
                 using (lease)
                 {
-                    conversation = await conversationStore.GetAsync(ownerPrincipalReference, conversation.Id, cancellationToken)
+                    conversation = await conversationStore.GetAsync(
+                        ownerPrincipalReference,
+                        conversation.Id,
+                        cancellationToken)
                         ?? throw new KeyNotFoundException("Conversation was not found.");
                     string? effectiveProjectAlias = request.ClearProjectContext
                         ? null
                         : request.ProjectAlias ?? conversation.ProjectAlias;
                     IReadOnlyList<LorenConversationMessage>? history = conversation.Messages.Count == 0
                         ? request.ConversationId is null ? request.History : null
-                        : conversation.Messages.Select(message => new LorenConversationMessage(message.Role, message.Content)).ToArray();
+                        : conversation.Messages
+                            .Select(message => new LorenConversationMessage(message.Role, message.Content))
+                            .ToArray();
                     LorenRunResult result = await runService.RunAsync(
                         request.Message,
                         effectiveProjectAlias,
                         history,
                         ownerPrincipalReference,
                         cancellationToken);
-                    await conversationStore.AppendTurnAsync(ownerPrincipalReference, conversation.Id, request.Message, result.FinalOutput, effectiveProjectAlias, cancellationToken, request.ClearProjectContext);
+                    string? persistedProjectAlias = request.ProjectAlias
+                        ?? result.Project?.Aliases.FirstOrDefault()
+                        ?? (request.ClearProjectContext ? null : conversation.ProjectAlias);
+                    bool clearStoredProjectAlias = request.ClearProjectContext
+                        && persistedProjectAlias is null;
+                    await conversationStore.AppendTurnAsync(
+                        ownerPrincipalReference,
+                        conversation.Id,
+                        request.Message,
+                        result.FinalOutput,
+                        persistedProjectAlias,
+                        cancellationToken,
+                        clearStoredProjectAlias);
                     return Results.Ok(result with { ConversationId = conversation.Id });
                 }
             }
@@ -190,7 +226,10 @@ app.MapPost(
                 return Results.Unauthorized();
             }
 
-            OwnerActionProposalDecisionResult result = await service.ApproveProposalAndCreateBranchAsync(proposalId, ownerPrincipalReference, cancellationToken);
+            OwnerActionProposalDecisionResult result = await service.ApproveProposalAndCreateBranchAsync(
+                proposalId,
+                ownerPrincipalReference,
+                cancellationToken);
             return result.Status switch
             {
                 "unknown" => Results.NotFound(new { error = result.Message }),
@@ -203,11 +242,22 @@ app.MapPost(
 
 app.MapPost(
         "/api/action-proposals/{proposalId}/cancel",
-        async (string proposalId, LorenOwnerGitHubWriteService service, HttpContext context, CancellationToken cancellationToken) =>
+        async (
+            string proposalId,
+            LorenOwnerGitHubWriteService service,
+            HttpContext context,
+            CancellationToken cancellationToken) =>
         {
             string? owner = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrWhiteSpace(owner)) return Results.Unauthorized();
-            OwnerActionProposalDecisionResult result = await service.CancelProposalAsync(proposalId, owner, cancellationToken);
+            if (string.IsNullOrWhiteSpace(owner))
+            {
+                return Results.Unauthorized();
+            }
+
+            OwnerActionProposalDecisionResult result = await service.CancelProposalAsync(
+                proposalId,
+                owner,
+                cancellationToken);
             return result.Status switch
             {
                 "unknown" => Results.NotFound(new { error = result.Message }),
