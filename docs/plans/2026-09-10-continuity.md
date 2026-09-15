@@ -16,15 +16,16 @@ Each slice requires diff review, relevant tests and formatting. Final integratio
 
 ## Ledger
 
-- Baseline: main `e9e8165`, PR #35 merged; 183 tests and CI #263 passed before continuity work began.
-- Conversation persistence: implemented on draft PR #36.
-- Windows launcher: implemented on draft PR #36; source review found no additional launcher defect. Real smoke remains pending on a suitable Windows checkout.
-- Recovery: implementation present on draft PR #36; 2026-09-14 source review found lifecycle/validation/migration-path defects and prepared a corrective batch.
-- Reliability: overlap/provider-failure coverage exists; the corrective batch adds migration-backed recovery, invalid-history rejection, inferred-project persistence and SQLite non-pooling for endpoint tests.
-- EF drift: corrective batch removes the retained-audit `AUTOINCREMENT` annotation that existed only in the WIP migration/snapshot and not in the runtime model.
-- Documentation: `docs/recovery.md` added; status/handoff synchronized to the source-reviewed, not-yet-CI-verified state.
-- Deferred: streaming, task board, desktop wrapper, voice, scheduler; broader GitHub writes await the owner checkpoint.
+- Baseline before continuity: main `e9e8165`, PR #35 merged; 183 tests and CI #263 passed.
+- Conversation persistence: implemented on PR #36, including inferred-project persistence and non-blocking per-conversation overlap protection.
+- Windows launcher: implemented on PR #36; source review passed. Final PR CI now includes `Start-Loren.ps1 -SmokeTest -NoPause` on Windows so launcher verification is continuous rather than manual-only.
+- Recovery: implemented on PR #36 with migration-backed restore tests, domain/reference/history validation, read-only export, revoked approvals and safe cancellation of restored pending proposals.
+- Reliability: coverage includes restart continuity, overlap rejection/release, provider failure release, invalid archived role rejection, restored-domain reload and Windows SQLite non-pooling in endpoint tests.
+- EF drift: retained-audit migration/snapshot was aligned with runtime integer-PK value generation without suppressing `PendingModelChangesWarning`.
+- Documentation: `docs/recovery.md`, status/handoff and README EN/VI are synchronized with the verified continuity implementation.
+- Verified code checkpoint: `11eb38eef3f4973b4d37e538dcbf16f92e8e6e2b` passed CI #276 / `34838365005` — Ubuntu full gate + Windows integration.
+- Deferred: real-provider/owner acceptance, streaming, task board, desktop wrapper, voice, scheduler; broader GitHub writes await the owner checkpoint.
 
-## Current gate
+## Delivery gate
 
-The fix batch must land as one coherent commit on `codex/conversation-continuity`. After that exact HEAD exists, run restore/build/tests/format/dependency scan + Windows launcher smoke where available, then verify Ubuntu + Windows CI on that SHA. Do not merge PR #36 before all required checks are green.
+PR #36 may merge only after its final exact head passes Ubuntu full CI, Windows integration and Windows launcher smoke. After merge, verify CI against the exact main merge SHA before resuming product work.

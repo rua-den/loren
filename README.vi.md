@@ -41,8 +41,9 @@ NÓI CHUYỆN
 **Cập nhật:** 2026-09-14  
 **Phase:** `v0.1 — Useful Trustworthy Assistant`  
 **Baseline đã hoàn tất:** `M1–M4`, `Gate D`, `M5 write-safety Slices 1–3`, implementation `M6A.1–M6A.5`; live proof của owner cho M6A.5 vẫn đang pending.  
-**Branch đang làm:** `codex/conversation-continuity` — draft [PR #36](https://github.com/rua-den/loren/pull/36), gồm persistent conversation, Windows launcher, logical recovery và retained-audit hardening.  
-**Verification hiện tại:** batch fix từ source review ngày 2026-09-14 đã được chuẩn bị; exact-head build/test/format/CI vẫn phải chạy trước khi merge.  
+**Continuity delivery:** [PR #36](https://github.com/rua-den/loren/pull/36) / `codex/conversation-continuity` — persistent conversation, Windows launcher, logical recovery và retained-audit hardening.  
+**Code checkpoint đã verify:** `11eb38e` qua CI #276 / `34838365005`: Ubuntu restore/build/full tests/format/secret/dependency/web smoke và Windows integration đều PASS.  
+**Delivery gate cuối:** final PR head chạy thêm Windows launcher smoke; exact-head CI phải xanh trước merge và main CI phải xanh trên exact merge SHA sau merge.  
 **Đang pause:** `M5 file/commit/PR write expansion` tới khi v0.1 owner checkpoint dùng được.
 
 Chi tiết chuẩn: [`docs/status.md`](docs/status.md). Handoff: [`docs/handoff.md`](docs/handoff.md). Recovery: [`docs/recovery.md`](docs/recovery.md).
@@ -107,19 +108,21 @@ canonical target
 
 Real write proof đầu tiên là tạo **non-default GitHub branch** rồi verify exact SHA. Broad GitHub write vẫn đang pause.
 
-## Execution hiện tại — continuity và local readiness
+## Continuity và local readiness
 
-M6A.5 conversational approval đã merge qua [PR #33](https://github.com/rua-den/loren/pull/33). Batch kỹ thuật đang active là PR #36: conversation continuity bền vững, Windows startup và versioned recovery.
+M6A.5 conversational approval đã merge qua [PR #33](https://github.com/rua-den/loren/pull/33). PR #36 delivery durable conversation continuity, local Windows startup và versioned recovery.
 
-Recovery export logical owner state thay vì copy raw runtime config. Restore luôn vào directory mới, áp dụng checked-in migrations, giữ canonical IDs, revoke approval khi restore, cancel pending proposal và reject malformed domain/history state. Credential và provider config không được export. Xem [`docs/recovery.md`](docs/recovery.md).
+Conversation scope giờ sống qua restart, kể cả canonical project được infer tự động. Overlapping turn trên cùng conversation fail closed và gate object không bị giữ vĩnh viễn.
+
+Recovery export logical owner state thay vì copy raw runtime config. Restore luôn vào directory mới, áp dụng checked-in migrations, giữ canonical IDs, revoke approval khi restore, cancel pending proposal an toàn, giữ nguyên terminal proposal và reject malformed domain/history state. Credential và provider config không được export. Xem [`docs/recovery.md`](docs/recovery.md).
 
 Không có background scheduler/reminder delivery trong batch này; Gate E vẫn bắt buộc trước background execution.
 
-## Tiếp theo — verify exact HEAD rồi mới owner acceptance
+## Tiếp theo — delivery continuity rồi owner acceptance
 
-Trước khi PR #36 được merge, exact HEAD hiện tại phải qua restore/build/tests/format/dependency checks, Windows launcher smoke khi có môi trường phù hợp, và CI Ubuntu + Windows. CI là final verification gate, không phải development loop.
+Delivery của PR #36 chỉ hoàn tất khi final exact head qua Ubuntu full CI, Windows integration và Windows launcher smoke; sau merge, main CI phải pass trên exact merge SHA.
 
-Sau khi continuity batch merge, owner checkpoint vẫn cần real-provider conversational approval proof:
+Sau continuity delivery, owner checkpoint vẫn cần real-provider conversational approval proof:
 
 ```text
 Owner: "Tạo branch abc cho Loren từ main."
@@ -184,7 +187,7 @@ dotnet test Loren.slnx --configuration Release --no-build --no-restore
 dotnet format Loren.slnx --verify-no-changes --no-restore
 ```
 
-Windows là first-class integration-test CI platform bên cạnh Ubuntu full gate.
+Windows là first-class integration-test CI platform bên cạnh Ubuntu full gate. CI cũng chạy `scripts/Start-Loren.ps1 -SmokeTest -NoPause` trên Windows.
 
 ## Lộ trình version
 

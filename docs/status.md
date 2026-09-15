@@ -2,51 +2,66 @@
 
 **Last updated:** 2026-09-14  
 **Current version:** `v0.1 — Useful Trustworthy Assistant`  
-**Current branch:** `codex/conversation-continuity` / draft PR #36  
-**Last known green main baseline:** `e9e8165`  
-**Current verification state:** source-reviewed fix batch prepared; build/test/format/CI still pending on the new exact HEAD.
+**Continuity delivery:** PR #36 / `codex/conversation-continuity`  
+**Verified code checkpoint:** `11eb38eef3f4973b4d37e538dcbf16f92e8e6e2b`  
+**Verification evidence:** CI #276 / run `34838365005` passed Ubuntu full gate + Windows integration on that exact code checkpoint.
 
 This file is the authoritative progress ledger. Read [`handoff.md`](handoff.md) next before continuing work.
 
 ## Current checkpoint — conversation continuity / launcher / recovery
 
-PR #36 carries the approved continuity sequence: persisted authenticated conversations, Windows launcher, logical export/restore, then deterministic reliability hardening. It remains a draft and must not merge until the exact PR HEAD passes the repository gates.
+The continuity batch adds persisted authenticated conversations, Windows local startup, versioned logical export/restore, retained audit and deterministic reliability hardening without expanding Loren's product write authority.
 
-### Implemented on the branch
+### Implemented
 
 - SQLite-backed authenticated conversations with list/select/new/restart continuity and latest-200 message reads.
-- Per-conversation non-blocking execution gate so overlapping turns return conflict instead of running concurrently.
-- Chat UI restore behavior that keeps historical proposal text non-executable.
-- Windows `Start-Loren.cmd` + `scripts/Start-Loren.ps1` launcher with SDK selection, health/login readiness checks, smoke mode, foreign-port refusal and contained temp cleanup.
+- Per-conversation non-blocking execution gate so overlapping turns return conflict instead of running concurrently; active IDs are removed when leases end.
+- Inferred canonical project scope persists with the conversation so restart does not lose auto-detected project context.
+- Chat UI restoration keeps historical proposal text non-executable and does not allow an asynchronous response to land in another conversation.
+- Windows `Start-Loren.cmd` + `scripts/Start-Loren.ps1` launcher with SDK selection, health/login readiness checks, smoke mode, foreign-port refusal and contained temporary-data cleanup.
 - Versioned logical recovery format + `Loren.Maintenance` export/restore CLI.
 - Durable retained audit migration/sink.
+- [`recovery.md`](recovery.md) documents export/restore and fail-closed security behavior.
 
-### 2026-09-14 direct source review / fix batch
+### 2026-09-14 direct source review / fixes
 
-The code was reviewed directly instead of waiting on CI logs. The following concrete issues were identified and fixed in the prepared patch:
+The implementation was reviewed directly before using CI as the final gate. The review found and fixed:
 
-1. **Retained-audit EF drift** — the WIP migration/snapshot carried a SQLite `AUTOINCREMENT` annotation that the runtime model did not. The patch removes that extra annotation so the checked-in snapshot follows `CanonicalStateModel.Configure` without provider-only drift.
-2. **Recovery proposal lifecycle** — restoring a pending proposal with a restore timestamp earlier than proposal creation could create `Cancelled` state with `DecidedAt < CreatedAt`. Restore now clamps the decision time to at least proposal creation.
-3. **Recovery validation** — archive validation now reuses Core domain constructors for Project/Repository/Memory/Approval/Proposal/Organization invariants and rejects bad references, untrusted memory source classes, invalid conversation roles/sequences, non-normalized aliases and malformed retained audit rows.
-4. **Recovery path fidelity** — recovery tests now create schemas through checked-in migrations rather than `EnsureCreated`, restart the restored database, and reload state through normal domain stores.
-5. **Read-only export** — maintenance export opens the source SQLite database read-only with pooling disabled.
-6. **Inferred project continuity** — when the context builder infers a project during a conversation turn, `/api/run` now persists that canonical alias with the conversation. Selecting automatic/no explicit project no longer discards inferred scope after restart.
-7. **Execution-gate retention** — the old gate retained one `SemaphoreSlim` per conversation forever. It now tracks only currently active conversation IDs and removes them when the lease is disposed.
-8. **Windows test SQLite handles** — authenticated endpoint tests re-register their test DbContext with `Pooling=False` so disposing the host releases the temporary `loren.db` before directory cleanup.
-9. **Recovery runbook** — [`recovery.md`](recovery.md) documents export/restore semantics and the fail-closed security behavior.
+1. retained-audit EF migration/model metadata drift on `AuditEvents.Id`;
+2. restored pending proposals able to receive a decision timestamp before creation;
+3. recovery tests bypassing migrations through `EnsureCreated`;
+4. incomplete recovery domain/reference/history validation;
+5. maintenance export not explicitly opening SQLite read-only;
+6. inferred project scope not being persisted to the conversation;
+7. permanent per-conversation semaphore retention in `ConversationExecutionGate`;
+8. pooled SQLite test connections retaining Windows file handles.
 
-### Verification status
+Recovery now validates domain state through Core constructors, rejects unsafe conversation roles/sequences and bad canonical references, revokes restored approvals, cancels restored pending proposals without violating lifecycle timestamps, preserves terminal proposal state, excludes credentials/configuration, and restores into a fresh migrated target.
 
-Do not mark this batch complete yet.
+### Verification evidence
 
-- The current execution environment does not have a Loren checkout/.NET SDK suitable for running the solution locally.
-- Static/source review has been performed against PR #36 HEAD `1d31fc2` before creating the fix commit.
-- Existing regression coverage is being extended for migration-backed recovery, invalid conversation roles and inferred project persistence.
-- Required next gates after the single branch update: restore, Release build, full tests, `dotnet format --verify-no-changes`, secret/dependency scans, launcher smoke, Ubuntu CI and Windows integration CI on the exact new HEAD.
+Code checkpoint `11eb38e` passed CI #276 (`34838365005`):
+
+```text
+Ubuntu build-test
+  restore                         PASS
+  Release build                   PASS
+  full solution tests             PASS
+  dotnet format --verify          PASS
+  basic secret scan               PASS
+  dependency vulnerability scan   PASS
+  web health/auth/surface smoke   PASS
+
+Windows
+  restore                         PASS
+  integration tests               PASS
+```
+
+The current assistant execution environment did not contain a suitable Loren checkout/.NET SDK, so no local build/test pass is claimed. CI provided the unavailable platform/build verification.
+
+The final PR verification head also adds the existing `Start-Loren.ps1 -SmokeTest -NoPause` path to Windows CI so launcher behavior is continuously verified rather than remaining a manual-only checkpoint. Merge is permitted only after that final exact head is green.
 
 ## Proven product baseline
-
-The green main baseline already includes:
 
 ```text
 M1 Engineering Foundation                      complete
@@ -78,14 +93,6 @@ CONVERSE
 
 The model never owns authorization, durable identity, credentials or approval. Broader GitHub file/commit/PR writes remain paused until the v0.1 owner checkpoint is usable. Gate E is still required before background scheduling/reminders.
 
-## Required continuation
+## Continuation rule
 
-1. Inspect the exact new PR #36 HEAD after the single fix commit lands.
-2. Run the full local gates when a suitable checkout is available.
-3. Run launcher smoke on Windows using temporary data and no browser.
-4. Let CI verify Ubuntu + Windows on that exact SHA.
-5. Investigate all failures from that run before any follow-up push; batch fixes together.
-6. Only after exact-head green verification, update evidence, mark the PR ready and merge.
-7. After merge, verify main CI on the exact merge SHA.
-
-No live provider credential or owner product approval is required for this technical continuity batch. Real-provider/owner acceptance remains a separate deferred checkpoint.
+If PR #36 is still open, verify the exact current head is green, then merge it. If PR #36 is already merged, verify main CI against the exact merge SHA before continuing. After continuity delivery, return to the deferred real-provider/owner acceptance checkpoint; do not expand GitHub mutation scope first.

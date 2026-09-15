@@ -5,62 +5,63 @@ Updated 2026-09-14. Read `docs/status.md`, this file and `docs/plans/2026-09-10-
 ## Current checkpoint
 
 - Repository: `rua-den/loren`.
-- Active work: draft PR #36, branch `codex/conversation-continuity`.
-- Last pre-fix PR HEAD reviewed directly: `1d31fc297419c617055b953cd159bf30f2a2f966`.
-- Last known green main baseline: `e9e8165`.
-- Owner direction: finish continuity/recovery correctness first; CI is the final gate, not the development loop.
-- Do not merge until the exact current PR HEAD is green.
+- Continuity delivery: PR #36 / branch `codex/conversation-continuity`.
+- Verified code checkpoint: `11eb38eef3f4973b4d37e538dcbf16f92e8e6e2b`.
+- CI #276 / run `34838365005`: Ubuntu full gate PASS; Windows integration PASS.
+- The final verification head adds Windows launcher smoke to CI; merge only after that exact head is green.
+- Owner direction: CI is the final gate, not the development loop. Diagnose from code first, batch fixes, then verify.
 
-## What this branch contains
+## What the continuity batch delivers
 
-1. Persistent authenticated conversations in SQLite, list/select/new/restart continuity and bounded history.
-2. Conversation execution overlap protection.
-3. Windows one-click launcher + smoke mode.
-4. Logical recovery export/restore + maintenance CLI.
-5. Retained durable audit.
-6. Reliability/integration coverage for the above.
+1. Persistent authenticated conversations in SQLite with list/select/new/restart continuity and bounded history.
+2. Per-conversation overlap protection without permanent gate retention.
+3. Inferred canonical project scope persisted across restart.
+4. Windows one-click launcher + contained smoke mode.
+5. Versioned logical recovery export/restore + maintenance CLI.
+6. Retained durable audit.
+7. Reliability/integration coverage for recovery, restart, provider failure, overlap and unsafe archived history.
 
-## 2026-09-14 source-review findings and fixes
+## 2026-09-14 source-review fixes
 
-A direct code review identified concrete issues independent of CI logs:
+Direct source review found and fixed:
 
-- retained-audit migration/snapshot had a SQLite `AUTOINCREMENT` annotation absent from the runtime model;
-- pending proposal restore could write `DecidedAt` before `CreatedAt`;
-- recovery tests used `EnsureCreated` instead of the production migration path;
-- recovery validation allowed malformed domain/reference/history state;
-- maintenance export did not explicitly open the source DB read-only;
-- inferred project scope was returned by the run but not persisted to the conversation;
-- `ConversationExecutionGate` retained a semaphore per conversation forever;
-- WebApplicationFactory integration tests used pooled SQLite connections while deleting temp DB directories on Windows.
+- EF migration/model drift for retained-audit `AuditEvents.Id` value generation;
+- pending proposal restore lifecycle corruption (`DecidedAt < CreatedAt`);
+- recovery tests using `EnsureCreated` instead of checked-in migrations;
+- incomplete recovery domain/reference/history validation;
+- export source not explicitly read-only;
+- inferred project scope returned by a run but not persisted to the conversation;
+- one retained semaphore per conversation forever;
+- pooled SQLite endpoint-test connections retaining Windows database handles.
 
-The prepared fix batch addresses these in one coherent commit and adds `docs/recovery.md`.
+The implementation also adds `docs/recovery.md`.
 
-## Verification contract for the fix batch
+## Verification evidence
 
-The current environment cannot run the .NET solution locally, so do not claim local build/test/format success from this handoff. After the branch receives the single fix commit:
+Exact code checkpoint `11eb38e` passed CI #276:
 
 ```text
-dotnet restore Loren.slnx
-dotnet build Loren.slnx --configuration Release --no-restore
-dotnet test Loren.slnx --configuration Release --no-build --no-restore
-dotnet format Loren.slnx --verify-no-changes --no-restore
-dotnet package list --project Loren.slnx --vulnerable --include-transitive
+Ubuntu: restore, Release build, full solution tests, format,
+        secret scan, dependency vulnerability scan, web smoke — PASS
+Windows: restore + integration tests — PASS
 ```
 
-On Windows also run:
+No local .NET build/test claim is made from this assistant runtime because it lacks a suitable Loren checkout/.NET SDK. That limitation is explicit rather than substituted with fake local verification.
+
+The final PR head is expected to run the same gates plus:
 
 ```powershell
-powershell.exe -NoProfile -File scripts/Start-Loren.ps1 -SmokeTest -NoPause
+./scripts/Start-Loren.ps1 -SmokeTest -NoPause
 ```
 
-Then verify PR CI Ubuntu + Windows against the exact HEAD SHA. If CI fails, inspect the complete run, batch all necessary fixes, rerun relevant local gates, and make only one follow-up commit/push.
+inside Windows CI. This closes the last launcher-specific verification gap from the earlier WIP checkpoint.
 
 ## Recovery invariants
 
 - Restore uses checked-in migrations into a new empty target.
 - Archive format version must be explicit and supported.
 - Canonical IDs are preserved.
-- Archive references/domain lifecycle must validate before rows are written.
+- Archive references/domain lifecycle validate before rows are written.
 - Only `user`/`assistant` conversation roles are restorable.
 - Existing approvals restore revoked.
 - Pending proposals restore cancelled and cannot gain executable authority.
@@ -78,6 +79,6 @@ See `docs/recovery.md`.
 - Existing verified `github.create_branch` remains the only product mutation primitive for this checkpoint.
 - M5 file/commit/PR expansion, streaming, task board, desktop wrapper, voice and scheduler remain out of scope.
 
-## Next action
+## Continue from here
 
-Finish the single code/docs commit on `codex/conversation-continuity`, move the branch once, then inspect the exact-head CI. Do not merge PR #36 while any required check is red, incomplete, stale or unknown.
+If PR #36 is still open: inspect its exact current SHA and required checks, merge only when all are green, then verify post-merge main CI on the exact merge SHA. If PR #36 is already merged: start from current main and post-merge CI evidence. After continuity delivery, return to real-provider/owner acceptance rather than broadening product write scope.

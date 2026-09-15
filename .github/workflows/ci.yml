@@ -133,3 +133,7 @@ jobs:
 
       - name: Windows integration tests
         run: dotnet test tests/Loren.IntegrationTests/Loren.IntegrationTests.csproj --configuration Release --no-restore
+
+      - name: Windows launcher smoke test
+        shell: pwsh
+        run: ./scripts/Start-Loren.ps1 -SmokeTest -NoPause

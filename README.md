@@ -41,8 +41,9 @@ Read/understand comes before broad external mutation.
 **Last updated:** 2026-09-14  
 **Phase:** `v0.1 — Useful Trustworthy Assistant`  
 **Completed baseline:** `M1–M4`, `Gate D`, `M5 write-safety Slices 1–3`, `M6A.1–M6A.5` implementation; M6A.5 owner live proof remains pending.  
-**Development branch:** `codex/conversation-continuity` — draft [PR #36](https://github.com/rua-den/loren/pull/36), containing persistent conversations, Windows launcher, logical recovery and retained audit hardening.  
-**Current verification:** 2026-09-14 source-review fixes are prepared in one batch; exact-head build/test/format/CI verification is still required before merge.  
+**Continuity delivery:** [PR #36](https://github.com/rua-den/loren/pull/36) / `codex/conversation-continuity` — persistent conversations, Windows launcher, logical recovery and retained audit hardening.  
+**Verified code checkpoint:** `11eb38e` passed CI #276 / `34838365005`: Ubuntu restore/build/full tests/format/secret/dependency/web smoke and Windows integration all passed.  
+**Final delivery gate:** the final PR head additionally runs the Windows launcher smoke test before merge; exact-head CI must be green.  
 **Paused:** `M5 file/commit/PR write expansion` until the v0.1 owner checkpoint is usable.
 
 **Contributing with another AI? Start at [`docs/ai-start.md`](docs/ai-start.md).** Detailed status: [`docs/status.md`](docs/status.md). Continuation: [`docs/handoff.md`](docs/handoff.md). Recovery: [`docs/recovery.md`](docs/recovery.md).
@@ -109,17 +110,19 @@ The first real write proof is verified creation of a **non-default GitHub branch
 
 ## Current execution — continuity and local readiness
 
-M6A.5 conversational approval is already merged through [PR #33](https://github.com/rua-den/loren/pull/33). The active technical batch is PR #36: durable conversation continuity, local Windows startup and versioned recovery.
+M6A.5 conversational approval is already merged through [PR #33](https://github.com/rua-den/loren/pull/33). PR #36 delivers durable conversation continuity, local Windows startup and versioned recovery.
 
-The recovery path exports logical owner state rather than copying raw runtime configuration. Restore targets a new directory, applies checked-in migrations, preserves canonical IDs, restores approvals revoked, cancels pending proposals, and rejects malformed domain/history state. Credentials and provider configuration are not exported. See [`docs/recovery.md`](docs/recovery.md).
+Conversation scope now survives restart, including an automatically inferred canonical project. Overlapping turns on one conversation fail closed without retaining permanent per-conversation gate objects.
+
+The recovery path exports logical owner state rather than copying raw runtime configuration. Restore targets a new directory, applies checked-in migrations, preserves canonical IDs, restores approvals revoked, cancels pending proposals, preserves terminal proposals, and rejects malformed domain/history state. Credentials and provider configuration are not exported. See [`docs/recovery.md`](docs/recovery.md).
 
 No background scheduling/reminder delivery is introduced; Gate E remains required for background execution.
 
-## Next — exact-head technical verification, then owner acceptance
+## Next — continuity delivery, then owner acceptance
 
-Before PR #36 may merge, the exact current HEAD must pass restore/build/tests/format/dependency checks, Windows launcher smoke where available, and Ubuntu + Windows CI. CI is the final verification gate, not the development loop.
+PR #36 can merge only after its final exact head passes Ubuntu full CI, Windows integration and Windows launcher smoke. Post-merge main CI must then pass on the exact merge SHA.
 
-After the continuity batch is merged, the owner checkpoint still needs the real-provider conversational approval proof:
+After continuity delivery, the owner checkpoint still needs the real-provider conversational approval proof:
 
 ```text
 Owner: "Create branch abc for Loren from main."
@@ -194,7 +197,7 @@ dotnet test Loren.slnx --configuration Release --no-build --no-restore
 dotnet format Loren.slnx --verify-no-changes --no-restore
 ```
 
-Windows is a first-class integration-test CI platform in addition to the Ubuntu full gate.
+Windows is a first-class integration-test CI platform in addition to the Ubuntu full gate. CI also exercises `scripts/Start-Loren.ps1 -SmokeTest -NoPause` on Windows.
 
 ## Version path
 
