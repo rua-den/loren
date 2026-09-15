@@ -38,15 +38,15 @@ Read/understand comes before broad external mutation.
 
 ## Current status
 
-**Last updated:** 2026-09-10
-**Phase:** `v0.1 — Useful Trustworthy Assistant`
-**Completed:** `M1–M4`, `Gate D`, `M5 write-safety Slices 1–3`, `M6A.1`, `M6A.2`, `M6A.3`
-**Merged:** `M6A.5 — Conversational approval` via PR #33
-**Development branch:** `codex/cyber-ui` — chat-first UI and three themes through `a4d36de`, 182 tests passed; delivered through [PR #34](https://github.com/rua-den/loren/pull/34). Use current main once that PR is merged.
-**Next:** Owner UI review, real-provider proof and owner acceptance
-**Paused:** `M5 file/commit/PR write expansion` until the v0.1 owner checkpoint is usable
+**Last updated:** 2026-09-14  
+**Phase:** `v0.1 — Useful Trustworthy Assistant`  
+**Completed baseline:** `M1–M4`, `Gate D`, `M5 write-safety Slices 1–3`, `M6A.1–M6A.5` implementation; M6A.5 owner live proof remains pending.  
+**Continuity delivery:** [PR #36](https://github.com/rua-den/loren/pull/36) / `codex/conversation-continuity` — persistent conversations, Windows launcher, logical recovery and retained audit hardening.  
+**Verified code checkpoint:** `11eb38e` passed CI #276 / `34838365005`: Ubuntu restore/build/full tests/format/secret/dependency/web smoke and Windows integration all passed.  
+**Final delivery gate:** the final PR head additionally runs the Windows launcher smoke test before merge; exact-head CI must be green.  
+**Paused:** `M5 file/commit/PR write expansion` until the v0.1 owner checkpoint is usable.
 
-**Contributing with another AI? Start at [`docs/ai-start.md`](docs/ai-start.md).** Detailed status: [`docs/status.md`](docs/status.md). Continuation: [`docs/handoff.md`](docs/handoff.md).
+**Contributing with another AI? Start at [`docs/ai-start.md`](docs/ai-start.md).** Detailed status: [`docs/status.md`](docs/status.md). Continuation: [`docs/handoff.md`](docs/handoff.md). Recovery: [`docs/recovery.md`](docs/recovery.md).
 
 ## What is already proven
 
@@ -108,41 +108,21 @@ canonical target
 
 The first real write proof is verified creation of a **non-default GitHub branch**. Broader GitHub writes remain paused.
 
-## Current execution — M6A.5 merged; owner checkpoint pending
+## Current execution — continuity and local readiness
 
-The conversational approval flow is merged through [PR #33](https://github.com/rua-den/loren/pull/33). The brain proposes a branch; Loren freezes the canonical repository/source SHA; ID-only owner decisions use the existing verified write path. Parent review, 180 tests, build, format and authentication smoke pass. [Post-merge CI #259](https://github.com/rua-den/loren/actions/runs/34246514926) passed Ubuntu and Windows. Next: [real-provider proof and the owner checklist](docs/owner-checkpoint.md).
+M6A.5 conversational approval is already merged through [PR #33](https://github.com/rua-den/loren/pull/33). PR #36 delivers durable conversation continuity, local Windows startup and versioned recovery.
 
-PR #32 adds durable Loren-owned organization state:
+Conversation scope now survives restart, including an automatically inferred canonical project. Overlapping turns on one conversation fail closed without retaining permanent per-conversation gate objects.
 
-```text
-Note
-Decision
-Task
-TaskStatus = Open | Completed
-optional Project scope
-provenance/timestamps
-```
-
-Conversation actions:
-
-```text
-organization.create_note
-organization.record_decision
-organization.create_task
-organization.list
-organization.complete_task
-organization.reopen_task
-```
-
-The new `OwnerStateRead` / `OwnerStateWrite` classes are intentionally separate from public reads and external mutations. Owner state requires authenticated trusted owner context and trusted executors. It does not use `GITHUB_WRITE_TOKEN` or external-write one-time approval. ActionGateway independently rejects owner-state access when owner context is missing.
-
-State is stored in SQLite through migration `202609070001_AddOrganizationItems`; task lifecycle and note/decision/task data survive restart. CI #247 / `34053503945` passed the Ubuntu full gate and Windows integration before this final documentation sync.
+The recovery path exports logical owner state rather than copying raw runtime configuration. Restore targets a new directory, applies checked-in migrations, preserves canonical IDs, restores approvals revoked, cancels pending proposals, preserves terminal proposals, and rejects malformed domain/history state. Credentials and provider configuration are not exported. See [`docs/recovery.md`](docs/recovery.md).
 
 No background scheduling/reminder delivery is introduced; Gate E remains required for background execution.
 
-## Next — M6A.5 live proof and owner acceptance
+## Next — continuity delivery, then owner acceptance
 
-Reuse the already-safe `github.create_branch` executor through the intended UX:
+PR #36 can merge only after its final exact head passes Ubuntu full CI, Windows integration and Windows launcher smoke. Post-merge main CI must then pass on the exact merge SHA.
+
+After continuity delivery, the owner checkpoint still needs the real-provider conversational approval proof:
 
 ```text
 Owner: "Create branch abc for Loren from main."
@@ -214,9 +194,10 @@ Do not commit real secrets.
 dotnet restore Loren.slnx
 dotnet build Loren.slnx --configuration Release --no-restore
 dotnet test Loren.slnx --configuration Release --no-build --no-restore
+dotnet format Loren.slnx --verify-no-changes --no-restore
 ```
 
-Windows is a first-class integration-test CI platform in addition to the Ubuntu full gate.
+Windows is a first-class integration-test CI platform in addition to the Ubuntu full gate. CI also exercises `scripts/Start-Loren.ps1 -SmokeTest -NoPause` on Windows.
 
 ## Version path
 
@@ -235,6 +216,7 @@ v1.0  stable personal daily driver
 
 - [`docs/status.md`](docs/status.md) — authoritative current progress
 - [`docs/handoff.md`](docs/handoff.md) — compact fresh-thread checkpoint
+- [`docs/recovery.md`](docs/recovery.md) — logical export/restore runbook and security semantics
 - [`docs/plans/master-plan.md`](docs/plans/master-plan.md) — product/version roadmap
 - [`docs/plans/v0.1.md`](docs/plans/v0.1.md) — detailed current-version execution plan
 - [`docs/architecture.md`](docs/architecture.md) — active system boundaries

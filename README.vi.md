@@ -38,14 +38,15 @@ NÓI CHUYỆN
 
 ## Trạng thái hiện tại
 
-**Cập nhật:** 2026-09-07  
+**Cập nhật:** 2026-09-14  
 **Phase:** `v0.1 — Useful Trustworthy Assistant`  
-**Đã hoàn tất:** `M1–M4`, `Gate D`, `M5 write-safety Slices 1–3`, `M6A.1`, `M6A.2`, `M6A.3`  
-**Sẵn sàng merge:** `M6A.4 — Notes / Decisions / Tasks` qua PR #32  
-**Tiếp theo:** `M6A.5 — Conversational approval`  
-**Đang pause:** `M5 file/commit/PR write expansion` cho tới khi v0.1 owner checkpoint dùng được
+**Baseline đã hoàn tất:** `M1–M4`, `Gate D`, `M5 write-safety Slices 1–3`, implementation `M6A.1–M6A.5`; live proof của owner cho M6A.5 vẫn đang pending.  
+**Continuity delivery:** [PR #36](https://github.com/rua-den/loren/pull/36) / `codex/conversation-continuity` — persistent conversation, Windows launcher, logical recovery và retained-audit hardening.  
+**Code checkpoint đã verify:** `11eb38e` qua CI #276 / `34838365005`: Ubuntu restore/build/full tests/format/secret/dependency/web smoke và Windows integration đều PASS.  
+**Delivery gate cuối:** final PR head chạy thêm Windows launcher smoke; exact-head CI phải xanh trước merge và main CI phải xanh trên exact merge SHA sau merge.  
+**Đang pause:** `M5 file/commit/PR write expansion` tới khi v0.1 owner checkpoint dùng được.
 
-Chi tiết chuẩn: [`docs/status.md`](docs/status.md). Checkpoint thread mới: [`docs/handoff.md`](docs/handoff.md).
+Chi tiết chuẩn: [`docs/status.md`](docs/status.md). Handoff: [`docs/handoff.md`](docs/handoff.md). Recovery: [`docs/recovery.md`](docs/recovery.md).
 
 ## Những gì đã chứng minh
 
@@ -107,39 +108,21 @@ canonical target
 
 Real write proof đầu tiên là tạo **non-default GitHub branch** rồi verify exact SHA. Broad GitHub write vẫn đang pause.
 
-## Execution hiện tại — M6A.4
+## Continuity và local readiness
 
-PR #32 thêm durable Loren-owned organization state:
+M6A.5 conversational approval đã merge qua [PR #33](https://github.com/rua-den/loren/pull/33). PR #36 delivery durable conversation continuity, local Windows startup và versioned recovery.
 
-```text
-Note
-Decision
-Task
-TaskStatus = Open | Completed
-optional Project scope
-provenance/timestamps
-```
+Conversation scope giờ sống qua restart, kể cả canonical project được infer tự động. Overlapping turn trên cùng conversation fail closed và gate object không bị giữ vĩnh viễn.
 
-Conversation actions:
+Recovery export logical owner state thay vì copy raw runtime config. Restore luôn vào directory mới, áp dụng checked-in migrations, giữ canonical IDs, revoke approval khi restore, cancel pending proposal an toàn, giữ nguyên terminal proposal và reject malformed domain/history state. Credential và provider config không được export. Xem [`docs/recovery.md`](docs/recovery.md).
 
-```text
-organization.create_note
-organization.record_decision
-organization.create_task
-organization.list
-organization.complete_task
-organization.reopen_task
-```
+Không có background scheduler/reminder delivery trong batch này; Gate E vẫn bắt buộc trước background execution.
 
-Hai access class mới `OwnerStateRead` / `OwnerStateWrite` được tách rõ khỏi public read và external mutation. Owner-state bắt buộc authenticated trusted owner context + trusted executor. Nó không dùng `GITHUB_WRITE_TOKEN` và không cần external-write one-time approval. ActionGateway tự enforce owner context để permissive policy cũng không thể làm lộ private owner state.
+## Tiếp theo — delivery continuity rồi owner acceptance
 
-State được lưu trong SQLite bằng migration `202609070001_AddOrganizationItems`; Note/Decision/Task và lifecycle complete/reopen sống qua restart. CI #247 / `34053503945` đã xanh Ubuntu full gate + Windows integration trước đợt sync docs cuối này.
+Delivery của PR #36 chỉ hoàn tất khi final exact head qua Ubuntu full CI, Windows integration và Windows launcher smoke; sau merge, main CI phải pass trên exact merge SHA.
 
-Không có background scheduler/reminder delivery ở slice này; Gate E vẫn bắt buộc trước background execution.
-
-## Tiếp theo — M6A.5 conversational approval
-
-Reuse `github.create_branch` đã an toàn nhưng đưa nó qua UX đúng:
+Sau continuity delivery, owner checkpoint vẫn cần real-provider conversational approval proof:
 
 ```text
 Owner: "Tạo branch abc cho Loren từ main."
@@ -152,7 +135,7 @@ Owner: "Tạo branch abc cho Loren từ main."
  -> Loren báo kết quả tự nhiên + audit context
 ```
 
-Tin nhắn chat chỉ là **intent**, không phải Gate D approval. Slice này không cần thêm GitHub mutation primitive mới.
+Tin nhắn chat chỉ là **intent**, không phải Gate D approval. Không cần thêm GitHub mutation primitive mới cho checkpoint này.
 
 ## Mốc owner test v0.1
 
@@ -201,9 +184,10 @@ Không commit secret thật.
 dotnet restore Loren.slnx
 dotnet build Loren.slnx --configuration Release --no-restore
 dotnet test Loren.slnx --configuration Release --no-build --no-restore
+dotnet format Loren.slnx --verify-no-changes --no-restore
 ```
 
-Windows là first-class integration-test CI platform bên cạnh Ubuntu full gate.
+Windows là first-class integration-test CI platform bên cạnh Ubuntu full gate. CI cũng chạy `scripts/Start-Loren.ps1 -SmokeTest -NoPause` trên Windows.
 
 ## Lộ trình version
 
@@ -222,6 +206,7 @@ v1.0  stable personal daily driver
 
 - [`docs/status.md`](docs/status.md) — tiến độ chuẩn hiện tại
 - [`docs/handoff.md`](docs/handoff.md) — checkpoint ngắn để mở thread mới
+- [`docs/recovery.md`](docs/recovery.md) — runbook logical export/restore + security semantics
 - [`docs/plans/master-plan.md`](docs/plans/master-plan.md) — product/version roadmap
 - [`docs/plans/v0.1.md`](docs/plans/v0.1.md) — plan chi tiết version hiện tại
 - [`docs/architecture.md`](docs/architecture.md) — system boundaries

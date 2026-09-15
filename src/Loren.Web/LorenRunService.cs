@@ -139,7 +139,13 @@ public sealed class LorenRunService
 public sealed record LorenRunRequest(
     string Message,
     string? ProjectAlias = null,
-    IReadOnlyList<LorenConversationMessage>? History = null);
+    IReadOnlyList<LorenConversationMessage>? History = null,
+    Guid? ConversationId = null,
+    bool ClearProjectContext = false);
+
+public sealed record CreateConversationRequest(
+    string? Title = null,
+    string? ProjectAlias = null);
 
 public sealed record LorenRunResult(
     string FinalOutput,
@@ -148,7 +154,8 @@ public sealed record LorenRunResult(
     int ActionCount,
     IReadOnlyList<LorenAuditEntry> Audit,
     LorenProjectContext? Project = null,
-    IReadOnlyList<PendingCreateBranchProposal>? Proposals = null);
+    IReadOnlyList<PendingCreateBranchProposal>? Proposals = null,
+    Guid? ConversationId = null);
 
 public sealed record LorenAuditEntry(
     string ActionId,

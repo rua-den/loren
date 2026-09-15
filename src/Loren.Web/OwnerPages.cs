@@ -112,6 +112,8 @@ internal static class OwnerPages
     .shell { width: min(900px, calc(100% - 36px)); margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; align-items: start; }
     .shell.context-visible { width: min(1240px, calc(100% - 36px)); grid-template-columns: minmax(0, 1fr) 306px; }
     .main-column { min-width: 0; }
+    .conversation-list { display:flex; flex-direction:column; gap:6px; }
+    .conversation-list button { width:100%; text-align:left; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .context-bar { display: flex; align-items: stretch; flex-direction: column; gap: 8px; padding: 4px 2px 2px; color: var(--muted); font-size: 13px; }
     .context-bar select { min-width: 180px; max-width: 340px; border: 1px solid var(--line-strong); border-radius: 9px; padding: 7px 10px; background: var(--surface); color: #dbeeed; }
     #context-toggle { display:inline-block; }
@@ -235,6 +237,10 @@ internal static class OwnerPages
     </div>
 
     <aside class="side-panel" id="context-panel" aria-label="Ngữ cảnh và hoạt động">
+    <details class="panel" open>
+      <summary>Cuộc trò chuyện đã lưu</summary>
+      <div class="panel-body"><div id="conversation-list" class="conversation-list"><span class="empty">Đang tải…</span></div></div>
+    </details>
     <details class="panel" id="project-context-panel">
       <summary>Project và ngữ cảnh</summary>
       <div class="panel-body">
@@ -308,8 +314,13 @@ internal static class OwnerPages
     const logout = document.getElementById('logout');
     const bootstrap = document.getElementById('bootstrap');
     const bootstrapResult = document.getElementById('bootstrap-result');
+    const conversationList = document.getElementById('conversation-list');
 
     let history = [];
+    let conversationId = null;
+    let conversationLoadVersion = 0;
+    let conversationLoading = false;
+    let initializing = true;
     let projects = [];
     let welcomeActions = null;
     const allowedThemes = ['white', 'graphite-black', 'graphite-cyan'];
@@ -436,7 +447,10 @@ internal static class OwnerPages
       return row;
     }
 
-    function resetConversation() {
+    function resetConversation(explicit = true) {
+      if (send.disabled) return;
+      conversationId = null;
+      if (explicit) { try { localStorage.removeItem('loren-active-conversation'); } catch {} }
       history = [];
       chat.replaceChildren();
       addMessage('assistant', 'Hôm nay mày muốn kể gì, hay mình tiếp việc đang dở?');
@@ -458,6 +472,48 @@ internal static class OwnerPages
       emptyAudit.appendChild(emptyAuditCell); audit.appendChild(emptyAudit);
       status.textContent = 'Sẵn sàng · Enter để gửi · Shift+Enter xuống dòng';
       message.focus();
+    }
+
+    function renderConversationList(items) {
+      conversationList.replaceChildren();
+      if (!items?.length) { conversationList.textContent = 'Chưa có cuộc trò chuyện đã lưu.'; return; }
+      for (const item of items) {
+        const button = document.createElement('button');
+        button.type = 'button'; button.className = 'ghost'; button.textContent = item.title || 'Cuộc trò chuyện';
+        button.disabled = send.disabled;
+        button.addEventListener('click', () => void loadConversation(item.id));
+        conversationList.appendChild(button);
+      }
+    }
+
+    async function loadConversations(refreshOnly = false) {
+      try {
+        const items = await readJson(await fetch('/api/conversations'));
+        renderConversationList(items);
+        if (refreshOnly) return;
+        let active = null; try { active = localStorage.getItem('loren-active-conversation'); } catch {}
+        if (active && items.some(item => item.id === active)) await loadConversation(active);
+      }
+      catch (error) { conversationList.textContent = error instanceof Error ? error.message : String(error); }
+    }
+
+    async function loadConversation(id) {
+      if (conversationLoading || (send.disabled && !initializing)) return;
+      conversationLoading = true;
+      send.disabled = true;
+      const loadVersion = ++conversationLoadVersion;
+      try {
+        const item = await readJson(await fetch(`/api/conversations/${encodeURIComponent(id)}`));
+        if (loadVersion !== conversationLoadVersion) return;
+        conversationId = item.id; try { localStorage.setItem('loren-active-conversation', conversationId); } catch {}
+        history = []; chat.replaceChildren(); welcomeActions = null; audit.replaceChildren();
+        meta.textContent = 'Đã mở lại cuộc trò chuyện. Đề xuất cũ không có nút duyệt; hãy yêu cầu kiểm tra mới nếu cần.';
+        projectContext.value = item.projectAlias ?? '';
+        for (const entry of item.messages ?? []) { addMessage(entry.role === 'user' ? 'user' : 'assistant', entry.content); history.push({ role: entry.role, content: entry.content }); }
+        if ((item.messages ?? []).length >= 200) meta.textContent = 'Đang hiển thị 200 tin nhắn gần nhất. Các đề xuất cũ không có nút duyệt; hãy yêu cầu kiểm tra mới nếu cần.';
+        status.textContent = 'Đã mở cuộc trò chuyện'; message.focus();
+      } catch (error) { status.textContent = error instanceof Error ? error.message : String(error); }
+      finally { if (loadVersion === conversationLoadVersion) { conversationLoading = false; if (!initializing) send.disabled = false; } }
     }
 
     async function readJson(response) {
@@ -612,8 +668,12 @@ internal static class OwnerPages
         const result = await postJson('/api/run', {
           message: text,
           projectAlias: selectedAlias,
-          history: priorHistory
+          history: priorHistory,
+          conversationId,
+          clearProjectContext: Boolean(conversationId && !selectedAlias)
         });
+        conversationId = result.conversationId ?? conversationId;
+        try { localStorage.setItem('loren-active-conversation', conversationId); } catch {}
         pending.remove();
         addMessage('assistant', result.finalOutput);
         renderProposals(result.proposals);
@@ -632,6 +692,7 @@ internal static class OwnerPages
         status.textContent = result.actionCount
           ? `Xong · ${result.actionCount} tool action`
           : 'Xong';
+        void loadConversations(true);
       } catch (error) {
         pending.remove();
         const errorText = error instanceof Error ? error.message : String(error);
@@ -639,6 +700,7 @@ internal static class OwnerPages
         status.textContent = 'Có lỗi';
       } finally {
         send.disabled = false;
+        conversationList.querySelectorAll('button').forEach(button => { button.disabled = false; });
         message.focus();
       }
     }
@@ -696,8 +758,15 @@ internal static class OwnerPages
       location.assign('/login');
     });
 
-    resetConversation();
-    void loadProjects();
+    resetConversation(false);
+    send.disabled = true;
+    void (async () => {
+      await loadProjects();
+      await loadConversations();
+      initializing = false;
+      send.disabled = false;
+      conversationList.querySelectorAll('button').forEach(button => { button.disabled = false; });
+    })();
   </script>
 </body>
 </html>
