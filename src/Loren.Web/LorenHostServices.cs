@@ -63,7 +63,7 @@ public static class LorenHostServices
         services.AddScoped<LorenMemoryContextBuilder>();
         services.AddScoped<LorenProjectContextBuilder>();
 
-        services.AddSingleton<InMemoryAuditSink>();
+        services.AddScoped<InMemoryAuditSink>();
         services.AddScoped<DurableAuditSink>();
         services.AddScoped<IAuditSink>(provider =>
             provider.GetRequiredService<DurableAuditSink>());
