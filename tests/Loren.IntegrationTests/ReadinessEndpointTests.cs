@@ -17,6 +17,9 @@ namespace Loren.IntegrationTests;
 
 public sealed class ReadinessEndpointTests
 {
+    private static readonly JsonSerializerOptions SerializerOptions =
+        new(JsonSerializerDefaults.Web);
+
     [Fact]
     public async Task HealthRemainsPublicAndDetailedReadinessRequiresOwnerAuthentication()
     {
@@ -42,7 +45,7 @@ public sealed class ReadinessEndpointTests
             string body = await response.Content.ReadAsStringAsync(cancellationToken);
             LorenReadinessReport report = JsonSerializer.Deserialize<LorenReadinessReport>(
                 body,
-                new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
+                SerializerOptions)!;
 
             Assert.Equal("ready", report.Status);
             Assert.Equal("ready", report.Storage.Status);
@@ -121,7 +124,7 @@ public sealed class ReadinessEndpointTests
             string body = await response.Content.ReadAsStringAsync(cancellationToken);
             LorenReadinessReport report = JsonSerializer.Deserialize<LorenReadinessReport>(
                 body,
-                new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
+                SerializerOptions)!;
 
             Assert.Equal("needs_setup", report.Status);
             Assert.Equal("revoked", report.ExternalWrites.Status);
