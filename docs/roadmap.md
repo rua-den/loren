@@ -1,214 +1,196 @@
 # Loren Roadmap
 
-This is the concise product roadmap. The authoritative delivery sequence, milestones, and version gates live in [`docs/plans/master-plan.md`](plans/master-plan.md).
+Updated 2026-09-19. Loren advances by **proven capability and trust**, not by calendar date.
 
-Loren advances by **proven capability and trust**, not by calendar dates.
+The authoritative detailed sequence lives in [`docs/plans/master-plan.md`](plans/master-plan.md). Current verified delivery state lives in [`status.md`](status.md).
 
 ## Current status
 
-**Current stage:** `v0.1 — Trustworthy Core development`  
-**Passed:** `Gate A — Core ownership`, `Gate B — v0.1 implementation stack`, `Gate C — canonical state/memory lifecycle`, `Gate D — action/approval/credential boundary`  
-**Completed milestone:** `M4 — Trusted Durable Memory`  
-**Current milestone:** `M5 — Action/Credential Boundary + Narrow GitHub Writes`  
-**Now:** `M5 Slice 2 — write credential resolver + secret redaction/revocation after Slice 1 merges`
+**Version:** `v0.1 — Useful Trustworthy Assistant`  
+**Current milestone:** `M6B — Daily Driver Readiness`  
+**Last verified baseline:** PR #37 merge `ba60246a410b257097ecd537f4d977b402a37b35`, main CI #280 PASS Ubuntu + Windows + launcher.  
+**Paused:** broader GitHub file/commit/PR mutation until owner live acceptance proves it is the right next value.
 
-M2 proved the first authenticated owner-to-real-tool path. M3 made Project/Repository identity provider-independent and restart-safe. M4 made durable memory restart-safe, correctable, forgettable, bounded before brain use, and resistant to model/external-content poisoning. Gate D/ADR-004 froze the first write-capable security contract. M5 Slice 1 now implements the deterministic policy/approval/read-only foundation without enabling any real GitHub mutation.
-
-M4 path:
+The product path is:
 
 ```text
-OWNER_EXPLICIT durable memory
--> restart-safe SQLite persistence
--> OWNER_CORRECTION append/supersede
--> current-memory retrieval
--> source/provenance trust filtering
--> bounded prepared memory context
--> owner forget / full correction-chain purge
--> adversarial poisoning boundary
--> Windows local + CI integration hardening
+CONVERSE
+ -> REMEMBER
+ -> READ CURRENT INFORMATION
+ -> RESEARCH / SYNTHESIZE
+ -> ORGANIZE
+ -> PROPOSE ACTION
+ -> OWNER APPROVES
+ -> ACT / VERIFY / AUDIT
+ -> later BACKGROUND / PROACTIVE / VOICE
 ```
 
-M4 evidence:
-
-- PR #18 — OWNER_EXPLICIT persistence;
-- PR #19 — correction/supersession;
-- PR #20 — authority-aware prepared context;
-- PR #21 — forget/delete without resurrection;
-- PR #22 — provenance and poisoning/trust-boundary acceptance;
-- PR #23 — Windows-safe SQLite temp integration tests + permanent Windows CI.
-
-PR #23 post-merge main CI #163 / `33894104116` passed Ubuntu full gates and Windows integration; the owner local Windows integration suite also passed.
-
-Gate D evidence:
-
-- PR #24 merged at `b8649cb563e30af845a0b383103797632bed79a4`;
-- exact-head CI #164 / `33896004193` — Ubuntu full gate + Windows integration **PASS**.
-
-Gate D write path contract:
-
-```text
-brain requests write
--> canonical target resolution
--> deterministic policy
--> exact owner approval artifact
--> one-time atomic consume / replay rejection
--> fail-closed global read-only
--> write-specific credential resolver
--> executor
--> independent post-write verification
--> correlated redacted audit
-```
-
-### M5 Slice 1 implemented in PR #25
-
-```text
-typed ActionAccessClass
--> trusted ActionAuthorizationContext
--> exact SHA-256 ActionIntentFingerprint
--> Loren-owned ApprovalId / ActionApproval
--> persistent IActionApprovalStore
--> GateDActionPolicy
--> gateway-enforced approval for every non-read action
--> atomic one-time consume
--> replay / expiry / revoke / mismatch rejection
--> host-controlled LOREN_ENABLE_WRITES read-only default
--> migration-drift regression coverage
-```
-
-Implementation head `15a2b2c4c853324a546a55d13da22d94d4ac5765` passed CI #172 / `33898878125` across zero-warning Ubuntu build, all tests, format/security/web gates, and Windows integration.
-
-Slice 1 deliberately registers no GitHub mutation executor. Approval is consumed before the first consequential executor attempt; independent retry after failure/ambiguity needs fresh approval.
+GitHub is one integration, not Loren's product identity.
 
 ---
 
 ## v0.0 — Architecture and feasibility [COMPLETE]
 
-Goal: establish the ownership boundary and prove the concrete v0.1 stack is implementable.
+Proved the core ownership model and implementation stack:
 
-Exit evidence:
+- Loren owns identity/state/policy/action authorization;
+- brain/model/tool providers are replaceable adapters;
+- .NET 10 / ASP.NET Core / SQLite + EF Core / bounded Loren-owned AgentLoop are viable.
 
-- ADR-001 Accepted;
-- ADR-002 Accepted after technical spikes;
-- v0.1 implementation plan finalized;
-- brain/action/MCP/persistence/host boundaries proven enough to scaffold production code.
+Gates A and B passed.
 
 ---
 
-## v0.1 — Trustworthy Core [ACTIVE]
+## v0.1 — Useful Trustworthy Assistant [ACTIVE]
 
-Goal: build the smallest trustworthy Loren.
+Goal: Loren is useful enough to keep open as an owner-controlled personal secretary while remaining trustworthy around memory, current information and external actions.
 
-Required flows:
+### Completed foundation
 
 ```text
-"Loren, repo wedding hiện sao rồi?"
-"Nhớ rằng project này production deploy phải hỏi tao."
-"Tạo branch và chuẩn bị thay đổi X."
-"Tại sao mày vừa làm việc đó?"
+M1 Engineering Foundation                     ✓
+M2 Conversation/tool Walking Skeleton         ✓
+M3 Canonical Project/Repository State         ✓
+M4 Trusted Durable Memory                     ✓
+Gate D External Action Safety                 ✓
+M5 Slices 1–3 narrow GitHub branch proof      ✓
+M6A.1 Conversation Primary Surface            ✓
+M6A.2 Current Information                     ✓
+M6A.3 Source-aware Research                   ✓
+M6A.4 Notes / Decisions / Tasks               ✓
+M6A.5 Conversational Approval Code            ✓ code; live owner proof pending
+Conversation Persistence                       ✓
+Windows Launcher                               ✓
+Logical Export/Restore                         ✓
+Retained Audit                                 ✓
+M6B.1 Transient Audit Lifetime                ✓
 ```
 
-Milestones:
+### M6B — Daily Driver Readiness [CURRENT]
+
+The purpose of M6B is not to add another capability family. It makes the already-built assistant diagnosable and proves it works as a daily product.
 
 ```text
-M1 Engineering Foundation              ✓ complete
-M2 Walking Skeleton                    ✓ complete
-M3 Canonical Project/Repository State  ✓ complete
-M4 Trusted Durable Memory              ✓ complete
-Gate D Action/Credential Policy        ✓ passed / ADR-004
-M5 Action/Credential Boundary + Writes <- current
-M6 Minimal Daily-use UI
-M7 Export/Restore + Recovery
-M8 Security/Reliability E2E
+M6B.1 bound transient request audit            ✓ complete
+M6B.2 safe readiness + docs rebaseline         <- current delivery
+M6B.3 owner live daily-driver acceptance       next product gate
+v0.1 closeout / release decision               after acceptance
 ```
 
-Core capabilities across v0.1:
+M6B.2 keeps `/health` as liveness and adds authenticated `/api/readiness` for safe configuration/state posture. It does not perform external provider probes and never returns secrets.
 
-- one-owner web interface;
-- provider-neutral brain boundary;
-- bounded Loren-owned agent loop;
-- canonical Project/Repository state;
-- trusted durable memory with provenance, correction and forgetting;
-- ActionGateway + exact one-time approvals;
-- credential-isolated GitHub read/narrow writes;
-- fail-closed global read-only control;
-- post-write verification;
-- audit trail;
-- export/wipe/restore proof;
-- adversarial security/reliability tests.
+M6B.3 uses real providers and the existing branch action to test useful conversation, current information, research, project context, restart continuity, durable memory/tasks, explicit Cancel/Approve and exact GitHub SHA read-back.
 
-### M5 implementation order
+### v0.1 release gate
+
+Do not tag `v0.1.0` until:
+
+- ordinary conversation is usable;
+- current information is grounded with sources;
+- bounded research is source-aware;
+- canonical project + memory + live read work together;
+- durable organization state survives restart;
+- conversation continuity survives restart;
+- one consequential action follows proposal → explicit approval → execute → verify → audit;
+- read-only/revocation fail closed;
+- recovery is usable;
+- no raw credentials leak;
+- exact-head and post-merge CI are green.
+
+---
+
+## v0.2 — Personal Secretary Integrations
+
+Start only after v0.1 closeout.
+
+First prove a gap already exposed by the architecture: `IBrain` is provider-neutral, but production composition is currently Ollama-only. Implement and accept a second real brain provider before advertising operational provider portability.
+
+Then prefer **one owner-visible read-only personal integration** over a generic connector framework. Strong candidate:
 
 ```text
-Slice 1 typed policy + approval + read-only        ✓ implemented / PR #25 merge gate
-Slice 2 credential resolver + redaction            <- next
-Slice 3 create non-default branch + verify
-Slice 4 controlled file/commit path + verify
-Slice 5 open pull request + verify
-Slice 6 replay/revocation/injection/audit E2E
+Calendar read/search
+ -> ask what is next
+ -> inspect schedule/conflicts
+ -> answer with source/time context
 ```
 
-No real GitHub mutation is enabled until the policy/approval/read-only/credential foundations are green on `main`.
+Other candidates: mail read/search/summarize, files/documents, contacts/people context, richer task due-date data, on-demand daily brief.
 
-Allowed v0.1 writes remain limited to non-default branch creation, controlled file/commit changes on a non-default branch, and opening a pull request. Direct default-branch writes, merge, force-push/history rewrite, deletion/admin/security changes, secret-management actions, and production deployment remain forbidden.
-
-Detailed plan: [`docs/plans/v0.1.md`](plans/v0.1.md)
+Writes for personal systems require their own explicit policy/credential/approval semantics. Background delivery still waits for Gate E.
 
 ---
 
-## v0.2 — Useful Project Assistant
+## v0.3 — Personal / Project Operations
 
-Goal: make the trusted v0.1 core useful for richer daily project work.
+Candidate scope after useful read integrations:
 
-Candidate capabilities:
-
-- public web research with source provenance;
-- explicit research-to-memory/decision promotion;
-- persistent reminders/light scheduler;
-- project decisions/procedures;
-- richer GitHub project health summaries;
-- improved memory retrieval/conflict handling;
-- model/run cost visibility.
-
-Before private/background personal operations, Gate E must pass.
+- approved calendar/mail/project writes;
+- cross-tool workflows;
+- server/VPS health and constrained actions;
+- stronger per-integration credential scopes;
+- bounded background jobs only after Gate E.
 
 ---
 
-## v0.3 — Personal Operations
+## v0.4 — Voice + Device Presence
 
-Candidate capabilities include Gmail, Google Calendar, server/VPS health and constrained actions, filesystem integrations, notifications, cross-tool context, daily brief, and stronger data/credential scopes.
+Candidate scope:
+
+- trusted device enrollment;
+- PWA/mobile presence;
+- push-to-talk;
+- STT/TTS;
+- notifications.
+
+Gate F is required before voice/device trust can authorize sensitive actions.
 
 ---
 
-## v0.4 — Voice and Device Presence
+## v0.5 — Proactive / Background Loren
 
-Candidate capabilities include mobile/PWA, trusted devices, push-to-talk, STT/TTS, notification actions, and optional device nodes. Gate F must pass first.
+Candidate scope:
 
----
+- normalized events/watchers;
+- recurring work;
+- proactive notifications;
+- bounded standing permissions;
+- quotas/cancellation/global pause.
 
-## v0.5 — Proactive Loren
-
-Candidate capabilities include event ingestion, GitHub/webhook watchers, proactive notifications, recurring/background work, bounded standing permissions, quotas, active-task visibility, and global pause. Gate G must pass first.
+Gate G is required. Gate E foundations are prerequisites for execution without active owner presence.
 
 ---
 
 ## v0.6+ — Real-use hardening
 
-Let actual usage determine priorities: memory consolidation, more providers/local models, Home Assistant, computer use, offline/private execution, performance/cost, packaging, and UX.
+Let actual daily usage determine priorities: memory consolidation, cost/performance, provider diversity, more integrations, packaging, private/local execution, Home Assistant, computer use and richer UX.
 
 ---
 
 ## v1.0 — Stable Personal Daily Driver
 
-v1.0 means Loren's core can be trusted as a long-lived daily assistant: stable workflows, tested recovery/migration, continuity across upgrades/providers, maintainable action/skill boundaries, reliable background/device controls, secret rotation, reconstructable audit, and documented privacy/security defaults.
+v1.0 means Loren's core is safe and maintainable as a long-lived assistant across upgrades/providers: stable workflows, tested recovery/migrations, secret rotation, reconstructable audit, background/device controls, documented privacy/security defaults and proven real use.
 
 Gate H must pass before release.
 
 ---
 
+## Decision gates
+
+```text
+Gate A  core ownership                         PASSED
+Gate B  v0.1 implementation stack              PASSED
+Gate C  canonical state + memory lifecycle     PASSED
+Gate D  action/approval/credential boundary    PASSED
+Gate E  background execution                   NOT YET
+Gate F  trusted device / voice approval        LATER
+Gate G  proactive autonomy                     LATER
+Gate H  v1 stable contract                     LATER
+```
+
 ## Ongoing rule
 
-At every version ask:
+At every slice ask:
 
-> Does this capability strengthen Loren's personal intelligence, or are we rebuilding infrastructure a mature project already solves better?
+> Does this make Loren more useful as the owner's persistent intelligence, or are we merely adding infrastructure/automation because we can?
 
-Reuse infrastructure where it is safe and replaceable. Spend custom engineering on Loren's identity, memory, policy, personal semantics, and trustworthy behavior.
+Build the smallest owner-visible vertical slice that answers that question.
