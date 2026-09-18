@@ -1,56 +1,119 @@
-# M6A.5 live proof and v0.1 owner checkpoint
+# M6B daily-driver live proof and v0.1 owner checkpoint
 
-Updated 2026-09-08. Code is merged in PR #33; CI #259 is green. This checklist is **not yet executed with real providers**. Deterministic tests and authentication smoke do not substitute for owner acceptance.
+Updated 2026-09-19.
+
+Deterministic tests and CI prove boundaries; they do not substitute for real-provider owner acceptance. This checklist is the next product decision point after M6B.2 is green on `main`.
 
 ## Responsibilities
 
-The owner configures secrets locally, logs in, evaluates useful responses and explicitly approves the intended proposal card. The coding agent prepares the host, diagnoses failures, checks stored state and GitHub read-back, records evidence and delegates code fixes to Luna. No token needs to be sent in chat.
+The owner configures local secrets, logs in, evaluates response quality and explicitly decides any external-write proposal. The coding agent diagnoses failures and records non-secret evidence. Never paste provider/write credentials into chat, docs, commits or issue/PR text.
 
-## 1. Read-only session
+## 0. Start with readiness
 
-For local setup, copy `src/Loren.Web/appsettings.Local.example.json` to `src/Loren.Web/appsettings.Local.json` and edit the local values. The file is ignored by Git and is loaded at startup. It supports the owner password, Ollama key/model, brain and web endpoints, `LOREN_ENABLE_WRITES=false`, and an optional data directory. The configured adapter does not require an OpenAI key.
-
-Environment variables and command-line settings override the local JSON values. Restart the host after editing the file; local JSON is intentionally not reloaded while the process runs.
+Use the normal local launcher or run:
 
 ```powershell
 dotnet run --project src/Loren.Web/Loren.Web.csproj --configuration Release --urls http://127.0.0.1:5091
 ```
 
-Open `http://127.0.0.1:5091` and log in. Keep the same data directory across restarts; the default is the OS local application-data directory under `Loren/`. Select or bootstrap the canonical Loren project/repository through the UI if needed. Do not rebind an existing alias to another repository.
+Login first, then open/call:
 
-Record pass/fail and a short observation:
+```text
+GET /api/readiness
+```
 
-- Normal conversation answers a stable question naturally.
-- A current-information question invokes retrieval and includes usable sources.
-- Research compares multiple sources and explains uncertainty.
-- A project question uses canonical project context and a real GitHub read.
-- Teach a durable fact/decision, restart, and retrieve it from the same database.
-- Create/list/complete a task through chat; confirm its status after restart.
+Expected read-only starting posture:
 
-These steps require no external write. Local Notes/Decisions/Tasks work with writes disabled.
+```text
+status: ready
+storage: ready
+ownerAuthentication: ready
+brain: configured
+webResearch: configured
+projects: ready | empty
+externalWrites: disabled
+```
 
-## 2. Live conversational approval
+`projects=empty` means bootstrap/select a canonical project before project-scoped tests; it is not a host failure.
 
-The `github-personal` SSH key supports developer Git operations. Loren's create-branch client uses a separate `GITHUB_WRITE_TOKEN` for GitHub HTTP API calls. Configure a write-specific credential for the intended repository locally; it must not be reused as a model credential.
+Readiness is local/configuration evidence only. It deliberately does not ping Ollama, GitHub or web providers. The steps below prove real reachability and useful behavior.
 
-Add the optional write-only GitHub token and revocation setting to the ignored local JSON file, or set them in the process environment. Stop and restart the host after changing them:
+Public `/health` is only liveness and is not sufficient owner-readiness evidence.
+
+## 1. Read-only daily-use session
+
+Keep:
+
+```text
+LOREN_ENABLE_WRITES=false
+```
+
+Run and record pass/fail + a short observation for each:
+
+1. **Normal conversation** — ask a stable reasoning/knowledge question; response should be natural and not invoke unnecessary tools.
+2. **Current information** — ask something current; Loren should retrieve evidence and show usable sources.
+3. **Research** — ask for a multi-source comparison; Loren should synthesize bounded evidence and distinguish fact from inference/uncertainty.
+4. **Project context** — select/bootstrap Loren and ask its current state; response should combine canonical project context with a real GitHub read when needed.
+5. **Durable memory/decision** — teach or record a durable owner fact/decision, restart with the same data directory, retrieve it correctly.
+6. **Organization state** — create/list/complete a task through chat, restart, verify terminal state remains correct.
+7. **Conversation continuity** — restart and reopen a prior conversation; history/project scope should remain coherent.
+8. **Recovery sanity** — keep a recent logical export available and confirm the documented restore path remains understandable before release closeout.
+
+Any useful-response failure here is higher priority than adding another external write primitive.
+
+## 2. Live conversational approval proof
+
+Loren's GitHub write client uses a dedicated `GITHUB_WRITE_TOKEN`, separate from provider credentials and developer Git/SSH credentials.
+
+Configure locally, restart, then re-check `/api/readiness`:
 
 ```powershell
 $env:GITHUB_WRITE_TOKEN = Read-Host 'GitHub write token' -MaskInput
 $env:LOREN_ENABLE_WRITES = 'true'
 $env:LOREN_GITHUB_WRITE_CREDENTIAL_REVOKED = 'false'
-dotnet run --project src/Loren.Web/Loren.Web.csproj --configuration Release --urls http://127.0.0.1:5091
 ```
 
-1. Ask in chat for a uniquely named disposable non-default branch, e.g. `proof/m6a5-owner-<unique-suffix>`, in the selected Loren repository from `main`.
-2. Inspect the card: repository, new branch, source ref/exact live SHA and five-minute expiry. Chat alone must not create a branch.
-3. First test **Cancel**. Confirm no branch creation occurred.
-4. Request a fresh proposal and click **Approve** only when every field is correct. An expired or terminal decision needs a fresh proposal, not a replay.
-5. Verify the real GitHub branch ref equals the card's frozen SHA. Inspect natural outcome/audit. A repeated decision must not perform another mutation.
-6. Restore `LOREN_ENABLE_WRITES=false` and restart after the proof. Delete the disposable branch only after owner authorization for its cleanup.
+Before requesting a proposal, expect:
 
-## Evidence and exit criteria
+```text
+externalWrites.enabled = true
+externalWrites.status = ready
+```
 
-Record app commit/time, provider/model, canonical repository, proposal ID, branch, source ref/SHA, decision, independently read-back SHA, redacted outcome/audit, owner observations and restart results. Never record credentials.
+If readiness says `missing_credential`, `revoked` or `not_configured`, do not attempt the write proof until configuration is corrected.
 
-Live proof closes M6A.5's remaining gap. The full owner checklist is the decision point for resuming M5 Slices 4–6. Recovery, security/reliability and release gates in `plans/v0.1.md` still precede v0.1.0. Scheduler work remains behind Gate E.
+Then:
+
+1. Ask naturally for a uniquely named disposable non-default branch in the selected Loren repository from `main`.
+2. Inspect the proposal card: repository, new branch, source ref, exact frozen source SHA and expiry. Chat text alone must not create the branch.
+3. First choose **Cancel**. Independently confirm the branch does not exist.
+4. Ask for a fresh proposal. Do not replay the cancelled/expired one.
+5. Choose **Approve** only when every field is correct.
+6. Independently read back the GitHub ref and verify it equals the proposal's frozen SHA exactly.
+7. Inspect the natural completion/audit response. A repeated decision must not cause another mutation.
+8. Restore `LOREN_ENABLE_WRITES=false`, restart, and confirm `/api/readiness` returns `externalWrites=disabled` again.
+
+Delete the disposable branch only with owner authorization for cleanup.
+
+## Evidence to record
+
+Record only non-secret evidence:
+
+- app/main commit SHA and time;
+- provider/model name, not token;
+- canonical repository;
+- proposal ID;
+- branch + source ref/frozen SHA;
+- Cancel result + absence read-back;
+- Approve result + exact GitHub SHA read-back;
+- redacted audit outcome;
+- restart/memory/task observations;
+- readiness statuses before and after write proof.
+
+## Exit decision
+
+If this checkpoint passes without material daily-use blockers, assess `v0.1.0` release gates. Do not automatically resume M5 controlled file/commit/open-PR work.
+
+If failures occur, fix the smallest coherent owner-visible problem first and rerun the relevant part of this checklist.
+
+Background scheduling/reminders still require Gate E.

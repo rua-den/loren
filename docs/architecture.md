@@ -1,17 +1,23 @@
 # Loren Architecture
 
-**Status:** Active baseline. ADR-001, ADR-002, ADR-003, and ADR-004 are accepted.  
-**Completed product milestone:** `M6A.1 — Conversation primary surface`  
-**Current implementation target:** `M6A.2 — Current-information / web read`  
-**Paused expansion:** additional GitHub write primitives after the verified create-branch proof.
+**Status:** Active baseline  
+**Updated:** 2026-09-19  
+**Accepted decisions:** ADR-001 through ADR-004  
+**Current product milestone:** `M6B — Daily Driver Readiness`  
+**Current delivery:** `M6B.2 — readiness diagnostics + source-of-truth rebaseline`  
+**Paused expansion:** additional GitHub file/commit/PR mutation after the proven create-branch path.
 
 ## Architectural objective
 
-Loren owns stable personal state, context, organization, policy, approval, and action authorization while treating language models, web/search providers, MCP, vendor APIs, UI clients, secret-store backends, and execution runtimes as replaceable infrastructure.
+Loren owns stable personal state, context, organization, policy, approval and action authorization while treating language models, web/search providers, MCP, vendor APIs, UI clients, secret stores and execution runtimes as replaceable infrastructure.
 
-> **The model is replaceable reasoning compute. Loren is the persistent personal secretary that owns identity, memory, context, tools, boundaries, and history.**
+> **The model is replaceable reasoning compute. Loren is the persistent personal secretary that owns identity, memory, context, tools, boundaries and history.**
 
-## Current v0.1 architecture
+One implementation caveat matters today: `IBrain` is provider-neutral, but the production host currently constructs `OllamaBrain`. `Loren.Brain.OpenAI` is only a stub project. Provider portability is therefore an architectural intent that still needs a second real adapter/proof.
+
+---
+
+## Current v0.1 shape
 
 ```text
 Owner
@@ -19,151 +25,163 @@ Owner
   v
 Conversation-first Loren.Web
   auth/session
-  bounded conversation history
-  friendly project selection / deterministic inference
-  secondary activity + audit UI
+  persistent conversations
+  bounded history
+  project selection/inference
+  owner readiness diagnostics
+  secondary audit/activity UI
   |
-  +------> Loren-owned canonical state
-  |          IProjectCatalog
-  |          IMemoryStore
-  |          IActionApprovalStore
-  |                |
-  |                v
-  |          Loren.Infrastructure
-  |          SQLite + EF Core
+  +----> Loren-owned canonical state
+  |        Project / Repository
+  |        trusted Memory
+  |        Note / Decision / Task
+  |        approvals / proposals
+  |        conversations
+  |        retained audit
+  |             |
+  |             v
+  |        SQLite + EF Core
   |
   v
 Prepared BrainContext
   Loren identity
-  optional canonical Project/Repository context
-  optional trusted durable memory
-  bounded recent user/assistant conversation
+  optional canonical project context
+  trusted durable memory
+  bounded conversation history
+  current owner message
   |
   v
-Loren.Runtime / AgentLoop
+Loren.Runtime / bounded AgentLoop
   |
-  +------> IBrain -> Ollama / OpenAI / future provider
+  +----> IBrain
+  |        current production: OllamaBrain
   |
-  +------> READ actions
-  |          github.read_repository
-  |          web.search                    [M6A.2]
-  |          later web.fetch               [M6A.3]
+  +----> READ actions
+  |        github.read_repository
+  |        web.search
+  |        web.fetch
+  |        owner organization reads
   |
-  +------> CONSEQUENCEFUL actions
-             model-visible ActionRequest
-             + Loren-owned trusted authorization context
-             + explicit one-time owner approval
-             -> ActionGateway
-             -> credential-bound trusted executor
-             -> postcondition verification
-             -> audit
+  +----> OWNER-STATE actions
+  |        Note / Decision / Task mutations
+  |
+  +----> EXTERNAL WRITE proof
+           github.propose_create_branch
+           exact owner proposal decision
+           one-time approval
+           dedicated credential
+           github.create_branch
+           exact SHA verification
+           durable + current-run audit
 ```
-
-The current production mutation allowlist contains only the already-proven `github.create_branch` executor. File/commit/PR mutation expansion is paused until the M6A owner interaction checkpoint is usable.
 
 ---
 
 ## Boundary 1 — Loren-owned canonical state
 
-State must remain useful if the brain provider, provider session, MCP implementation, UI, or external runtime is replaced.
+State must remain useful if the brain provider, model session, MCP implementation, UI or external runtime is replaced.
 
-### Canonical IDs
+### Identity
 
-ADR-003 locks v0.1 durable identity to opaque Loren-owned GUID values.
+Opaque Loren-owned IDs remain immutable. Do not derive identity from provider/session IDs, GitHub names, paths, display names or usernames.
 
-Rules:
+```text
+ProjectId
+RepositoryId
+MemoryRecordId
+ApprovalId
+ProposalId
+ConversationId
+organization entity IDs
+```
 
-- never derive Loren IDs from GitHub names, provider/session IDs, paths, usernames, or display names;
-- canonical IDs are immutable;
-- import/restore preserves IDs;
-- external IDs/names are integration metadata only.
+Import/restore preserves canonical IDs. External locators are integration metadata, not identity.
 
 ### Current world model
 
 ```text
 Project
-  -> aliases
-  -> Repository*
+  aliases
+  Repository*
 
 Repository
-  -> RepositoryId
-  -> ProjectId
-  -> integration locator
+  canonical RepositoryId / ProjectId
+  provider locator
 
 MemoryRecord
-  -> MemoryRecordId
-  -> optional Project/Repository scope
-  -> source class + provenance
-  -> correction/supersession lifecycle
+  optional project/repository scope
+  source class + provenance
+  correction/supersession lifecycle
+
+Note / Decision / Task
+  owner-controlled durable organization state
+  optional project scope
+  timestamps / task terminal state
+
+Conversation
+  owner identity
+  optional project alias
+  ordered bounded persisted turns
 
 ActionApproval
-  -> ApprovalId
-  -> owner principal reference
-  -> canonical ProjectId + RepositoryId
-  -> action identity + exact intent fingerprint
-  -> approved / expires / consumed / revoked lifecycle
-```
+  exact owner/action/canonical target/fingerprint
+  expiry / consume / revoke lifecycle
 
-M6A.4 will add Loren-owned `Note`, `Decision`, and `Task` organization entities because a concrete owner-facing flow now requires them.
+CreateBranchProposal
+  frozen target / branch / source ref + SHA
+  owner + expiry + terminal decision state
+```
 
 ### Persistence
 
-v0.1 uses SQLite + EF Core in `Loren.Infrastructure`.
+v0.1 uses SQLite + EF Core with checked-in migrations. Production applies migrations at startup. Restart/migration/recovery tests are mandatory, including Windows integration coverage.
 
-Current migrations:
-
-```text
-202609040001_InitialCanonicalState
-202609040002_AddMemoryRecords
-202609040003_AddActionApprovals
-```
-
-Production runs checked-in migrations at startup. `EnsureCreated` is not the canonical production path. Migration-drift and real SQLite restart tests remain mandatory, including Windows integration coverage.
+Logical export/restore is the portable recovery contract; raw credentials/provider configuration are never exported.
 
 ---
 
-## Boundary 2 — Conversation and context preparation [M6A.1 COMPLETE]
+## Boundary 2 — Owner authentication and private state
 
-The application/host prepares bounded trusted context before the brain runs.
+Loren is currently single-owner.
 
-Normal path:
+Owner authentication uses a cookie session backed by configured `LOREN_OWNER_PASSWORD` validation. Private API routes require authentication.
+
+Authentication allows access to owner state; it **does not** grant approval for consequential external writes.
+
+Local Note/Decision/Task mutations are owner-state operations. They do not consume external-write approval or a GitHub write credential.
+
+---
+
+## Boundary 3 — Conversation + context preparation
+
+The host prepares bounded context before the brain runs:
 
 ```text
 owner message
- + optional friendly project alias
- + bounded browser conversation history
-        |
-        +--> project selected explicitly
-        |      OR deterministically inferred from owner message
-        |      OR none when ambiguous/not mentioned
-        |
-        +--> trusted project-scoped memory when project resolved
+ + persisted conversation turns
+ + optional selected/inferred canonical project
+ + trusted eligible memory
         |
         v
 BrainContext
-  1. Loren identity/system guidance
-  2. optional canonical project context
-  3. optional trusted memory context
-  4. bounded user/assistant history only
-  5. current owner message
 ```
 
-Security/quality rules:
+Rules:
 
-- browser history may contain only `user` and `assistant` roles; system-role injection is rejected;
-- conversation history is bounded by count and character budget;
-- configured project identity is not represented as live external state;
-- one-word project names such as `Loren` require project/repo cues for inference;
-- ambiguous project matches do not guess;
-- owner UI lists friendly project/repository identity without requiring canonical GUID entry for ordinary use.
+- only legitimate user/assistant history is accepted as conversation history;
+- history is bounded;
+- project inference is deterministic and fails ambiguous rather than guessing;
+- canonical configured identity is not represented as live external fact;
+- trusted memory excludes model/external-content self-promotion;
+- runtime/brain adapters do not receive raw DbContext/database access.
 
-Runtime and brain adapters never receive `DbContext` or arbitrary database access.
+Conversation execution is gated so overlapping writes to one conversation fail closed. The gate does not retain permanent per-conversation objects.
 
 ---
 
-## Boundary 3 — Trusted durable memory [M4 COMPLETE]
+## Boundary 4 — Trusted durable memory
 
-Source classes:
+Source classes remain governed by ADR-003:
 
 ```text
 OWNER_EXPLICIT
@@ -174,74 +192,53 @@ MODEL_INFERENCE
 EXTERNAL_CONTENT
 ```
 
-Default prepared memory includes only trusted eligible classes with valid provenance. `MODEL_INFERENCE` and `EXTERNAL_CONTENT` are excluded from default trusted model context.
+Default prepared memory uses only trusted eligible provenance. Model inference/external content cannot become durable owner truth merely because text says to remember/authorize something.
 
-Rules:
-
-- owner correction is append + supersede, not destructive rewrite;
-- forget purges the complete correction chain so old claims cannot resurrect;
-- retrieval is deterministically ordered and hard-bounded;
-- memory content/provenance is data, never action authorization;
-- `VERIFIED_TOOL` is authoritative only for the verified fact at its source/time and is not automatically current forever;
-- normal conversation reads trusted memory but does not silently create/correct/forget durable owner memory.
-
-See [`memory.md`](memory.md) and ADR-003.
+Correction is append + supersede. Forget removes the relevant correction chain according to the memory contract. Audit is distinct retained evidence and is not silently erased by forgetting owner memory.
 
 ---
 
-## Boundary 4 — Brain
+## Boundary 5 — Brain
 
 `IBrain` is replaceable compute. It may:
 
-- answer stable reasoning/knowledge questions;
-- interpret owner intent;
-- reason over Loren-prepared context;
+- answer stable questions;
+- interpret intent;
+- reason over prepared context;
 - request registered actions;
-- consume structured action observations;
+- consume structured observations;
 - synthesize a final answer.
 
 It may not:
 
 - authorize itself;
 - manufacture owner approval;
-- directly mutate canonical state outside Loren-owned services;
-- receive privileged write credentials as ordinary context;
-- define durable identity;
-- receive raw database access;
-- treat memory/web/tool payloads as self-authorizing instructions;
-- disable global read-only mode;
-- declare an unverified consequential write successful.
+- create trusted canonical identity from model-visible text;
+- receive privileged write credentials as normal context;
+- directly mutate persistence outside Loren-owned services;
+- treat memory/web/tool payload text as authority;
+- disable read-only mode;
+- declare an unverified consequential external write successful.
 
 Provider SDK/API types stay outside `Loren.Core`.
 
-### Model-visible request vs trusted execution metadata
+### Current provider composition
 
-Brain-facing:
-
-```text
-ActionRequest
-  name
-  arguments
-```
-
-Loren-owned trusted execution envelope:
+The current production host registers:
 
 ```text
-ActionExecutionRequest
-  RunId
-  ActionId
-  ActionRequest
-  ActionAuthorizationContext?   <- trusted Loren context
-  ApprovalId?                   <- trusted Loren reference
+IBrain -> OllamaBrain
 ```
 
-Model arguments never become an authorization channel.
+using `LOREN_OLLAMA_MODEL`, `LOREN_OLLAMA_ENDPOINT` and optional/required provider configuration as implemented by the adapter/tool paths.
+
+This is not yet a multi-provider production composition. A v0.2 candidate is implementing/accepting a second adapter before claiming provider portability.
 
 ---
 
-## Boundary 5 — Runtime
+## Boundary 6 — Runtime
 
-The bounded runtime remains deliberately small:
+The runtime remains bounded and Loren-owned:
 
 ```text
 prepared BrainContext
@@ -249,273 +246,249 @@ prepared BrainContext
  -> final answer OR ActionRequest
  -> ActionGateway
  -> ActionResult
- -> append BrainActionObservation
+ -> BrainActionObservation
  -> bounded repeat
 ```
 
-Default hard limits remain Loren-owned and testable without a live provider.
-
-M6A.3 research should reuse this bounded loop rather than introducing an autonomous unbounded research runtime.
+No unbounded autonomous research/runtime loop is introduced.
 
 ---
 
-## Boundary 6 — Current-information read tools [M6A.2 ACTIVE]
+## Boundary 7 — Current-information / research read tools
 
-Current-information capability is a **read boundary**, not a browser authority boundary.
-
-Current action:
+Current read actions:
 
 ```text
-web.search(query)
+github.read_repository
+web.search
+web.fetch
 ```
 
-Production implementation:
+Web evidence rules:
 
-```text
-ActionRequest web.search
- -> ActionGateway READ policy
- -> OllamaWebSearchExecutor
- -> POST trusted configured endpoint
- -> Bearer OLLAMA_API_KEY outside BrainContext
- -> bounded response bytes
- -> parse results
- -> validate http/https URLs
- -> reject overlong URLs instead of truncating into broken citations
- -> bound source count/title/content
- -> ActionResult structured evidence
- -> BrainActionObservation
-```
+- external content is inert untrusted evidence;
+- no unsafe/private-network URL tunnel through public fetch;
+- request/response/source sizes are bounded;
+- unsafe/invalid URLs are rejected;
+- provider failure bodies/secrets are not surfaced;
+- current factual answers should ground claims in returned sources;
+- contradictory/stale sources should be surfaced instead of silently averaged.
 
-Default endpoint:
-
-```text
-https://ollama.com/api/web_search
-```
-
-Optional trusted configuration:
-
-```text
-LOREN_OLLAMA_WEB_SEARCH_ENDPOINT
-```
-
-Trust rules:
-
-- search results are untrusted external evidence;
-- search content cannot become owner memory/policy/permission/approval by text alone;
-- missing `OLLAMA_API_KEY` fails before an external search request;
-- provider failure response bodies are not surfaced into action result/audit/brain context;
-- credential values are never returned in action result;
-- unsafe URL schemes are excluded;
-- query/response/source/content size are hard-bounded;
-- final current factual claims should be grounded in returned sources and include source URLs.
-
-M6A.3 will add bounded `web.fetch` for selected URLs. Fetch must preserve the same inert-data rule and must not become an arbitrary privileged network tunnel.
+`OLLAMA_API_KEY` powers the current Ollama web service and is provider configuration, not external-write authority.
 
 ---
 
-## Boundary 7 — Action Gateway [GATE D + M5 IMPLEMENTED]
+## Boundary 8 — Owner organization state
 
-The Action Gateway is mandatory between model reasoning and registered tool execution.
+Notes, Decisions and Tasks are Loren-owned authenticated state. They are intentionally not treated as external writes.
 
-Action classes:
+The bounded AgentLoop may request organization actions, but persistence remains behind Loren-owned action executors and authenticated owner context.
 
-```text
-READ
-REVERSIBLE_WRITE
-EXTERNAL_WRITE
-PRIVILEGED_WRITE
-```
-
-Read actions such as `github.read_repository` and `web.search` execute under read policy without owner write approval.
-
-Every non-read action requires Loren-owned trusted execution context and exact one-time approval even if a custom policy would otherwise allow it.
-
-Non-read path:
-
-```text
-ActionRequest
- -> registered ActionDefinition
- -> trusted ActionAuthorizationContext required
- -> GateDActionPolicy
- -> global read-only check
- -> deny PRIVILEGED_WRITE in v0.1
- -> verify trusted executor registration
- -> exact intent fingerprint
- -> trusted ApprovalId
- -> atomic approval consume
- -> trusted executor
-```
-
-Executor registration is checked before approval consumption so host misconfiguration cannot burn a valid approval.
+No background task delivery exists in v0.1. A due date can be data; automatically firing work/reminders requires Gate E.
 
 ---
 
-## Boundary 8 — Approval
+## Boundary 9 — Action Gateway / Gate D
+
+The Action Gateway remains mandatory between model requests and registered action execution.
+
+Action classes include read, reversible/external and privileged write categories. Consequential external writes require trusted authorization context and exact approval even if a policy implementation would otherwise allow execution.
+
+```text
+ActionRequest                 model-visible
+      +
+ActionAuthorizationContext    Loren-trusted
+ApprovalId                    Loren-trusted
+      |
+      v
+ActionGateway
+ policy
+ read-only kill
+ executor registration
+ exact fingerprint
+ atomic approval consume
+ trusted executor
+ audit
+```
+
+Model-visible arguments never become an authorization channel.
+
+---
+
+## Boundary 10 — Approval
 
 Authentication is not approval.
 
-Approval binds:
+External-write approval binds:
 
-```text
-owner principal
-action name + access class
-canonical ProjectId + RepositoryId
-normalized target
-model-visible security-relevant arguments
-expiry / revocation / one-time consumption
-```
+- owner principal;
+- action identity/access class;
+- canonical ProjectId/RepositoryId;
+- normalized security-relevant target/arguments;
+- exact intent fingerprint;
+- expiry/revocation/one-time consumption.
 
-Replay, changed target/arguments, expired/revoked approvals, or owner mismatch fail closed.
+Replay, target drift, changed arguments, expiry/revocation or owner mismatch fail closed.
 
-Executor failure after approval consumption requires a fresh approval unless an explicit future idempotency contract says otherwise.
+The conversational proposal card is the owner decision surface. Chat text itself is not approval.
 
 ---
 
-## Boundary 9 — Global read-only
+## Boundary 11 — Global external-write posture
 
 ```text
 LOREN_ENABLE_WRITES
 ```
 
-Only exact configured `true` opts the host out of read-only. Missing/false/malformed values remain read-only.
+Only configured `true` opts out of the default read-only posture. Missing/false/malformed remains safe/off.
 
-The model cannot alter this state through an action.
+The model cannot change this through an action.
+
+Read-only does **not** disable authenticated local Note/Decision/Task changes.
 
 ---
 
-## Boundary 10 — Credentials [M5 SLICE 2 COMPLETE]
+## Boundary 12 — Credentials
 
-Write-specific credentials are resolved only inside controlled trusted executor boundaries.
+External write credentials resolve only inside trusted executor boundaries.
 
-Current GitHub write credential contract:
+Current GitHub contract:
 
 ```text
 purpose: github.write
 reference: github.write.local-v0.1
-secret env: GITHUB_WRITE_TOKEN
-revocation env: LOREN_GITHUB_WRITE_CREDENTIAL_REVOKED
+secret: GITHUB_WRITE_TOKEN
+revocation: LOREN_GITHUB_WRITE_CREDENTIAL_REVOKED
 ```
 
-Credential behavior:
+Missing/revoked/malformed state fails closed. There is no broad fallback. Secret values never appear in result/audit/readiness output.
 
-- exact purpose/reference binding;
-- missing/revoked/malformed revocation state fails closed;
-- no broad credential fallback;
-- raw secret is not a public property;
-- executor results/exceptions are redacted before returning to runtime/brain/audit.
-
-`OLLAMA_API_KEY` used for brain/web read services is provider configuration, not a GitHub write credential and never authorizes a consequential action.
+Provider credentials such as `OLLAMA_API_KEY` never authorize GitHub writes.
 
 ---
 
-## Boundary 11 — Post-write verification [M5 SLICE 3 PROVEN]
+## Boundary 13 — Post-write verification
 
-A successful external API response is not sufficient for consequential write success.
+A successful external API response is insufficient.
 
 Current proof:
 
 ```text
 github.create_branch
- -> GET repository/default branch
- -> reject default/unsafe branch
- -> POST git/refs
- -> GET exact created ref
- -> verified_sha must equal exact approved source_sha
+ -> resolve default/source
+ -> reject unsafe/default target
+ -> create ref
+ -> fetch exact created ref
+ -> require created SHA == approved frozen source SHA
 ```
 
-Failure/ambiguity produces failed/unverified outcome, never silent success.
+Ambiguous or mismatched state returns failed/unverified outcome.
 
-Future write primitives must define equivalent postconditions before implementation.
+Any future mutation primitive must define equivalent independent postconditions before implementation.
 
 ---
 
-## Boundary 12 — Skills, MCP, and external APIs
+## Boundary 14 — Audit
 
-Loren owns the internal action contract. MCP/direct APIs/native adapters are execution mechanisms behind it.
+Two audit roles are intentionally distinct:
 
-MCP is an integration protocol, not Loren's brain or authorization model. No provider-managed execution path may bypass ActionGateway, canonical target resolution, approval, global read-only, credential boundaries, or verification.
+1. **Durable audit** — SQLite-backed retained evidence.
+2. **Current-run transient collector** — request-scoped convenience used to return audit for the current chat/approval response.
 
-Current registered production capabilities are intentionally narrow:
+The transient collector must never become a process-lifetime archive. PR #37/M6B.1 locks this lifetime boundary.
+
+Audit must remain redacted and sufficient to reconstruct request/policy/approval/execution/verification outcomes without raw credentials.
+
+---
+
+## Boundary 15 — Liveness vs owner readiness [M6B.2]
+
+Public:
 
 ```text
-READ
-  github.read_repository
-  web.search
-
-MUTATION PROOF
-  github.create_branch
+GET /health
 ```
 
-Not currently supported:
+is intentionally shallow liveness. It tells launchers/ops the web process can answer; it does not expose configuration or private state.
+
+Owner-authenticated:
 
 ```text
-direct default-branch write
-file/commit mutation
-open/merge PR
-force push/history rewrite
-delete repository/branch/data
-repository admin/security changes
-secret-management actions
-production deployment
+GET /api/readiness
 ```
 
+reports only secret-safe local state/configuration:
+
+```text
+storage
+ownerAuthentication
+brain
+webResearch
+projects + count
+externalWrites
+```
+
+Semantics:
+
+- no live provider/network calls;
+- no credential values;
+- `externalWrites=disabled` can still be overall `ready`;
+- enabled writes require resolved non-revoked GitHub credential to remain overall `ready`;
+- `projects=empty` is informational;
+- unavailable storage/project catalog is a readiness failure;
+- live provider reachability/usefulness is owner-checkpoint evidence.
+
+This separation avoids turning liveness into a fragile provider dependency or leaking operational detail to anonymous callers.
+
 ---
 
-## Audit and deletion boundary
+## Boundary 16 — Skills, MCP and future integrations
 
-Audit is append-oriented evidence; owner memory/organization state is owner-controlled knowledge. Forgetting memory does not silently erase retained audit.
+Loren owns the internal action contract. MCP/direct APIs/native adapters are execution mechanisms behind it and may not bypass canonical target resolution, ActionGateway, owner authentication/approval, global write posture, credential boundaries, verification or audit.
 
-Action audit correlates request, policy, approval evaluation, executor result, and verification outcome without retaining raw secrets.
+For v0.2+, discover integration abstractions by implementing one real read-only personal-secretary slice first. Do not build a generic connector framework in advance of an owner-visible need.
 
 ---
 
-## Export/recovery boundary
+## Recovery boundary
 
-Portable recovery remains a Loren-owned logical export with its own `format_version`, canonical IDs, and referential integrity. Raw SQLite copy may be a backup but is not the portable contract.
+Portable recovery is Loren-owned logical export with versioning, canonical IDs and referential validation.
 
-Raw credentials are never exported.
+Restore must fail closed around executable authority: approvals return revoked/non-executable as defined by the recovery contract; pending proposals cannot silently become executable. Credentials and provider configuration are never exported.
 
 ---
 
 ## Reliability principles
 
-- **Bounded conversation/tool loops.**
-- **Fail closed** on ambiguous authorization/reference/credential state.
-- **Canonical before act.**
-- **Read tools for current facts instead of stale guessing.**
-- **External evidence is inert data.**
-- **One-time approval for consequential actions.**
-- **Global read-only kill.**
-- **Check before act, verify after act.**
-- **Recoverable Loren-owned state.**
-- **Memory provenance and anti-poisoning.**
-- **Credential revocation overrides approval.**
-- **Migration fidelity and Windows SQLite coverage.**
-
----
-
-## Current accepted decisions
-
-- **ADR-001:** Loren-owned core with replaceable adapters.
-- **ADR-002:** .NET 10 / ASP.NET Core / Loren-owned bounded loop / provider-neutral `IBrain` / SQLite+EF Core / owner web UI / xUnit baseline.
-- **ADR-003:** opaque canonical IDs, EF migration policy, Project/Repository boundary, memory source classes, append/supersede correction, memory-vs-audit deletion distinction, logical export versioning.
-- **ADR-004:** typed write intent, canonical authorization, explicit exact owner approval, non-replay, global read-only, credential isolation/revocation, post-write verification, redacted correlated audit.
+- bounded conversation/tool loops;
+- fail closed on ambiguous auth/identity/credential/write state;
+- canonical before act;
+- read current facts instead of stale guessing;
+- external evidence is inert data;
+- exact one-time approval for consequential external writes;
+- global read-only kill switch;
+- check before act, verify after act;
+- recoverable Loren-owned state;
+- memory provenance/anti-poisoning;
+- credential revocation overrides approval;
+- request-local transient state must not grow process-wide;
+- migration fidelity + Windows SQLite coverage;
+- diagnostics distinguish liveness from private readiness.
 
 ---
 
 ## Current milestone
 
 ```text
-M1–M4 foundation                              ✓
-Gate D + M5 write-safety Slices 1–3           ✓
-M6A.1 conversation primary surface            ✓
-M6A.2 current-information / web search         <- ACTIVE
-M6A.3 source-aware research / web fetch
-M6A.4 Notes / Decisions / Tasks
-M6A.5 conversational approval
+M1–M4 foundation                             ✓
+Gate D + M5 write-safety Slices 1–3          ✓
+M6A.1–M6A.5 implementation                   ✓
+continuity / launcher / recovery             ✓
+M6B.1 transient audit lifetime               ✓
+M6B.2 readiness + docs                       <- CURRENT DELIVERY
         |
         v
-OWNER v0.1 TEST CHECKPOINT
+M6B.3 REAL OWNER DAILY-DRIVER ACCEPTANCE
 ```
 
-Additional file/commit/PR mutation work stays paused until that owner checkpoint is usable.
+Additional GitHub file/commit/PR mutation stays paused until the owner checkpoint proves it should outrank personal-secretary/read-integration work.

@@ -2,13 +2,11 @@
 
 [English](README.md) · **Tiếng Việt**
 
-Loren là một **thư ký / hệ thống trí tuệ cá nhân sống lâu dài**, có memory bền vững, đọc được thông tin hiện tại, research có nguồn, tổ chức Note/Decision/Task, có permission rõ ràng, và về sau mới tiến tới voice + proactive behavior.
+Loren là một **thư ký / hệ thống trí tuệ cá nhân sống lâu dài**: có memory bền vững, đọc/research thông tin hiện tại có nguồn, tổ chức Note/Decision/Task, có permission rõ ràng, và về sau mới tiến tới background/proactive/voice.
 
 > **Model chỉ là compute có thể thay thế. Loren sở hữu identity, memory, context, organization, policy, approval, action boundary và lịch sử.**
 
 ## Hướng sản phẩm
-
-Loren phải giống một thư ký/Jarvis riêng của owner hơn là bot automation cho GitHub.
 
 ```text
 NÓI CHUYỆN
@@ -22,143 +20,72 @@ NÓI CHUYỆN
  -> sau đó mới BACKGROUND / PROACTIVE / VOICE
 ```
 
-**Read/understand phải đi trước broad write/automation.**
-
-## Nguyên tắc cốt lõi
-
-1. **Conversation-first** — giao tiếp tự nhiên với owner là surface chính.
-2. **Memory-first** — state bền vững sống qua conversation, restart và đổi provider.
-3. **Tool-first cho current facts** — thông tin hiện tại phải lấy từ read tool thay vì model đoán từ kiến thức cũ.
-4. **Read before write** — integration phải chứng minh hữu ích ở read-only trước khi mở rộng mutation.
-5. **Permission-first** — model có thể request action; Loren mới authorize và execute.
-6. **Owner-state khác external write** — Note/Task local cần authenticated owner context nhưng không đốt external-write approval/token.
-7. **Model-independent** — brain/search/tool provider là adapter có thể thay thế.
-8. **Auditable** — hành vi quan trọng phải reconstruct được.
-9. **Tự chủ tăng dần** — scheduler/voice/proactive chỉ đến sau khi trust boundary thấp hơn đã chứng minh.
+Read/understand phải đi trước broad mutation. GitHub automation chỉ là một capability, không phải identity của Loren.
 
 ## Trạng thái hiện tại
 
-**Cập nhật:** 2026-09-14  
-**Phase:** `v0.1 — Useful Trustworthy Assistant`  
-**Baseline đã hoàn tất:** `M1–M4`, `Gate D`, `M5 write-safety Slices 1–3`, implementation `M6A.1–M6A.5`; live proof của owner cho M6A.5 vẫn đang pending.  
-**Continuity delivery:** [PR #36](https://github.com/rua-den/loren/pull/36) / `codex/conversation-continuity` — persistent conversation, Windows launcher, logical recovery và retained-audit hardening.  
-**Code checkpoint đã verify:** `11eb38e` qua CI #276 / `34838365005`: Ubuntu restore/build/full tests/format/secret/dependency/web smoke và Windows integration đều PASS.  
-**Delivery gate cuối:** final PR head chạy thêm Windows launcher smoke; exact-head CI phải xanh trước merge và main CI phải xanh trên exact merge SHA sau merge.  
-**Đang pause:** `M5 file/commit/PR write expansion` tới khi v0.1 owner checkpoint dùng được.
+**Cập nhật:** 2026-09-19  
+**Version:** `v0.1 — Useful Trustworthy Assistant`  
+**Milestone hiện tại:** `M6B — Daily Driver Readiness`  
+**Delivery hiện tại:** `M6B.2 — readiness an toàn + rebaseline tài liệu`  
+**Baseline đã verify gần nhất:** PR #37 merge `ba60246a410b257097ecd537f4d977b402a37b35`; post-merge CI #280 / `35373858830` xanh Ubuntu full gate, Windows integration và Windows launcher smoke.  
+**Đang pause:** broad GitHub file/commit/PR write tới khi daily-use thật chứng minh đó là thứ đáng làm nhất.
 
-Chi tiết chuẩn: [`docs/status.md`](docs/status.md). Handoff: [`docs/handoff.md`](docs/handoff.md). Recovery: [`docs/recovery.md`](docs/recovery.md).
+Bắt đầu ở [`docs/status.md`](docs/status.md) rồi [`docs/handoff.md`](docs/handoff.md). Agent AI đọc thêm [`docs/ai-start.md`](docs/ai-start.md).
 
-## Những gì đã chứng minh
+## Những gì đã chạy thật
 
-### Conversation-first — M6A.1
+- UI conversation-first có owner auth;
+- conversation + project scope persist qua restart;
+- canonical Project/Repository identity do Loren sở hữu;
+- trusted durable memory có correction/forget/provenance boundary;
+- GitHub repository read thật;
+- web search/fetch read-only + research nhiều nguồn có bounds;
+- Note / Decision / Task bền vững;
+- conversational proposal + Cancel/Approve cho một external action;
+- one-time approval, read-only kill, credential isolation/revocation, post-write verification;
+- proof tạo non-default GitHub branch từ exact frozen SHA;
+- retained audit trong SQLite + current-run audit scoped theo request;
+- logical export/restore có version;
+- Windows launcher + CI cross-platform.
 
-```text
-owner login
- -> conversation-first UI
- -> Loren identity
- -> bounded multi-turn history
- -> optional/inferred canonical project context
- -> trusted durable memory
- -> read tools
- -> câu trả lời tự nhiên
- -> activity/audit nằm phụ
-```
+## Daily-driver readiness
 
-PR #29 merge `a1652b2451fe2e706aa83373932b210178f63ebe`; exact-head CI #224 và main CI #225 xanh Ubuntu + Windows.
-
-### Current information — M6A.2
-
-Read-only `web.search` chạy qua ActionGateway bình thường, dùng `OLLAMA_API_KEY` hiện có. Search evidence được bound, URL nguồn được validate, provider failure body/secret không bị surface, và câu trả lời current có thể grounded vào nguồn trả về.
-
-PR #30 merge `a8d3e7bbc94c9a468ebc234deb1fe87dcb7d23e9`; exact-head CI #237 và main CI #238 xanh Ubuntu + Windows.
-
-### Source-aware research — M6A.3
+Public:
 
 ```text
-web.search
- -> chọn source
- -> web.fetch
- -> bounded page evidence
- -> compare / synthesize trong bounded AgentLoop
- -> sourced facts + Loren inference rõ ràng
+GET /health
 ```
 
-`PublicWebUrlPolicy` chặn unsafe scheme, URL credential, localhost/private literal address và non-standard port. External evidence luôn là inert data.
+chỉ là **liveness**.
 
-PR #31 merge `d789ccc7f7540cb802b14f677d317db3e571a7d3`; exact-head CI #240 / `34045079047` và main CI #241 / `34052513007` xanh Ubuntu + Windows.
-
-### Canonical context + durable memory
-
-M3 cho Loren-owned Project/Repository ID + alias, không phụ thuộc provider/session identity. M4 chứng minh owner memory sống qua restart, hỗ trợ correction/supersession/forget, giữ provenance và chống model/external content tự nâng thành owner truth.
-
-### Safe external action boundary
-
-Gate D + M5 Slices 1–3 chứng minh:
+Sau khi login owner:
 
 ```text
-canonical target
- -> typed policy / read-only kill
- -> explicit exact owner approval
- -> atomic one-time consume
- -> dedicated write credential
- -> trusted executor
- -> post-write verification
- -> redacted audit
+GET /api/readiness
 ```
 
-Real write proof đầu tiên là tạo **non-default GitHub branch** rồi verify exact SHA. Broad GitHub write vẫn đang pause.
+trả về status an toàn cho storage, owner auth, brain config, web research, project catalog/count và external-write posture.
 
-## Continuity và local readiness
+Semantics quan trọng:
 
-M6A.5 conversational approval đã merge qua [PR #33](https://github.com/rua-den/loren/pull/33). PR #36 delivery durable conversation continuity, local Windows startup và versioned recovery.
+- readiness không ping provider/network bên ngoài;
+- không trả về secret value;
+- `externalWrites=disabled` là posture an toàn bình thường và vẫn có thể overall `ready`;
+- `projects=empty` chỉ nghĩa là chưa bootstrap canonical project;
+- nếu bật writes mà credential missing/revoked/not-configured thì overall là `needs_setup`.
 
-Conversation scope giờ sống qua restart, kể cả canonical project được infer tự động. Overlapping turn trên cùng conversation fail closed và gate object không bị giữ vĩnh viễn.
-
-Recovery export logical owner state thay vì copy raw runtime config. Restore luôn vào directory mới, áp dụng checked-in migrations, giữ canonical IDs, revoke approval khi restore, cancel pending proposal an toàn, giữ nguyên terminal proposal và reject malformed domain/history state. Credential và provider config không được export. Xem [`docs/recovery.md`](docs/recovery.md).
-
-Không có background scheduler/reminder delivery trong batch này; Gate E vẫn bắt buộc trước background execution.
-
-## Tiếp theo — delivery continuity rồi owner acceptance
-
-Delivery của PR #36 chỉ hoàn tất khi final exact head qua Ubuntu full CI, Windows integration và Windows launcher smoke; sau merge, main CI phải pass trên exact merge SHA.
-
-Sau continuity delivery, owner checkpoint vẫn cần real-provider conversational approval proof:
-
-```text
-Owner: "Tạo branch abc cho Loren từ main."
- -> Loren resolve canonical target + exact source SHA
- -> conversation hiện exact proposal + risk
- -> owner bấm Approve rõ ràng
- -> Loren tạo exact one-time approval
- -> credential-bound executor hiện có chạy
- -> branch state được verify độc lập
- -> Loren báo kết quả tự nhiên + audit context
-```
-
-Tin nhắn chat chỉ là **intent**, không phải Gate D approval. Không cần thêm GitHub mutation primitive mới cho checkpoint này.
-
-## Mốc owner test v0.1
-
-Chỉ kêu owner pull để test sản phẩm khi Loren làm đủ flow tự nhiên này:
-
-```text
-1. Chat bình thường.
-2. Trả lời knowledge/reasoning ổn định.
-3. Lấy current information kèm nguồn.
-4. Research nhiều nguồn có bounds.
-5. Kết hợp project context + memory + live read.
-6. Lưu/retrieve Note hoặc Decision bền vững qua restart.
-7. Tạo/list/complete Task qua chat.
-8. Nhận yêu cầu tạo branch bằng ngôn ngữ tự nhiên.
-9. Hiện exact proposal, owner approve rõ ràng rồi mới execute + verify.
-10. Giải thích chuyện đã xảy ra kèm audit context.
-```
-
-**Controlled file/commit và open-PR tiếp tục pause tới khi checkpoint này tồn tại.**
+Real provider có reachable và Loren có dùng ngon hay không phải được chứng minh bằng [`docs/owner-checkpoint.md`](docs/owner-checkpoint.md), không phải bằng readiness endpoint.
 
 ## Chạy local
 
-Posture mặc định chặn external write:
+Copy:
+
+```text
+src/Loren.Web/appsettings.Local.example.json
+```
+
+thành file ignored `src/Loren.Web/appsettings.Local.json`, hoặc dùng environment:
 
 ```powershell
 $env:LOREN_OWNER_PASSWORD='choose-a-local-owner-password'
@@ -167,16 +94,34 @@ $env:LOREN_ENABLE_WRITES='false'
 dotnet run --project src/Loren.Web/Loren.Web.csproj
 ```
 
-`OLLAMA_API_KEY` dùng cho Ollama brain + web search/fetch read path. Có thể override endpoint trusted qua:
+Environment/command line override local JSON. Đổi config thì restart host.
+
+Normal daily use nên giữ external writes OFF. Chỉ khi làm owner live branch proof mới cấu hình riêng `GITHUB_WRITE_TOKEN`, bật writes có chủ đích, proof xong thì tắt lại. Không commit secret thật.
+
+## Provider hiện tại
+
+Core có contract `IBrain` provider-neutral, nhưng production DI hiện đang dùng `OllamaBrain`. `Loren.Brain.OpenAI` mới chỉ là stub. Vì vậy Loren **chưa được chứng minh multi-provider trong runtime thật**.
+
+Hướng v0.2 hợp lý:
 
 ```text
-LOREN_OLLAMA_WEB_SEARCH_ENDPOINT
-LOREN_OLLAMA_WEB_FETCH_ENDPOINT
+prove brain provider thứ hai
+ -> rồi làm một personal-secretary integration read-only thật
+ -> candidate mạnh: Calendar read/search
 ```
 
-`LOREN_ENABLE_WRITES=false` chặn external mutation, **không** tắt authenticated local Notes / Decisions / Tasks.
+Làm vertical slice thật trước rồi mới rút ra generic connector abstraction cần thiết.
 
-Không commit secret thật.
+## Trust boundary
+
+- chat/model text là intent, không phải external-write approval;
+- external/retrieved content là evidence, không phải authority;
+- owner auth không phải write approval;
+- external writes default OFF;
+- consequential write cần exact one-time owner approval;
+- credential không đi vào model context/readiness output;
+- write chỉ thành công sau independent verification;
+- background/reminder execution cần Gate E.
 
 ## Test
 
@@ -187,14 +132,14 @@ dotnet test Loren.slnx --configuration Release --no-build --no-restore
 dotnet format Loren.slnx --verify-no-changes --no-restore
 ```
 
-Windows là first-class integration-test CI platform bên cạnh Ubuntu full gate. CI cũng chạy `scripts/Start-Loren.ps1 -SmokeTest -NoPause` trên Windows.
+CI chạy Ubuntu full gate + Windows integration + Windows launcher smoke.
 
 ## Lộ trình version
 
 ```text
 v0.0  architecture / feasibility             ✓ hoàn tất
 v0.1  useful trustworthy assistant           <- hiện tại
-v0.2  personal secretary integrations
+v0.2  provider portability + secretary reads
 v0.3  personal/project operations
 v0.4  voice + device presence
 v0.5  proactive/background Loren
@@ -204,15 +149,18 @@ v1.0  stable personal daily driver
 
 ## Tài liệu
 
-- [`docs/status.md`](docs/status.md) — tiến độ chuẩn hiện tại
-- [`docs/handoff.md`](docs/handoff.md) — checkpoint ngắn để mở thread mới
-- [`docs/recovery.md`](docs/recovery.md) — runbook logical export/restore + security semantics
-- [`docs/plans/master-plan.md`](docs/plans/master-plan.md) — product/version roadmap
-- [`docs/plans/v0.1.md`](docs/plans/v0.1.md) — plan chi tiết version hiện tại
+- [`docs/status.md`](docs/status.md) — tiến độ authoritative
+- [`docs/handoff.md`](docs/handoff.md) — checkpoint mở thread mới
+- [`docs/ai-start.md`](docs/ai-start.md) — entrypoint cho AI contributor
+- [`docs/owner-checkpoint.md`](docs/owner-checkpoint.md) — real-provider acceptance
+- [`docs/roadmap.md`](docs/roadmap.md) — version/capability path
+- [`docs/plans/master-plan.md`](docs/plans/master-plan.md) — master plan
+- [`docs/plans/v0.1.md`](docs/plans/v0.1.md) — release plan hiện tại
 - [`docs/architecture.md`](docs/architecture.md) — system boundaries
-- [`docs/memory.md`](docs/memory.md) — durable memory semantics
-- [`docs/permissions.md`](docs/permissions.md) — permission/approval baseline
+- [`docs/recovery.md`](docs/recovery.md) — logical export/restore
+- [`docs/memory.md`](docs/memory.md) — memory semantics
+- [`docs/permissions.md`](docs/permissions.md) — approval/permission
 - [`docs/security.md`](docs/security.md) — security baseline
-- [`docs/development.md`](docs/development.md) — build/test/configuration
+- [`docs/development.md`](docs/development.md) — build/config
 
-Repository này là source of truth cho product decisions, architecture, delivery plan, implementation, progress và release history của Loren.
+Repository này là source of truth cho product decision, architecture, implementation và delivery history của Loren.

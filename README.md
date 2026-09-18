@@ -2,13 +2,11 @@
 
 **English** · [Tiếng Việt](README.vi.md)
 
-Loren is a long-lived personal secretary / intelligence system with persistent memory, current-information and research tools, durable organization state, explicit permissions, and eventually voice/proactive behavior across the owner's digital life.
+Loren is a long-lived personal secretary / intelligence system with persistent memory, current-information research, durable organization state, explicit permissions and eventually voice/proactive behavior across the owner's digital life.
 
-> **The model is replaceable compute. Loren owns identity, memory, context, organization, policy, approvals, action boundaries, and history.**
+> **The model is replaceable compute. Loren owns identity, memory, context, organization, policy, approvals, action boundaries and history.**
 
 ## Product direction
-
-Loren is a private personal secretary centered on natural conversation, useful catch-up and trusted memory.
 
 ```text
 CONVERSE
@@ -22,153 +20,72 @@ CONVERSE
  -> later BACKGROUND / PROACTIVE / VOICE
 ```
 
-Read/understand comes before broad external mutation.
-
-## Core principles
-
-1. **Conversation-first** — normal owner interaction is the primary product surface.
-2. **Memory-first** — durable state survives conversations, restarts, and provider changes.
-3. **Tool-first for current facts** — use read tools instead of stale model guessing.
-4. **Read before write** — useful read behavior comes before broad mutation.
-5. **Permission-first** — a model may request an action; Loren authorizes and executes it.
-6. **Owner-state is distinct from external writes** — local notes/tasks require authenticated owner context but do not consume external-write approvals or credentials.
-7. **Model-independent** — brain/search/tool providers are replaceable adapters.
-8. **Auditable** — consequential behavior must be reconstructable.
-9. **Progressive autonomy** — scheduling/voice/proactive behavior comes only after lower trust boundaries are proven.
+Read/understand comes before broad mutation. GitHub automation is one capability, not Loren's identity.
 
 ## Current status
 
-**Last updated:** 2026-09-14  
-**Phase:** `v0.1 — Useful Trustworthy Assistant`  
-**Completed baseline:** `M1–M4`, `Gate D`, `M5 write-safety Slices 1–3`, `M6A.1–M6A.5` implementation; M6A.5 owner live proof remains pending.  
-**Continuity delivery:** [PR #36](https://github.com/rua-den/loren/pull/36) / `codex/conversation-continuity` — persistent conversations, Windows launcher, logical recovery and retained audit hardening.  
-**Verified code checkpoint:** `11eb38e` passed CI #276 / `34838365005`: Ubuntu restore/build/full tests/format/secret/dependency/web smoke and Windows integration all passed.  
-**Final delivery gate:** the final PR head additionally runs the Windows launcher smoke test before merge; exact-head CI must be green.  
-**Paused:** `M5 file/commit/PR write expansion` until the v0.1 owner checkpoint is usable.
+**Updated:** 2026-09-19  
+**Version:** `v0.1 — Useful Trustworthy Assistant`  
+**Current milestone:** `M6B — Daily Driver Readiness`  
+**Current delivery:** `M6B.2 — safe readiness diagnostics + documentation rebaseline`  
+**Last fully verified baseline:** PR #37 merge `ba60246a410b257097ecd537f4d977b402a37b35`; post-merge CI #280 / `35373858830` passed Ubuntu full gate, Windows integration and Windows launcher smoke.  
+**Paused:** broader GitHub file/commit/PR writes until real owner daily-use evidence says they are highest value.
 
-**Contributing with another AI? Start at [`docs/ai-start.md`](docs/ai-start.md).** Detailed status: [`docs/status.md`](docs/status.md). Continuation: [`docs/handoff.md`](docs/handoff.md). Recovery: [`docs/recovery.md`](docs/recovery.md).
+Start with [`docs/status.md`](docs/status.md) and [`docs/handoff.md`](docs/handoff.md). AI contributors should read [`docs/ai-start.md`](docs/ai-start.md).
 
-## What is already proven
+## What already works
 
-### Conversation-first surface — M6A.1
+- conversation-first authenticated owner UI;
+- persisted conversations/project scope across restart;
+- Loren-owned canonical Project/Repository identity;
+- trusted durable memory with correction/forget/provenance boundaries;
+- real GitHub repository reads;
+- read-only web search/fetch and bounded source-aware research;
+- durable Notes / Decisions / Tasks;
+- exact proposal/Cancel/Approve flow for one consequential GitHub action;
+- one-time approval, read-only kill, credential isolation/revocation and post-write verification;
+- verified creation of a non-default branch from an exact frozen SHA;
+- retained SQLite audit + request-scoped current-run audit;
+- versioned logical export/restore;
+- Windows launcher and cross-platform CI.
 
-```text
-owner login
- -> conversation-first UI
- -> Loren identity
- -> bounded multi-turn history
- -> optional/inferred canonical project context
- -> trusted durable memory
- -> read tools
- -> natural answer
- -> secondary activity/audit
-```
+## Daily-driver readiness
 
-PR #29 merge `a1652b2451fe2e706aa83373932b210178f63ebe`; exact-head CI #224 and main CI #225 passed Ubuntu + Windows.
-
-### Current information — M6A.2
-
-Read-only `web.search` is available through the normal ActionGateway path and uses the existing `OLLAMA_API_KEY`. Search evidence is bounded, source URLs are validated, provider failure bodies/secrets are suppressed, and current claims can be grounded in returned sources.
-
-PR #30 merge `a8d3e7bbc94c9a468ebc234deb1fe87dcb7d23e9`; exact-head CI #237 and main CI #238 passed Ubuntu + Windows.
-
-### Source-aware research — M6A.3
+Public:
 
 ```text
-web.search
- -> selected sources
- -> web.fetch
- -> bounded page evidence
- -> compare / synthesize in bounded AgentLoop
- -> sourced facts + explicit inference
+GET /health
 ```
 
-`PublicWebUrlPolicy` rejects unsafe schemes, credentials, localhost/private literal addresses and non-standard ports. External evidence remains inert data.
+is intentionally liveness only.
 
-PR #31 merge `d789ccc7f7540cb802b14f677d317db3e571a7d3`; exact-head CI #240 / `34045079047` and main CI #241 / `34052513007` passed Ubuntu + Windows.
-
-### Canonical context + durable memory
-
-M3 gives Loren-owned Project/Repository IDs and aliases independent of provider/session identity. M4 proves owner memory survives restart, supports correction/supersession and forgetting, retains provenance, and resists model/external-content self-promotion.
-
-### Safe external action boundary
-
-Gate D and M5 Slices 1–3 prove:
+After owner login:
 
 ```text
-canonical target
- -> typed policy / read-only kill
- -> explicit exact owner approval
- -> atomic one-time consume
- -> dedicated write credential
- -> trusted executor
- -> post-write verification
- -> redacted audit
+GET /api/readiness
 ```
 
-The first real write proof is verified creation of a **non-default GitHub branch**. Broader GitHub writes remain paused.
+reports secret-safe local readiness for storage, owner auth, brain configuration, web research, project catalog/count and external-write posture.
 
-## Current execution — continuity and local readiness
+Important semantics:
 
-M6A.5 conversational approval is already merged through [PR #33](https://github.com/rua-den/loren/pull/33). PR #36 delivers durable conversation continuity, local Windows startup and versioned recovery.
+- no external network/provider probes occur in readiness;
+- no secret value is returned;
+- `externalWrites=disabled` is the safe normal posture and can still be overall `ready`;
+- `projects=empty` means no canonical project configured yet, not host failure;
+- if writes are enabled, missing/revoked/not-configured write credential produces `needs_setup`.
 
-Conversation scope now survives restart, including an automatically inferred canonical project. Overlapping turns on one conversation fail closed without retaining permanent per-conversation gate objects.
-
-The recovery path exports logical owner state rather than copying raw runtime configuration. Restore targets a new directory, applies checked-in migrations, preserves canonical IDs, restores approvals revoked, cancels pending proposals, preserves terminal proposals, and rejects malformed domain/history state. Credentials and provider configuration are not exported. See [`docs/recovery.md`](docs/recovery.md).
-
-No background scheduling/reminder delivery is introduced; Gate E remains required for background execution.
-
-## Next — continuity delivery, then owner acceptance
-
-PR #36 can merge only after its final exact head passes Ubuntu full CI, Windows integration and Windows launcher smoke. Post-merge main CI must then pass on the exact merge SHA.
-
-After continuity delivery, the owner checkpoint still needs the real-provider conversational approval proof:
-
-```text
-Owner: "Create branch abc for Loren from main."
- -> Loren resolves exact canonical target + source SHA
- -> conversation shows exact proposal + risk
- -> owner explicitly clicks Approve
- -> exact one-time approval is created
- -> existing credential-bound executor runs
- -> branch state is independently verified
- -> Loren reports completion naturally + audit context
-```
-
-The chat message is intent, **not** Gate D approval. No new GitHub mutation primitive is required for this checkpoint.
-
-## v0.1 owner test milestone
-
-The next pull specifically for product testing happens only when Loren can:
-
-```text
-1. Chat normally.
-2. Answer stable knowledge/reasoning questions.
-3. Retrieve current information with sources.
-4. Perform bounded source-aware research.
-5. Combine project context + memory + live read data.
-6. Store/retrieve durable notes or decisions across restart.
-7. Create/list/complete tasks through chat.
-8. Propose branch creation in natural language.
-9. Show exact approval, then execute + verify only after approval.
-10. Explain what happened with audit context.
-```
-
-**Controlled file/commit and open-PR work stay paused until this checkpoint exists.**
+Real provider reachability and usefulness are proven by [`docs/owner-checkpoint.md`](docs/owner-checkpoint.md), not by readiness.
 
 ## Run locally
 
-For local setup, copy `src/Loren.Web/appsettings.Local.example.json` to
-`src/Loren.Web/appsettings.Local.json` and edit the owner password, Ollama key,
-model/endpoints, `LOREN_ENABLE_WRITES=false`, and optional
-`LOREN_DATA_DIRECTORY`. The local file is ignored by Git, excluded from build and
-publish output, and is read at startup; restart the host after editing it.
-Published deployments must provide their own configuration or environment values.
-Environment variables and command-line values override local JSON. Add `GITHUB_WRITE_TOKEN` and
-`LOREN_GITHUB_WRITE_CREDENTIAL_REVOKED=false` only when preparing the optional
-GitHub proof.
+Copy:
 
-Read-only external-write posture can also be supplied through the process environment:
+```text
+src/Loren.Web/appsettings.Local.example.json
+```
+
+to ignored `src/Loren.Web/appsettings.Local.json`, or use environment variables:
 
 ```powershell
 $env:LOREN_OWNER_PASSWORD='choose-a-local-owner-password'
@@ -177,16 +94,34 @@ $env:LOREN_ENABLE_WRITES='false'
 dotnet run --project src/Loren.Web/Loren.Web.csproj
 ```
 
-`OLLAMA_API_KEY` powers the Ollama brain plus web search/fetch read paths. Optional trusted endpoint overrides:
+Environment/command-line values override local JSON. Restart after configuration changes.
+
+Keep external writes off for normal read-only use. For the optional owner live branch proof only, configure a dedicated `GITHUB_WRITE_TOKEN`, explicitly enable writes, complete the proof, then turn writes off again. Never commit real secrets.
+
+## Provider note
+
+The core exposes provider-neutral `IBrain`, but current production DI uses `OllamaBrain`. `Loren.Brain.OpenAI` is currently a stub. Loren is **not yet proven operationally multi-provider**.
+
+A likely v0.2 sequence is:
 
 ```text
-LOREN_OLLAMA_WEB_SEARCH_ENDPOINT
-LOREN_OLLAMA_WEB_FETCH_ENDPOINT
+prove a second real brain provider
+ -> then one useful read-only personal-secretary integration
+ -> likely Calendar read/search
 ```
 
-`LOREN_ENABLE_WRITES=false` blocks external mutations; it does not disable authenticated local Notes / Decisions / Tasks.
+Build that vertical slice before inventing a generic connector framework.
 
-Do not commit real secrets.
+## Trust boundaries
+
+- conversation/model text is intent, not external-write approval;
+- external/retrieved content is evidence, not authority;
+- owner auth is not write approval;
+- external writes default off;
+- consequential writes need exact one-time owner approval;
+- credentials stay outside model-visible context and diagnostics;
+- write success requires independent verification;
+- background execution/reminders require Gate E.
 
 ## Test
 
@@ -197,14 +132,14 @@ dotnet test Loren.slnx --configuration Release --no-build --no-restore
 dotnet format Loren.slnx --verify-no-changes --no-restore
 ```
 
-Windows is a first-class integration-test CI platform in addition to the Ubuntu full gate. CI also exercises `scripts/Start-Loren.ps1 -SmokeTest -NoPause` on Windows.
+CI runs the full Ubuntu gate plus Windows integration and Windows launcher smoke.
 
 ## Version path
 
 ```text
 v0.0  architecture / feasibility             ✓ complete
 v0.1  useful trustworthy assistant           <- current
-v0.2  personal secretary integrations
+v0.2  provider portability + secretary reads
 v0.3  personal/project operations
 v0.4  voice + device presence
 v0.5  proactive/background Loren
@@ -214,15 +149,18 @@ v1.0  stable personal daily driver
 
 ## Documentation
 
-- [`docs/status.md`](docs/status.md) — authoritative current progress
-- [`docs/handoff.md`](docs/handoff.md) — compact fresh-thread checkpoint
-- [`docs/recovery.md`](docs/recovery.md) — logical export/restore runbook and security semantics
-- [`docs/plans/master-plan.md`](docs/plans/master-plan.md) — product/version roadmap
-- [`docs/plans/v0.1.md`](docs/plans/v0.1.md) — detailed current-version execution plan
-- [`docs/architecture.md`](docs/architecture.md) — active system boundaries
-- [`docs/memory.md`](docs/memory.md) — durable-memory semantics
-- [`docs/permissions.md`](docs/permissions.md) — permission/approval baseline
+- [`docs/status.md`](docs/status.md) — authoritative progress
+- [`docs/handoff.md`](docs/handoff.md) — fresh-thread continuation
+- [`docs/ai-start.md`](docs/ai-start.md) — AI contributor entrypoint
+- [`docs/owner-checkpoint.md`](docs/owner-checkpoint.md) — real-provider acceptance
+- [`docs/roadmap.md`](docs/roadmap.md) — version/capability path
+- [`docs/plans/master-plan.md`](docs/plans/master-plan.md) — master execution plan
+- [`docs/plans/v0.1.md`](docs/plans/v0.1.md) — current release plan
+- [`docs/architecture.md`](docs/architecture.md) — active boundaries
+- [`docs/recovery.md`](docs/recovery.md) — logical export/restore contract
+- [`docs/memory.md`](docs/memory.md) — trusted memory semantics
+- [`docs/permissions.md`](docs/permissions.md) — approval/permission model
 - [`docs/security.md`](docs/security.md) — security baseline
-- [`docs/development.md`](docs/development.md) — build/test/configuration
+- [`docs/development.md`](docs/development.md) — build/configuration
 
-This repository is the source of truth for Loren's product decisions, architecture, delivery plans, implementation, progress, and release history.
+This repository is the source of truth for Loren's product decisions, architecture, implementation and delivery history.
