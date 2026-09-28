@@ -24,11 +24,11 @@ Read/understand phải đi trước broad mutation. GitHub automation chỉ là 
 
 ## Trạng thái hiện tại
 
-**Cập nhật:** 2026-09-19  
+**Cập nhật:** 2026-09-28  
 **Version:** `v0.1 — Useful Trustworthy Assistant`  
 **Milestone hiện tại:** `M6B — Daily Driver Readiness`  
-**Delivery hiện tại:** `M6B.2 — readiness an toàn + rebaseline tài liệu`  
-**Baseline đã verify gần nhất:** PR #37 merge `ba60246a410b257097ecd537f4d977b402a37b35`; post-merge CI #280 / `35373858830` xanh Ubuntu full gate, Windows integration và Windows launcher smoke.  
+**Delivery hiện tại:** `M6B.3 — owner daily-driver acceptance thật`  
+**Baseline đã verify gần nhất:** PR #38 merge `67ade6e6459296fad2ca149720420070922e3ebe`; post-merge CI #288 / `36412656169` xanh Ubuntu full gate, Windows integration và Windows launcher smoke.  
 **Đang pause:** broad GitHub file/commit/PR write tới khi daily-use thật chứng minh đó là thứ đáng làm nhất.
 
 Bắt đầu ở [`docs/status.md`](docs/status.md) rồi [`docs/handoff.md`](docs/handoff.md). Agent AI đọc thêm [`docs/ai-start.md`](docs/ai-start.md).
