@@ -191,6 +191,8 @@ public sealed class ReadinessEndpointTests
                 configuration.AddInMemoryCollection(settings));
             builder.ConfigureServices(services =>
             {
+                services.RemoveAll<OwnerPasswordAuthenticator>();
+                services.AddSingleton(new OwnerPasswordAuthenticator("test-password"));
                 services.RemoveAll<CanonicalStateDbContext>();
                 services.RemoveAll<DbContextOptions<CanonicalStateDbContext>>();
                 string connectionString = new SqliteConnectionStringBuilder
