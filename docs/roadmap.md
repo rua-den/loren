@@ -1,6 +1,6 @@
 # Loren Roadmap
 
-Updated 2026-09-19. Loren advances by **proven capability and trust**, not by calendar date.
+Updated 2026-09-28. Loren advances by **proven capability and trust**, not by calendar date.
 
 The authoritative detailed sequence lives in [`docs/plans/master-plan.md`](plans/master-plan.md). Current verified delivery state lives in [`status.md`](status.md).
 
@@ -8,7 +8,8 @@ The authoritative detailed sequence lives in [`docs/plans/master-plan.md`](plans
 
 **Version:** `v0.1 — Useful Trustworthy Assistant`  
 **Current milestone:** `M6B — Daily Driver Readiness`  
-**Last verified baseline:** PR #37 merge `ba60246a410b257097ecd537f4d977b402a37b35`, main CI #280 PASS Ubuntu + Windows + launcher.  
+**Current delivery:** `M6B.3 — real owner daily-driver acceptance`  
+**Last verified baseline:** PR #38 merge `67ade6e6459296fad2ca149720420070922e3ebe`; main CI #288 / `36412656169` PASS Ubuntu full gate + Windows integration + launcher.  
 **Paused:** broader GitHub file/commit/PR mutation until owner live acceptance proves it is the right next value.
 
 The product path is:
@@ -64,22 +65,23 @@ Windows Launcher                               ✓
 Logical Export/Restore                         ✓
 Retained Audit                                 ✓
 M6B.1 Transient Audit Lifetime                ✓
+M6B.2 Safe Readiness + Docs Rebaseline        ✓
 ```
 
 ### M6B — Daily Driver Readiness [CURRENT]
 
-The purpose of M6B is not to add another capability family. It makes the already-built assistant diagnosable and proves it works as a daily product.
+M6B does not add another capability family. It proves the already-built assistant is diagnosable and usable as a daily product.
 
 ```text
 M6B.1 bound transient request audit            ✓ complete
-M6B.2 safe readiness + docs rebaseline         <- current delivery
-M6B.3 owner live daily-driver acceptance       next product gate
+M6B.2 safe readiness + docs rebaseline         ✓ complete — PR #38 / CI #288
+M6B.3 owner live daily-driver acceptance       <- current product gate
 v0.1 closeout / release decision               after acceptance
 ```
 
-M6B.2 keeps `/health` as liveness and adds authenticated `/api/readiness` for safe configuration/state posture. It does not perform external provider probes and never returns secrets.
+M6B.2 keeps `/health` as liveness and adds authenticated `/api/readiness` for secret-safe configuration/state posture. It performs no external provider probes.
 
-M6B.3 uses real providers and the existing branch action to test useful conversation, current information, research, project context, restart continuity, durable memory/tasks, explicit Cancel/Approve and exact GitHub SHA read-back.
+M6B.3 uses real providers and the existing branch action to test useful conversation, current information, research, project context, restart continuity, durable memory/tasks, explicit Cancel/Approve and exact GitHub SHA read-back. Real failures from this proof define the next implementation work.
 
 ### v0.1 release gate
 
@@ -138,59 +140,23 @@ Candidate scope:
 
 - trusted device enrollment;
 - PWA/mobile presence;
-- push-to-talk;
-- STT/TTS;
-- notifications.
-
-Gate F is required before voice/device trust can authorize sensitive actions.
+- push-to-talk / STT / TTS;
+- notifications;
+- Gate F before sensitive voice/device approval.
 
 ---
 
-## v0.5 — Proactive / Background Loren
+## v0.5 — Proactive Loren
 
-Candidate scope:
+Candidate scope only after Gate E/G:
 
-- normalized events/watchers;
-- recurring work;
-- proactive notifications;
-- bounded standing permissions;
-- quotas/cancellation/global pause.
-
-Gate G is required. Gate E foundations are prerequisites for execution without active owner presence.
+- event ingestion;
+- bounded scheduled/background work;
+- proactive evaluation and notifications;
+- quotas, cancellation, retry/backoff and global pause.
 
 ---
 
-## v0.6+ — Real-use hardening
+## v0.6+ / v1.0
 
-Let actual daily usage determine priorities: memory consolidation, cost/performance, provider diversity, more integrations, packaging, private/local execution, Home Assistant, computer use and richer UX.
-
----
-
-## v1.0 — Stable Personal Daily Driver
-
-v1.0 means Loren's core is safe and maintainable as a long-lived assistant across upgrades/providers: stable workflows, tested recovery/migrations, secret rotation, reconstructable audit, background/device controls, documented privacy/security defaults and proven real use.
-
-Gate H must pass before release.
-
----
-
-## Decision gates
-
-```text
-Gate A  core ownership                         PASSED
-Gate B  v0.1 implementation stack              PASSED
-Gate C  canonical state + memory lifecycle     PASSED
-Gate D  action/approval/credential boundary    PASSED
-Gate E  background execution                   NOT YET
-Gate F  trusted device / voice approval        LATER
-Gate G  proactive autonomy                     LATER
-Gate H  v1 stable contract                     LATER
-```
-
-## Ongoing rule
-
-At every slice ask:
-
-> Does this make Loren more useful as the owner's persistent intelligence, or are we merely adding infrastructure/automation because we can?
-
-Build the smallest owner-visible vertical slice that answers that question.
+Daily-use hardening, recovery/upgrade compatibility, more providers/integrations, privacy/security/operations maturity. Gate H before v1.0.

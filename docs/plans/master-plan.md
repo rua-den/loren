@@ -1,11 +1,12 @@
 # Loren Master Delivery Plan
 
 **Status:** Active capability-driven roadmap  
-**Updated:** 2026-09-19  
+**Updated:** 2026-09-28  
 **Current phase:** `v0.1 — Useful Trustworthy Assistant`  
 **Current milestone:** `M6B — Daily Driver Readiness`  
-**Current delivery:** `M6B.2 — readiness diagnostics + source-of-truth rebaseline`  
-**Next product gate:** real-provider owner acceptance  
+**Current delivery:** `M6B.3 — real owner daily-driver acceptance`  
+**Last verified baseline:** PR #38 merge `67ade6e6459296fad2ca149720420070922e3ebe`; main CI #288 / `36412656169` PASS.  
+**Next product gate:** owner acceptance / v0.1 closeout decision  
 **Paused:** broader GitHub file/commit/PR writes until real daily-driver evidence says otherwise.
 
 > Loren is the owner's persistent personal secretary / Jarvis-like intelligence system. GitHub automation is one capability, not the product identity.
@@ -143,17 +144,7 @@ ADR-004: exact external-write intent, canonical target binding, explicit owner a
 
 ## Gate E — Background execution [NOT YET]
 
-Required before trusted work can run without active owner presence:
-
-- persistent job identity/state;
-- timezone + missed-run semantics;
-- bounded retry/backoff;
-- cancellation;
-- quotas;
-- notification policy;
-- safe restart/resume.
-
-A stored task/due date is data; background reminder delivery requires Gate E.
+Required before trusted work can run without active owner presence: persistent job identity/state, timezone + missed-run semantics, bounded retry/backoff, cancellation, quotas, notification policy and safe restart/resume. A stored task/due date is data; background reminder delivery requires Gate E.
 
 ## Gate F — Trusted devices / voice approval [LATER]
 
@@ -188,9 +179,10 @@ Windows launcher                                COMPLETE
 Logical export/restore                          COMPLETE
 Retained audit                                  COMPLETE
 M6B.1 transient audit lifetime                 COMPLETE
+M6B.2 safe readiness + docs rebaseline         COMPLETE
 ```
 
-The latest fully verified baseline before M6B.2 is PR #37 merge `ba60246a410b257097ecd537f4d977b402a37b35`, post-merge CI #280 / `35373858830` PASS on Ubuntu full gate and Windows integration/launcher.
+Current verified baseline is PR #38 merge `67ade6e6459296fad2ca149720420070922e3ebe`. Exact PR head `8083c00059240bb87cea8c18370b4b36529f70ee` passed CI #287 / `36412297786`; post-merge main CI #288 / `36412656169` passed Ubuntu full gate and Windows integration/launcher.
 
 The single verified external mutation primitive remains non-default GitHub branch creation. File/commit/open-PR expansion is deliberately paused.
 
@@ -204,7 +196,7 @@ M6B shifts the project from adding trust primitives to proving the existing prod
 
 Request-local audit collection is scoped; SQLite remains durable audit. Long-running Loren no longer accumulates every request's transient audit in one singleton collector.
 
-## M6B.2 — Safe readiness + source-of-truth rebaseline [CURRENT DELIVERY]
+## M6B.2 — Safe readiness + source-of-truth rebaseline [COMPLETE]
 
 Owner-visible contract:
 
@@ -213,15 +205,7 @@ Owner-visible contract:
 /api/readiness   authenticated configuration/state diagnostics
 ```
 
-Readiness reports:
-
-- SQLite connectivity;
-- project catalog availability + project count;
-- owner auth configured;
-- current production brain config valid;
-- web search/fetch config valid;
-- external writes enabled/disabled;
-- write credential ready/missing/revoked/not-configured when writes are enabled.
+Readiness reports SQLite connectivity, project catalog availability/count, owner auth configuration, production brain configuration validity, web search/fetch configuration validity, external write posture and write credential status when writes are enabled.
 
 Rules:
 
@@ -233,11 +217,11 @@ Rules:
 - write credential problems matter only when writes are enabled;
 - provider reachability is owner live-proof evidence, not readiness configuration evidence.
 
-Acceptance coverage must prove auth boundary, liveness separation, safe read-only ready state, missing write credential and revoked write credential without secret exposure.
+Regression coverage proves auth boundary, liveness separation, safe read-only ready state, missing write credential, revoked write credential and secret non-disclosure. CI #286 exposed a test-host composition problem; final head fixed only the test DI boundary and CI #287 + post-merge #288 are green.
 
-## M6B.3 — Real owner daily-driver proof [NEXT PRODUCT GATE]
+## M6B.3 — Real owner daily-driver proof [CURRENT PRODUCT GATE]
 
-Use [`../owner-checkpoint.md`](../owner-checkpoint.md).
+Use [`../owner-checkpoint.md`](../owner-checkpoint.md) on the current green main baseline.
 
 The owner should prove:
 
@@ -255,7 +239,7 @@ fresh proposal -> Approve -> exact SHA read-back
 return writes to disabled
 ```
 
-Real failures from this checkpoint define the next bug/UX slices.
+Real failures from this checkpoint define the next bug/UX slices. Do not add speculative mutation scope before this evidence exists.
 
 ---
 
@@ -281,7 +265,7 @@ Do not resume broad GitHub mutation merely to make v0.1 look larger.
 
 # 9. v0.2 direction
 
-There is one important architecture/product gap to prove first: provider neutrality exists at the `IBrain` contract, but current production host composition uses `OllamaBrain` and `Loren.Brain.OpenAI` is only a stub. Implement and accept a second provider before claiming operational provider portability.
+First prove the architecture/product gap already exposed by v0.1: provider neutrality exists at the `IBrain` contract, but current production host composition uses `OllamaBrain` and `Loren.Brain.OpenAI` is only a stub. Implement and accept a second provider before claiming operational provider portability.
 
 Then choose one useful **read-only** personal-secretary integration, likely Calendar read/search, and build the smallest end-to-end flow. Use that real flow to discover the connector abstraction rather than building a generic integration framework first.
 
@@ -327,25 +311,3 @@ For every milestone:
 12. synchronize status/handoff/roadmap/architecture/README when the checkpoint changes.
 
 Stop the line if the model/runtime can bypass ActionGateway, private owner state loses authentication, credentials leak, approval can replay/broaden, current information silently guesses when a read is required, external content becomes authority, or external writes report success without verification.
-
----
-
-# 12. Current execution sequence
-
-```text
-M1–M4                                         ✓
-Gate D + M5 Slices 1–3                       ✓
-M6A.1–M6A.5 code                             ✓
-continuity / launcher / recovery / audit     ✓
-M6B.1 transient audit lifetime               ✓
-M6B.2 readiness + docs                       <- CURRENT DELIVERY
-        |
-        v
-M6B.3 REAL OWNER DAILY-DRIVER CHECKPOINT
-        |
-        v
-fix real-use blockers / assess v0.1.0
-        |
-        v
-v0.2 provider portability + first personal read integration
-```
