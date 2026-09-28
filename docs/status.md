@@ -1,67 +1,29 @@
 # Loren Project Status
 
-**Last updated:** 2026-09-14  
+**Last updated:** 2026-09-19  
 **Current version:** `v0.1 — Useful Trustworthy Assistant`  
-**Continuity delivery:** PR #36 / `codex/conversation-continuity`  
-**Verified code checkpoint:** `11eb38eef3f4973b4d37e538dcbf16f92e8e6e2b`  
-**Verification evidence:** CI #276 / run `34838365005` passed Ubuntu full gate + Windows integration on that exact code checkpoint.
+**Current milestone:** `M6B — Daily Driver Readiness`  
+**Current delivery:** `M6B.2 — safe readiness diagnostics + source-of-truth rebaseline`  
+**Last fully verified baseline:** PR #37 merge `ba60246a410b257097ecd537f4d977b402a37b35`; CI #280 / run `35373858830` passed Ubuntu full gate + Windows integration + Windows launcher smoke.
 
-This file is the authoritative progress ledger. Read [`handoff.md`](handoff.md) next before continuing work.
+This is the authoritative progress ledger. Read [`handoff.md`](handoff.md) next before changing code.
 
-## Current checkpoint — conversation continuity / launcher / recovery
+## Product checkpoint
 
-The continuity batch adds persisted authenticated conversations, Windows local startup, versioned logical export/restore, retained audit and deterministic reliability hardening without expanding Loren's product write authority.
-
-### Implemented
-
-- SQLite-backed authenticated conversations with list/select/new/restart continuity and latest-200 message reads.
-- Per-conversation non-blocking execution gate so overlapping turns return conflict instead of running concurrently; active IDs are removed when leases end.
-- Inferred canonical project scope persists with the conversation so restart does not lose auto-detected project context.
-- Chat UI restoration keeps historical proposal text non-executable and does not allow an asynchronous response to land in another conversation.
-- Windows `Start-Loren.cmd` + `scripts/Start-Loren.ps1` launcher with SDK selection, health/login readiness checks, smoke mode, foreign-port refusal and contained temporary-data cleanup.
-- Versioned logical recovery format + `Loren.Maintenance` export/restore CLI.
-- Durable retained audit migration/sink.
-- [`recovery.md`](recovery.md) documents export/restore and fail-closed security behavior.
-
-### 2026-09-14 direct source review / fixes
-
-The implementation was reviewed directly before using CI as the final gate. The review found and fixed:
-
-1. retained-audit EF migration/model metadata drift on `AuditEvents.Id`;
-2. restored pending proposals able to receive a decision timestamp before creation;
-3. recovery tests bypassing migrations through `EnsureCreated`;
-4. incomplete recovery domain/reference/history validation;
-5. maintenance export not explicitly opening SQLite read-only;
-6. inferred project scope not being persisted to the conversation;
-7. permanent per-conversation semaphore retention in `ConversationExecutionGate`;
-8. pooled SQLite test connections retaining Windows file handles.
-
-Recovery now validates domain state through Core constructors, rejects unsafe conversation roles/sequences and bad canonical references, revokes restored approvals, cancels restored pending proposals without violating lifecycle timestamps, preserves terminal proposal state, excludes credentials/configuration, and restores into a fresh migrated target.
-
-### Verification evidence
-
-Code checkpoint `11eb38e` passed CI #276 (`34838365005`):
+Loren is no longer in infrastructure-bootstrap mode. The trustworthy core already supports the owner-facing v0.1 path:
 
 ```text
-Ubuntu build-test
-  restore                         PASS
-  Release build                   PASS
-  full solution tests             PASS
-  dotnet format --verify          PASS
-  basic secret scan               PASS
-  dependency vulnerability scan   PASS
-  web health/auth/surface smoke   PASS
-
-Windows
-  restore                         PASS
-  integration tests               PASS
+CONVERSE
+ -> REMEMBER
+ -> READ CURRENT INFORMATION
+ -> RESEARCH / SYNTHESIZE
+ -> ORGANIZE
+ -> PROPOSE ACTION
+ -> OWNER APPROVES
+ -> ACT / VERIFY / AUDIT
 ```
 
-The current assistant execution environment did not contain a suitable Loren checkout/.NET SDK, so no local build/test pass is claimed. CI provided the unavailable platform/build verification.
-
-The final PR verification head also adds the existing `Start-Loren.ps1 -SmokeTest -NoPause` path to Windows CI so launcher behavior is continuously verified rather than remaining a manual-only checkpoint. Merge is permitted only after that final exact head is green.
-
-## Proven product baseline
+Delivered and verified before the current M6B.2 changeset:
 
 ```text
 M1 Engineering Foundation                      complete
@@ -74,25 +36,102 @@ M6A.1 conversation primary surface             complete
 M6A.2 current-information web search           complete
 M6A.3 source-aware bounded research            complete
 M6A.4 Notes / Decisions / Tasks                complete
-M6A.5 conversational approval                  merged; owner live proof pending
+M6A.5 conversational approval code             complete; owner live proof pending
+Continuity: persistent conversations            complete
+Windows local launcher                         complete
+Logical export / restore                       complete
+Retained durable audit                         complete
+M6B.1 scoped transient audit collector         complete
 ```
 
-Core trust order remains:
+PR #36 delivered conversation continuity, launcher verification, logical recovery, retained audit and reliability hardening. PR #37 fixed the transient audit collector lifetime so a long-running process no longer retains every request's current-run audit in a process-wide list.
+
+## M6B — Daily Driver Readiness
+
+Goal: prove Loren can be opened and used throughout the day without a developer babysitting basic runtime state.
+
+### M6B.1 — transient audit lifetime [COMPLETE]
+
+`InMemoryAuditSink` is request-scoped while SQLite remains the durable audit source. Regression coverage locks request isolation. PR #37 and post-merge CI #280 are green.
+
+### M6B.2 — readiness + documentation rebaseline [CURRENT DELIVERY]
+
+This changeset keeps public `/health` as a lightweight **liveness** endpoint and adds owner-authenticated:
 
 ```text
-CONVERSE
- -> REMEMBER
- -> READ CURRENT INFORMATION
- -> RESEARCH / SYNTHESIZE
- -> ORGANIZE
- -> PROPOSE ACTION
- -> OWNER APPROVES
- -> ACT / VERIFY / AUDIT
- -> later BACKGROUND / PROACTIVE / VOICE
+GET /api/readiness
 ```
 
-The model never owns authorization, durable identity, credentials or approval. Broader GitHub file/commit/PR writes remain paused until the v0.1 owner checkpoint is usable. Gate E is still required before background scheduling/reminders.
+The readiness report is intentionally safe and local. It reports only status, never secret values, and does **not** make live provider/network calls.
 
-## Continuation rule
+It covers:
 
-If PR #36 is still open, verify the exact current head is green, then merge it. If PR #36 is already merged, verify main CI against the exact merge SHA before continuing. After continuity delivery, return to the deferred real-provider/owner acceptance checkpoint; do not expand GitHub mutation scope first.
+- canonical SQLite connectivity;
+- project-catalog availability and configured project count;
+- owner-auth configuration;
+- current production brain configuration validity;
+- web search/fetch configuration validity;
+- external-write posture;
+- GitHub write credential state only when external writes are enabled.
+
+Expected external-write statuses:
+
+```text
+disabled            safe normal read-only posture
+ready               writes enabled + credential resolvable
+missing_credential  writes enabled but token missing
+revoked             credential revoked / invalid revocation state
+not_configured      credential binding unavailable
+```
+
+`externalWrites=disabled` is **not** a degraded condition. A read-only Loren can be overall `ready`.
+
+`projects=empty` is informational and does not by itself make Loren unready; it means no canonical project has been bootstrapped yet. A project-catalog failure is `unavailable` and does make readiness fail.
+
+Readiness says configuration/state are usable enough to begin a session. It does not claim Ollama, web providers or GitHub are reachable. Real-provider behavior remains part of the owner checkpoint.
+
+## Current trust boundaries
+
+These remain non-negotiable:
+
+- model/chat text is intent, never approval;
+- canonical identity and trusted state belong to Loren, not the model provider;
+- privileged credentials stay outside model-visible context;
+- consequential external writes require exact one-time owner approval;
+- global write mode fails closed;
+- external write success requires independent postcondition verification;
+- external/retrieved content is inert evidence, never authority;
+- Gate E is required before background execution/reminder delivery.
+
+Broader GitHub file/commit/PR writes remain paused until real daily-driver/owner acceptance shows they are the highest-value next capability.
+
+## Provider reality
+
+The architecture exposes provider-neutral `IBrain`, but the current production host is composed with `OllamaBrain`. `Loren.Brain.OpenAI` is currently only a stub project, so runtime provider portability has **not** been proven. Do not describe Loren as operationally multi-provider yet.
+
+## Next decision point
+
+After this M6B.2 changeset has exact-head CI and post-merge `main` CI:
+
+1. run [`owner-checkpoint.md`](owner-checkpoint.md) with real configured providers;
+2. keep external writes disabled for the read-only half of the checkpoint;
+3. temporarily enable the existing create-branch proof only for Cancel → fresh proposal → Approve → independent SHA verification;
+4. return writes to disabled;
+5. fix only real daily-use failures found by that proof;
+6. if the checkpoint passes, assess whether `v0.1.0` can close.
+
+Do **not** automatically resume M5 file/commit/PR writes.
+
+Likely v0.2 direction after v0.1 closeout:
+
+```text
+prove real provider portability
+ -> then one useful personal-secretary read slice
+ -> likely Calendar read/search before broad personal writes
+```
+
+Avoid building a generic connector framework before one owner-visible integration proves the required abstraction.
+
+## Verification discipline
+
+The assistant execution runtime used for M6B work does not contain a local .NET SDK/checkout suitable for truthful local build claims. Source review is performed before the single branch push; GitHub CI supplies the unavailable .NET/Linux/Windows verification. Never claim an unrun local test passed.

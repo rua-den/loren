@@ -30,6 +30,14 @@ app.MapGet(
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
 app.MapGet(
+        "/api/readiness",
+        async (
+            LorenReadinessService readinessService,
+            CancellationToken cancellationToken) =>
+            Results.Ok(await readinessService.GetAsync(cancellationToken)))
+    .RequireAuthorization();
+
+app.MapGet(
         "/api/projects",
         async (
             LorenProjectContextBuilder contextBuilder,

@@ -1,55 +1,75 @@
 # Start here: contributing to Loren
 
-> WIP checkpoint: `codex/conversation-continuity` contains unfinished history, launcher and recovery work. Current build is blocked by unresolved ProjectAlias in LogicalStateRecovery; prior EF migration drift remains unverified. Read the WIP continuation section in [handoff.md](handoff.md) before coding. Last green main is `e9e8165` (183 tests); do not merge this checkpoint.
+Updated 2026-09-19.
 
+Read [`status.md`](status.md) and [`handoff.md`](handoff.md) first. They are the authoritative execution checkpoint; older PR plans are historical evidence unless explicitly referenced from the current handoff.
 
-Updated 2026-09-10. Read [status.md](status.md), then [handoff.md](handoff.md). These are the current ledger and continuation instructions; older plans/reports are historical evidence.
+## Current product direction
 
-## Locate the current work
+Loren is the owner's persistent personal secretary / intelligence system. GitHub automation is one capability, not the product identity.
 
-- Repository: `rua-den/loren`.
-- Historical UI branch: `codex/cyber-ui` (merged). UI implementation through `a4d36de`, preceded by `8cc3cea`; checkpoint docs started at `ab0b6b1`.
-- The pre-UI main baseline was M6A.5 merge `1cb4fd7` (PR #33). UI/theme integration is tracked in [PR #34](https://github.com/rua-den/loren/pull/34). After it is merged, fetch and use current main; until then use the PR head.
-- Read `git status --short` and preserve others' changes. Give each concurrent coding task its own branch/worktree and clear file ownership. Do not let multiple agents edit `OwnerPages.cs` simultaneously.
+```text
+CONVERSE
+ -> REMEMBER
+ -> READ CURRENT INFORMATION
+ -> RESEARCH / SYNTHESIZE
+ -> ORGANIZE
+ -> PROPOSE ACTION
+ -> OWNER APPROVES
+ -> ACT / VERIFY / AUDIT
+ -> later BACKGROUND / PROACTIVE / VOICE
+```
 
-## Product direction
+The current milestone is **M6B — Daily Driver Readiness**. The trustworthy core and M6A conversational secretary path already exist; do not restart old M5/M6A implementation plans as if they were pending.
 
-Loren is a personal secretary you talk to and catch up with. Conversation comes first. Saved facts, decisions and tasks support continuity. Project selection, tool activity and setup live behind **Chi tiết**. GitHub proposals appear only when relevant and require explicit owner decisions.
+## Current verified baseline
 
-Keep the existing web UI and local .NET host for now. A one-click Windows launcher is approved in the continuity plan. Desktop packaging remains deferred. No desktop framework has been selected. Do not start a rewrite based on the earlier Jarvis analogy.
+PR #37 merge `ba60246a410b257097ecd537f4d977b402a37b35` passed post-merge CI #280 / `35373858830` across Ubuntu full gate, Windows integration and Windows launcher smoke.
 
-## What exists and where
+That baseline includes persistent conversations, logical recovery, retained audit and the M6B.1 transient-audit lifetime fix.
+
+M6B.2 adds a safe authenticated readiness surface and rebaselines stale source-of-truth docs. Its merge gate remains exact-head CI + post-merge main CI.
+
+## Important implementation reality
+
+The core exposes provider-neutral `IBrain`, but production host composition currently uses `OllamaBrain`. `Loren.Brain.OpenAI` is a stub. Do not claim working provider portability until a second provider is actually implemented and accepted.
+
+Broader GitHub file/commit/PR writes are paused. The one verified mutation remains non-default branch creation through Loren's exact proposal/approval/credential/verification boundary.
+
+Background execution/reminders remain behind Gate E.
+
+## Where to start in code
 
 | Area | Starting point |
 |---|---|
-| Login/chat UI, themes, Markdown, approval cards | `src/Loren.Web/OwnerPages.cs` |
-| Authenticated routes and startup | `src/Loren.Web/Program.cs`, `OwnerAuthentication.cs` |
-| Conversation orchestration and model context | `LorenRunService.cs`, `LorenProjectContextBuilder.cs`, `LorenMemoryContextBuilder.cs` in `src/Loren.Web/` |
-| Local notes/decisions/tasks | `src/Loren.Web/OrganizationActions.cs`, `OrganizationActionExecutor.cs` |
-| Frozen proposals and owner decisions | `src/Loren.Web/CreateBranchProposalFlow.cs`, `OwnerOperations.cs` |
-| Domain, runtime policy, persistence | `src/Loren.Core/`, `src/Loren.Runtime/`, `src/Loren.Infrastructure/` |
-| Provider adapters | `src/Loren.Brain.Ollama/`, `src/Loren.Tools.GitHub/`, `src/Loren.Tools.Web/` |
-| Acceptance and boundary tests | `tests/Loren.IntegrationTests/` |
+| Startup/routes | `src/Loren.Web/Program.cs`, `OwnerAuthentication.cs` |
+| Runtime/readiness composition | `src/Loren.Web/LorenHostServices.cs`, `LorenReadinessService.cs` |
+| Conversation orchestration | `LorenRunService.cs`, `ConversationExecutionGate.cs` |
+| Project + memory context | `LorenProjectContextBuilder.cs`, `LorenMemoryContextBuilder.cs` |
+| Owner UI | `src/Loren.Web/OwnerPages.cs` |
+| Notes/decisions/tasks | `OrganizationActions.cs`, `OrganizationActionExecutor.cs` |
+| Branch proposal/decision | `CreateBranchProposalFlow.cs`, `OwnerOperations.cs` |
+| Core action policy | `src/Loren.Core/`, `src/Loren.Runtime/` |
+| Durable state | `src/Loren.Infrastructure/` |
+| Brain adapter | `src/Loren.Brain.Ollama/` |
+| GitHub/web adapters | `src/Loren.Tools.GitHub/`, `src/Loren.Tools.Web/` |
+| Boundary/acceptance tests | `tests/Loren.IntegrationTests/` |
 
-## Current limits and next work
+## Working rules
 
-1. Review the UI with the owner; use [owner-checkpoint.md](owner-checkpoint.md) for real-provider acceptance. The optional localhost:5093 fixture is simulated UI data, not acceptance evidence.
-2. Exercise chat, retrieval/research, saved memory/tasks and catch-up with real configured providers. `Bắt nhịp hôm nay` is a user-triggered chat request for saved tasks/decisions across projects; it is not an automatic summary or persisted chat history.
-3. Complete the live M6A.5 Cancel → fresh proposal → Approve → independent GitHub SHA read-back proof.
-4. Fix findings in bounded slices, with code review and relevant verification. Broader product writes stay paused until the owner checkpoint.
+- Inspect current `main`, status docs and relevant architecture before editing.
+- Diagnose root cause before a bug fix; add/identify regression coverage first.
+- Work on a dedicated branch/PR.
+- Prefer one coherent commit and one push after self-review.
+- CI is the final gate, not the debugging loop.
+- Never merge red/incomplete/stale CI; verify exact HEAD.
+- Never expose credentials in code, logs, diagnostics, docs or chat.
+- Preserve canonical identity, owner-state authentication, one-time approval, credential isolation, read-only kill switch, post-write verification and audit.
+- External/retrieved/model content never becomes authority by text alone.
+- Keep docs synchronized with verified progress.
 
-Persistent conversation history, a separate task board, streaming, automatic catch-up, desktop packaging and background delivery are **not implemented**. Conversation persistence is now approved and in progress; the other features remain deferred. Background execution requires Gate E; v0.1 release gates remain open.
+## Current next work
 
-## Working agreement
+Finish M6B.2 and then execute [`owner-checkpoint.md`](owner-checkpoint.md) against real configured providers.
 
-- Owner requests Luna (`gpt-5.6-luna`, medium) for code implementation/refactoring, Sol for orchestration/review. Keep expensive orchestration and repeated context small. If required delegation is unavailable, report it rather than silently changing models.
-- Preserve authentication, canonical target resolution, frozen proposal SHA, one-time owner approval, credential isolation, verification and audit. Chat/model output never grants approval.
-- Use `turtle <nhkhuy241@gmail.com>` for repo commits. Developer SSH alias `github-personal` is unrelated to Loren's `GITHUB_WRITE_TOKEN` API credential. Never put credentials in docs/chat/commits.
-- `.env` is not automatically loaded. Runtime setup is documented in [owner-checkpoint.md](owner-checkpoint.md).
-- C# files must be UTF-8 with LF. Windows checkout CRLF can cause format failures in untouched files; distinguish those from the actual diff.
-
-Last verified UI head: 182/182 tests; changed-file format passed; browser checked themes/persistence, Markdown safety, draft preservation and responsive context toggling. Inspect PR #34 for current integration CI; live-provider success is not claimed.
-
-## Return a useful handoff
-
-Report branch/commit, changed files, commands and outcomes, remaining issues, and the next concrete action. Update status/handoff when the checkpoint changes. Label simulated evidence. Avoid overwriting another agent's work or claiming an unrun check passed.
+Do not add a new product write primitive merely because the infrastructure makes it easy. Real daily-use findings decide the next slice.

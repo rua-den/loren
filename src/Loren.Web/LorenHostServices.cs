@@ -62,6 +62,7 @@ public static class LorenHostServices
         services.AddSingleton(new LorenMemoryContextOptions());
         services.AddScoped<LorenMemoryContextBuilder>();
         services.AddScoped<LorenProjectContextBuilder>();
+        services.AddScoped<LorenReadinessService>();
 
         services.AddScoped<InMemoryAuditSink>();
         services.AddScoped<DurableAuditSink>();
