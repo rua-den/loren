@@ -1,6 +1,6 @@
 # Start here: contributing to Loren
 
-Updated 2026-09-19.
+Updated 2026-09-28.
 
 Read [`status.md`](status.md) and [`handoff.md`](handoff.md) first. They are the authoritative execution checkpoint; older PR plans are historical evidence unless explicitly referenced from the current handoff.
 
@@ -24,11 +24,11 @@ The current milestone is **M6B — Daily Driver Readiness**. The trustworthy cor
 
 ## Current verified baseline
 
-PR #37 merge `ba60246a410b257097ecd537f4d977b402a37b35` passed post-merge CI #280 / `35373858830` across Ubuntu full gate, Windows integration and Windows launcher smoke.
+PR #38 merge `67ade6e6459296fad2ca149720420070922e3ebe` passed post-merge CI #288 / `36412656169` across Ubuntu full gate, Windows integration and Windows launcher smoke. Exact PR head `8083c00059240bb87cea8c18370b4b36529f70ee` passed CI #287 / `36412297786` before merge.
 
-That baseline includes persistent conversations, logical recovery, retained audit and the M6B.1 transient-audit lifetime fix.
+That baseline includes persistent conversations, logical recovery, retained audit, the M6B.1 transient-audit lifetime fix and M6B.2 secret-safe authenticated readiness diagnostics.
 
-M6B.2 adds a safe authenticated readiness surface and rebaselines stale source-of-truth docs. Its merge gate remains exact-head CI + post-merge main CI.
+M6B.2 is complete. The current product gate is **M6B.3 — real owner daily-driver acceptance** using [`owner-checkpoint.md`](owner-checkpoint.md). Real failures from that checkpoint, not speculative capability expansion, define the next coding work.
 
 ## Important implementation reality
 
@@ -70,6 +70,6 @@ Background execution/reminders remain behind Gate E.
 
 ## Current next work
 
-Finish M6B.2 and then execute [`owner-checkpoint.md`](owner-checkpoint.md) against real configured providers.
+Execute [`owner-checkpoint.md`](owner-checkpoint.md) against real configured providers on the current green `main` baseline. Keep writes disabled for the read-only half, then temporarily enable only the existing branch proof for Cancel → fresh proposal → Approve → exact-SHA verification, and return writes to disabled.
 
 Do not add a new product write primitive merely because the infrastructure makes it easy. Real daily-use findings decide the next slice.

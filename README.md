@@ -24,11 +24,11 @@ Read/understand comes before broad mutation. GitHub automation is one capability
 
 ## Current status
 
-**Updated:** 2026-09-19  
+**Updated:** 2026-09-28  
 **Version:** `v0.1 — Useful Trustworthy Assistant`  
 **Current milestone:** `M6B — Daily Driver Readiness`  
-**Current delivery:** `M6B.2 — safe readiness diagnostics + documentation rebaseline`  
-**Last fully verified baseline:** PR #37 merge `ba60246a410b257097ecd537f4d977b402a37b35`; post-merge CI #280 / `35373858830` passed Ubuntu full gate, Windows integration and Windows launcher smoke.  
+**Current delivery:** `M6B.3 — real owner daily-driver acceptance`  
+**Last fully verified baseline:** PR #38 merge `67ade6e6459296fad2ca149720420070922e3ebe`; post-merge CI #288 / `36412656169` passed Ubuntu full gate, Windows integration and Windows launcher smoke.  
 **Paused:** broader GitHub file/commit/PR writes until real owner daily-use evidence says they are highest value.
 
 Start with [`docs/status.md`](docs/status.md) and [`docs/handoff.md`](docs/handoff.md). AI contributors should read [`docs/ai-start.md`](docs/ai-start.md).

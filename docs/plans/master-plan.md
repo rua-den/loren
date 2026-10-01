@@ -1,11 +1,12 @@
 # Loren Master Delivery Plan
 
 **Status:** Active capability-driven roadmap  
-**Updated:** 2026-09-19  
+**Updated:** 2026-09-28  
 **Current phase:** `v0.1 — Useful Trustworthy Assistant`  
 **Current milestone:** `M6B — Daily Driver Readiness`  
-**Current delivery:** `M6B.2 — readiness diagnostics + source-of-truth rebaseline`  
-**Next product gate:** real-provider owner acceptance  
+**Current delivery:** `M6B.3 — real owner daily-driver acceptance`  
+**Last verified baseline:** PR #38 merge `67ade6e6459296fad2ca149720420070922e3ebe`; main CI #288 / `36412656169` PASS.  
+**Next product gate:** owner acceptance / v0.1 closeout decision  
 **Paused:** broader GitHub file/commit/PR writes until real daily-driver evidence says otherwise.
 
 > Loren is the owner's persistent personal secretary / Jarvis-like intelligence system. GitHub automation is one capability, not the product identity.
@@ -188,9 +189,10 @@ Windows launcher                                COMPLETE
 Logical export/restore                          COMPLETE
 Retained audit                                  COMPLETE
 M6B.1 transient audit lifetime                 COMPLETE
+M6B.2 safe readiness + docs rebaseline         COMPLETE
 ```
 
-The latest fully verified baseline before M6B.2 is PR #37 merge `ba60246a410b257097ecd537f4d977b402a37b35`, post-merge CI #280 / `35373858830` PASS on Ubuntu full gate and Windows integration/launcher.
+The current verified baseline is PR #38 merge `67ade6e6459296fad2ca149720420070922e3ebe`, post-merge CI #288 / `36412656169` PASS on Ubuntu full gate and Windows integration/launcher. Exact PR head `8083c00059240bb87cea8c18370b4b36529f70ee` passed CI #287 / `36412297786` before merge.
 
 The single verified external mutation primitive remains non-default GitHub branch creation. File/commit/open-PR expansion is deliberately paused.
 
@@ -204,7 +206,7 @@ M6B shifts the project from adding trust primitives to proving the existing prod
 
 Request-local audit collection is scoped; SQLite remains durable audit. Long-running Loren no longer accumulates every request's transient audit in one singleton collector.
 
-## M6B.2 — Safe readiness + source-of-truth rebaseline [CURRENT DELIVERY]
+## M6B.2 — Safe readiness + source-of-truth rebaseline [COMPLETE]
 
 Owner-visible contract:
 
@@ -233,9 +235,9 @@ Rules:
 - write credential problems matter only when writes are enabled;
 - provider reachability is owner live-proof evidence, not readiness configuration evidence.
 
-Acceptance coverage must prove auth boundary, liveness separation, safe read-only ready state, missing write credential and revoked write credential without secret exposure.
+Regression coverage proves auth boundary, liveness separation, safe read-only ready state, missing write credential and revoked write credential without secret exposure. CI #286 exposed a test-host composition issue; the final head fixed only the test DI boundary. Exact-head CI #287 and post-merge main CI #288 passed.
 
-## M6B.3 — Real owner daily-driver proof [NEXT PRODUCT GATE]
+## M6B.3 — Real owner daily-driver proof [CURRENT PRODUCT GATE]
 
 Use [`../owner-checkpoint.md`](../owner-checkpoint.md).
 
@@ -255,7 +257,7 @@ fresh proposal -> Approve -> exact SHA read-back
 return writes to disabled
 ```
 
-Real failures from this checkpoint define the next bug/UX slices.
+Real failures from this checkpoint define the next bug/UX slices. Do not add speculative mutation scope before this evidence exists.
 
 ---
 
@@ -338,10 +340,10 @@ Gate D + M5 Slices 1–3                       ✓
 M6A.1–M6A.5 code                             ✓
 continuity / launcher / recovery / audit     ✓
 M6B.1 transient audit lifetime               ✓
-M6B.2 readiness + docs                       <- CURRENT DELIVERY
+M6B.2 readiness + docs                       ✓
         |
         v
-M6B.3 REAL OWNER DAILY-DRIVER CHECKPOINT
+M6B.3 REAL OWNER DAILY-DRIVER CHECKPOINT     <- CURRENT
         |
         v
 fix real-use blockers / assess v0.1.0

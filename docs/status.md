@@ -1,10 +1,10 @@
 # Loren Project Status
 
-**Last updated:** 2026-09-19  
+**Last updated:** 2026-09-28  
 **Current version:** `v0.1 — Useful Trustworthy Assistant`  
 **Current milestone:** `M6B — Daily Driver Readiness`  
-**Current delivery:** `M6B.2 — safe readiness diagnostics + source-of-truth rebaseline`  
-**Last fully verified baseline:** PR #37 merge `ba60246a410b257097ecd537f4d977b402a37b35`; CI #280 / run `35373858830` passed Ubuntu full gate + Windows integration + Windows launcher smoke.
+**Current delivery:** `M6B.3 — real owner daily-driver acceptance`  
+**Last fully verified baseline:** PR #38 merge `67ade6e6459296fad2ca149720420070922e3ebe`; CI #288 / run `36412656169` passed Ubuntu full gate + Windows integration + Windows launcher smoke.
 
 This is the authoritative progress ledger. Read [`handoff.md`](handoff.md) next before changing code.
 
@@ -23,7 +23,7 @@ CONVERSE
  -> ACT / VERIFY / AUDIT
 ```
 
-Delivered and verified before the current M6B.2 changeset:
+Delivered and verified through M6B.2:
 
 ```text
 M1 Engineering Foundation                      complete
@@ -37,14 +37,15 @@ M6A.2 current-information web search           complete
 M6A.3 source-aware bounded research            complete
 M6A.4 Notes / Decisions / Tasks                complete
 M6A.5 conversational approval code             complete; owner live proof pending
-Continuity: persistent conversations            complete
+Continuity: persistent conversations           complete
 Windows local launcher                         complete
 Logical export / restore                       complete
 Retained durable audit                         complete
 M6B.1 scoped transient audit collector         complete
+M6B.2 readiness + documentation rebaseline     complete
 ```
 
-PR #36 delivered conversation continuity, launcher verification, logical recovery, retained audit and reliability hardening. PR #37 fixed the transient audit collector lifetime so a long-running process no longer retains every request's current-run audit in a process-wide list.
+PR #36 delivered conversation continuity, launcher verification, logical recovery, retained audit and reliability hardening. PR #37 fixed the transient audit collector lifetime so a long-running process no longer retains every request's current-run audit in a process-wide list. PR #38 added secret-safe owner readiness diagnostics and rebaselined the source-of-truth documentation. Its exact head `8083c00059240bb87cea8c18370b4b36529f70ee` passed CI #287, then merge `67ade6e6459296fad2ca149720420070922e3ebe` passed post-merge CI #288.
 
 ## M6B — Daily Driver Readiness
 
@@ -54,25 +55,17 @@ Goal: prove Loren can be opened and used throughout the day without a developer 
 
 `InMemoryAuditSink` is request-scoped while SQLite remains the durable audit source. Regression coverage locks request isolation. PR #37 and post-merge CI #280 are green.
 
-### M6B.2 — readiness + documentation rebaseline [CURRENT DELIVERY]
+### M6B.2 — readiness + documentation rebaseline [COMPLETE]
 
-This changeset keeps public `/health` as a lightweight **liveness** endpoint and adds owner-authenticated:
+Public `/health` remains lightweight **liveness**. Owner-authenticated:
 
 ```text
 GET /api/readiness
 ```
 
-The readiness report is intentionally safe and local. It reports only status, never secret values, and does **not** make live provider/network calls.
+reports safe local configuration/state posture only. It never returns secret values and performs no live provider/network calls.
 
-It covers:
-
-- canonical SQLite connectivity;
-- project-catalog availability and configured project count;
-- owner-auth configuration;
-- current production brain configuration validity;
-- web search/fetch configuration validity;
-- external-write posture;
-- GitHub write credential state only when external writes are enabled.
+It covers canonical SQLite connectivity, project-catalog availability/count, owner-auth configuration, production brain configuration validity, web search/fetch configuration validity, external-write posture, and GitHub write credential state only when writes are enabled.
 
 Expected external-write statuses:
 
@@ -84,11 +77,15 @@ revoked             credential revoked / invalid revocation state
 not_configured      credential binding unavailable
 ```
 
-`externalWrites=disabled` is **not** a degraded condition. A read-only Loren can be overall `ready`.
+`externalWrites=disabled` is **not** degraded. A read-only Loren can be overall `ready`. `projects=empty` is informational and does not by itself make Loren unready; project-catalog failure is `unavailable` and does make readiness fail.
 
-`projects=empty` is informational and does not by itself make Loren unready; it means no canonical project has been bootstrapped yet. A project-catalog failure is `unavailable` and does make readiness fail.
+CI #286 exposed a test-host composition regression: the readiness integration factory configured `LOREN_OWNER_PASSWORD` too late for the singleton owner authenticator, producing login 503s. The final head fixes the test DI boundary only; production readiness semantics were unchanged. Exact-head CI #287 and post-merge main CI #288 are green.
 
-Readiness says configuration/state are usable enough to begin a session. It does not claim Ollama, web providers or GitHub are reachable. Real-provider behavior remains part of the owner checkpoint.
+### M6B.3 — owner daily-driver acceptance [CURRENT]
+
+Run [`owner-checkpoint.md`](owner-checkpoint.md) with real configured providers. Start with external writes disabled, prove useful read-only daily use, then temporarily enable only the existing create-branch proof for Cancel → fresh proposal → Approve → independent exact-SHA verification. Return writes to disabled afterward.
+
+Real failures from this owner session define the next bug/UX slices. Do not invent new mutation scope before this evidence exists.
 
 ## Current trust boundaries
 
@@ -111,14 +108,12 @@ The architecture exposes provider-neutral `IBrain`, but the current production h
 
 ## Next decision point
 
-After this M6B.2 changeset has exact-head CI and post-merge `main` CI:
-
-1. run [`owner-checkpoint.md`](owner-checkpoint.md) with real configured providers;
-2. keep external writes disabled for the read-only half of the checkpoint;
-3. temporarily enable the existing create-branch proof only for Cancel → fresh proposal → Approve → independent SHA verification;
-4. return writes to disabled;
-5. fix only real daily-use failures found by that proof;
-6. if the checkpoint passes, assess whether `v0.1.0` can close.
+1. Run [`owner-checkpoint.md`](owner-checkpoint.md) with real configured providers.
+2. Keep external writes disabled for the read-only half of the checkpoint.
+3. Temporarily enable the existing create-branch proof only for Cancel → fresh proposal → Approve → independent SHA verification.
+4. Return writes to disabled.
+5. Fix only real daily-use failures found by that proof.
+6. If the checkpoint passes, assess whether `v0.1.0` can close.
 
 Do **not** automatically resume M5 file/commit/PR writes.
 
@@ -134,4 +129,4 @@ Avoid building a generic connector framework before one owner-visible integratio
 
 ## Verification discipline
 
-The assistant execution runtime used for M6B work does not contain a local .NET SDK/checkout suitable for truthful local build claims. Source review is performed before the single branch push; GitHub CI supplies the unavailable .NET/Linux/Windows verification. Never claim an unrun local test passed.
+The assistant execution runtime used for M6B work does not contain a local .NET SDK/checkout suitable for truthful local build claims. GitHub CI supplied the unavailable .NET/Linux/Windows verification. Never claim an unrun local test passed.
