@@ -22,7 +22,11 @@ public sealed class OllamaBrain : IBrain
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _options.Validate();
-        _apiKey = apiKey;
+        // The same cloud key may configure web search while chat runs on local Ollama.
+        // Never forward a bearer secret to a loopback or plaintext HTTP chat endpoint.
+        _apiKey = _options.Endpoint.Scheme == Uri.UriSchemeHttps && !_options.Endpoint.IsLoopback
+            ? apiKey
+            : null;
     }
 
     public async Task<BrainTurnResult> ThinkAsync(

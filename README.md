@@ -96,6 +96,11 @@ dotnet run --project src/Loren.Web/Loren.Web.csproj
 
 Environment/command-line values override local JSON. Restart after configuration changes.
 
+For **Ollama running on the same computer** (rather than Ollama Cloud), use
+[the local Ollama setup guide](docs/ollama-local.md). Local chat needs no API key;
+the separate Ollama Cloud web-search/fetch tools do. Loren does not forward that
+cloud key to loopback or plaintext HTTP chat endpoints.
+
 Keep external writes off for normal read-only use. For the optional owner live branch proof only, configure a dedicated `GITHUB_WRITE_TOKEN`, explicitly enable writes, complete the proof, then turn writes off again. Never commit real secrets.
 
 ## Provider note

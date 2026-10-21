@@ -84,6 +84,40 @@ public sealed class OllamaBrainTests
         Assert.Equal("loren", request.Arguments["repository"]);
     }
 
+    [Theory]
+    [InlineData("http://127.0.0.1:11434/api/chat")]
+    [InlineData("http://localhost:11434/api/chat")]
+    [InlineData("http://[::1]:11434/api/chat")]
+    [InlineData("http://192.0.2.10:11434/api/chat")]
+    [InlineData("https://localhost:11434/api/chat")]
+    public async Task DoesNotForwardCloudApiKeyToLocalOrPlaintextChatEndpoints(string endpoint)
+    {
+        const string apiKey = "cloud-web-secret-must-stay-out-of-local-chat";
+        DelegateHandler handler = new(async (request, cancellationToken) =>
+        {
+            Assert.Equal(endpoint, request.RequestUri?.AbsoluteUri);
+            Assert.Null(request.Headers.Authorization);
+            string body = await request.Content!.ReadAsStringAsync(cancellationToken);
+            Assert.DoesNotContain(apiKey, body, StringComparison.Ordinal);
+
+            return JsonResponse("""
+                {
+                  "message": { "role": "assistant", "content": "Local chat ready." },
+                  "done": true
+                }
+                """);
+        });
+
+        OllamaBrain brain = CreateBrain(handler, apiKey, endpoint);
+        BrainTurnResult result = await brain.ThinkAsync(
+            BrainContext.FromUser("Hello"),
+            [],
+            CancellationToken.None);
+
+        Assert.True(result.IsFinal);
+        Assert.Equal("Local chat ready.", result.FinalOutput);
+    }
+
     [Fact]
     public async Task ReconstructsToolObservationAndParsesFinalAnswer()
     {
@@ -208,12 +242,13 @@ public sealed class OllamaBrainTests
         Assert.Contains("502", exception.Message, StringComparison.Ordinal);
     }
 
-    private static OllamaBrain CreateBrain(HttpMessageHandler handler, string? apiKey = null)
+    private static OllamaBrain CreateBrain(
+        HttpMessageHandler handler,
+        string? apiKey = null,
+        string endpoint = "https://ollama.example/api/chat")
     {
         HttpClient httpClient = new(handler);
-        OllamaBrainOptions options = new(
-            "test-model",
-            new Uri("https://ollama.example/api/chat"));
+        OllamaBrainOptions options = new("test-model", new Uri(endpoint));
         return new OllamaBrain(httpClient, options, apiKey);
     }
 

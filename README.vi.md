@@ -96,6 +96,11 @@ dotnet run --project src/Loren.Web/Loren.Web.csproj
 
 Environment/command line override local JSON. Đổi config thì restart host.
 
+Nếu chạy **Ollama ngay trên máy** thay vì Ollama Cloud, làm theo
+[hướng dẫn Ollama local](docs/ollama-local.md). Chat local không cần API key,
+nhưng web search/fetch qua Ollama Cloud vẫn cần key riêng. Loren không chuyển
+cloud key tới endpoint chat loopback hoặc HTTP không mã hóa.
+
 Normal daily use nên giữ external writes OFF. Chỉ khi làm owner live branch proof mới cấu hình riêng `GITHUB_WRITE_TOKEN`, bật writes có chủ đích, proof xong thì tắt lại. Không commit secret thật.
 
 ## Provider hiện tại

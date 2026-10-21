@@ -10,6 +10,9 @@ The owner configures local secrets, logs in, evaluates response quality and expl
 
 ## 0. Start with readiness
 
+For local Ollama, first follow [the local model and cloud web-read setup](ollama-local.md).
+A working local chat endpoint alone does not make cloud-backed web research ready.
+
 Use the normal local launcher or run:
 
 ```powershell
