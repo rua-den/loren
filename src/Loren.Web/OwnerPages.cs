@@ -11,36 +11,53 @@ internal static class OwnerPages
   <script>try { const t = localStorage.getItem('loren-theme'); if (['white','graphite-black','graphite-cyan'].includes(t)) document.documentElement.dataset.theme = t; } catch {}</script>
   <title>Loren — Owner login</title>
   <style>
-    :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; --bg:#071018; --surface:#0d1922; --surface-2:#10222c; --line:#1f3a45; --line-strong:#2d5964; --text:#e6f3f5; --muted:#8daab0; --cyan:#7dd3c7; --cyan-strong:#a6f2e5; --danger:#f3a4a4; --header-bg:rgba(7,16,24,.88); --card-bg:rgba(13,25,34,.9); --input-bg:#09151c; --code-bg:#08131a; --user-bg:#14303a; --avatar-bg:#19313a; --avatar-text:#a6f2e5; --button-text:#092126; --summary-text:#b7d0d2; --proposal-text:#b8d0d3; --status-bg:#173c43; --mark-ring:rgba(125,211,199,.08); }
+    :root { color-scheme: dark; --mono: "JetBrains Mono", "Cascadia Code", "Cascadia Mono", "Fira Code", Consolas, ui-monospace, "SFMono-Regular", Menlo, monospace; --bg:#0b0f14; --pane-2:#0f151c; --line:#22303c; --line-strong:#38505f; --text:#d3dee5; --muted:#6f8796; --accent:#5fd7d7; --ok:#87d787; --warn:#d7af5f; --err:#ff8787; --on-accent:#061014; }
+    :root[data-theme="graphite-black"] { --bg:#000000; --pane-2:#0a0a0a; --line:#262626; --line-strong:#444444; --text:#d0d0d0; --muted:#7a7a7a; --accent:#eeeeee; --ok:#a8d08d; --warn:#e0c070; --err:#ff8a8a; --on-accent:#000000; }
+    :root[data-theme="white"] { color-scheme: light; --bg:#f6f5ef; --pane-2:#eceae1; --line:#cfccbf; --line-strong:#9e9a8a; --text:#262622; --muted:#75736a; --accent:#00747d; --ok:#3a7a22; --warn:#996600; --err:#b3261e; --on-accent:#ffffff; }
     * { box-sizing: border-box; }
-    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: radial-gradient(circle at 50% 0, rgba(42,105,111,.28), transparent 42%), var(--bg); color: var(--text); }
-    main { width: min(92vw, 420px); padding: 32px; border: 1px solid var(--line); border-radius: 20px; background: var(--card-bg); box-shadow: 0 22px 70px rgba(0,0,0,.35); }
-    .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
-    .mark { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 14px; background: var(--cyan); color: var(--button-text); font-weight: 900; }
-    h1 { margin: 0; font-size: 28px; }
-    p { color: var(--muted); line-height: 1.55; }
-    label { display: block; margin: 20px 0 8px; font-weight: 650; }
-    input, button { width: 100%; border-radius: 11px; border: 1px solid var(--line-strong); padding: 12px 14px; font: inherit; }
-    input { background: var(--input-bg); color: var(--text); }
-    button { margin-top: 12px; cursor: pointer; background: var(--cyan); color: var(--button-text); border: 0; font-weight: 750; }
-    #error { min-height: 24px; margin-top: 12px; color: var(--danger); }
-    :root[data-theme="white"] { color-scheme: light; --bg:#f3f7f7; --surface:#ffffff; --surface-2:#eaf1f1; --line:#c8d8d9; --line-strong:#8aa7aa; --text:#163238; --muted:#587277; --cyan:#197b79; --cyan-strong:#0f5d5b; --danger:#b23b43; --card-bg:rgba(255,255,255,.96); --input-bg:#ffffff; --button-text:#ffffff; }
-    :root[data-theme="graphite-black"] { --bg:#070707; --surface:#111111; --surface-2:#191919; --line:#303030; --line-strong:#505050; --text:#f1f1f1; --muted:#a4a4a4; --cyan:#dedede; --cyan-strong:#ffffff; --danger:#ff9b9b; --card-bg:#111111; --input-bg:#0c0c0c; --button-text:#090909; --mark-ring:rgba(255,255,255,.08); }
-    :root[data-theme="graphite-black"] body { background:var(--bg); }
-    .theme-control { display:flex; align-items:center; justify-content:flex-end; gap:8px; margin-bottom:16px; color:var(--muted); font-size:12px; }
-    .theme-control select { width:auto; margin:0; padding:7px 9px; background:var(--surface); color:var(--text); }
+    html, body { height: 100%; }
+    body { margin: 0; display: grid; place-items: center; padding: 16px; background: var(--bg); color: var(--text); font: 14px/1.55 var(--mono); }
+    ::selection { background: var(--accent); color: var(--on-accent); }
+    main { position: relative; width: min(100%, 440px); border: 1px solid var(--line-strong); padding: 26px 22px 18px; }
+    .pane-title { position: absolute; top: -.8em; left: 12px; padding: 0 6px; background: var(--bg); color: var(--accent); font-size: 12px; }
+    .theme { position: absolute; top: -.95em; right: 12px; padding: 0 4px; background: var(--bg); }
+    .logo { margin: 0 0 4px; color: var(--accent); font-size: 12px; line-height: 1.2; white-space: pre; overflow: hidden; }
+    p { margin: 0 0 18px; color: var(--muted); }
+    label { display: block; margin-bottom: 6px; color: var(--muted); }
+    label::before { content: '$ '; color: var(--accent); }
+    .field { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line-strong); padding: 0 10px; }
+    .field:focus-within { border-color: var(--accent); }
+    .field span { color: var(--accent); }
+    input { flex: 1; min-width: 0; border: 0; outline: 0; padding: 9px 0; background: transparent; color: var(--text); font: inherit; caret-color: var(--accent); }
+    button, select { font: inherit; }
+    button[type="submit"] { width: 100%; margin-top: 14px; border: 1px solid var(--accent); padding: 8px 12px; background: var(--accent); color: var(--on-accent); font-weight: 700; cursor: pointer; }
+    button[type="submit"]:hover { filter: brightness(1.1); }
+    select { border: 1px solid var(--line); padding: 1px 4px; background: var(--bg); color: var(--muted); font-size: 12px; }
+    :focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
+    .field input:focus-visible { outline: 0; }
+    #error { min-height: 22px; margin-top: 12px; color: var(--err); }
+    #error:not(:empty)::before { content: '✗ '; }
+    .hint { margin-top: 8px; color: var(--muted); font-size: 12px; text-align: center; }
+    .sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; }
   </style>
 </head>
 <body>
   <main>
-    <div class="theme-control"><label for="theme-select">Theme</label><select id="theme-select" aria-label="Theme"><option value="white">White</option><option value="graphite-black">Graphite–Black</option><option value="graphite-cyan">Graphite–Cyan</option></select></div>
-    <div class="brand"><div class="mark">L</div><div><h1>Loren</h1><p style="margin:4px 0 0">Your persistent personal assistant.</p></div></div>
+    <span class="pane-title">loren · owner login</span>
+    <span class="theme"><label class="sr-only" for="theme-select">Theme</label><select id="theme-select" aria-label="Theme"><option value="white">White</option><option value="graphite-black">Graphite–Black</option><option value="graphite-cyan">Graphite–Cyan</option></select></span>
+    <pre class="logo" aria-hidden="true"> _
+| |    ___  _ __ ___ _ __
+| |   / _ \| '__/ _ \ '_ \
+| |__| (_) | | |  __/ | | |
+|_____\___/|_|  \___|_| |_|</pre>
+    <p>Your persistent personal assistant.</p>
     <form id="login-form">
       <label for="password">Mật khẩu chủ tài khoản</label>
-      <input id="password" name="password" type="password" autocomplete="current-password" required autofocus />
-      <button type="submit">Đăng nhập</button>
+      <div class="field"><span aria-hidden="true">❯</span><input id="password" name="password" type="password" autocomplete="current-password" required autofocus /></div>
+      <button type="submit">Đăng nhập ⏎</button>
     </form>
     <div id="error" role="alert"></div>
+    <div class="hint">local · owner-only · v0.1</div>
   </main>
   <script>
     const form = document.getElementById('login-form');
@@ -89,213 +106,260 @@ internal static class OwnerPages
   <script>try { const t = localStorage.getItem('loren-theme'); if (['white','graphite-black','graphite-cyan'].includes(t)) document.documentElement.dataset.theme = t; } catch {}</script>
   <title>Loren — v0.1 Conversation</title>
   <style>
-    :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; --bg:#071018; --surface:#0d1922; --surface-2:#10222c; --line:#1f3a45; --line-strong:#2d5964; --text:#e6f3f5; --muted:#8daab0; --cyan:#7dd3c7; --cyan-strong:#a6f2e5; --danger:#f3a4a4; --header-bg:rgba(7,16,24,.88); --card-bg:rgba(13,25,34,.9); --input-bg:#09151c; --code-bg:#08131a; --user-bg:#14303a; --avatar-bg:#19313a; --avatar-text:#a6f2e5; --button-text:#092126; --summary-text:#b7d0d2; --proposal-text:#b8d0d3; --status-bg:#173c43; --mark-ring:rgba(125,211,199,.08); }
-    :root[data-theme="white"] { color-scheme: light; --bg:#f3f7f7; --surface:#ffffff; --surface-2:#eaf1f1; --line:#c8d8d9; --line-strong:#8aa7aa; --text:#163238; --muted:#587277; --cyan:#197b79; --cyan-strong:#0f5d5b; --danger:#b23b43; --header-bg:rgba(255,255,255,.9); --card-bg:#ffffff; --input-bg:#ffffff; --code-bg:#edf4f4; --user-bg:#e1f1ef; --avatar-bg:#d2e8e6; --avatar-text:#0f5d5b; --button-text:#ffffff; --summary-text:#31585d; --proposal-text:#31585d; --status-bg:#d8eeeb; }
-    :root[data-theme="graphite-black"] { --bg:#070707; --surface:#111111; --surface-2:#191919; --line:#303030; --line-strong:#505050; --text:#f1f1f1; --muted:#a4a4a4; --cyan:#dedede; --cyan-strong:#ffffff; --danger:#ff9b9b; --header-bg:#0b0b0b; --card-bg:#111111; --input-bg:#0c0c0c; --code-bg:#050505; --user-bg:#1b1b1b; --avatar-bg:#222222; --avatar-text:#ffffff; --button-text:#090909; --summary-text:#dddddd; --proposal-text:#dddddd; --status-bg:#292929; --mark-ring:rgba(255,255,255,.08); }
-    :root[data-theme="graphite-black"] body { background:var(--bg); }
+    :root { color-scheme: dark; --mono: "JetBrains Mono", "Cascadia Code", "Cascadia Mono", "Fira Code", Consolas, ui-monospace, "SFMono-Regular", Menlo, monospace;
+      --bg:#0b0f14; --pane-2:#0f151c; --hover:#131c25; --line:#22303c; --line-strong:#38505f; --text:#d3dee5; --muted:#6f8796; --dim:#4a5d6a;
+      --accent:#5fd7d7; --user:#d7afff; --ok:#87d787; --warn:#d7af5f; --err:#ff8787; --code:#ffd787; --code-bg:#111a22; --on-accent:#061014; }
+    :root[data-theme="graphite-black"] { --bg:#000000; --pane-2:#0a0a0a; --hover:#141414; --line:#262626; --line-strong:#444444; --text:#d0d0d0; --muted:#7a7a7a; --dim:#555555;
+      --accent:#eeeeee; --user:#bdbdbd; --ok:#a8d08d; --warn:#e0c070; --err:#ff8a8a; --code:#f0f0f0; --code-bg:#0e0e0e; --on-accent:#000000; }
+    :root[data-theme="white"] { color-scheme: light; --bg:#f6f5ef; --pane-2:#eceae1; --hover:#ebe9df; --line:#cfccbf; --line-strong:#9e9a8a; --text:#262622; --muted:#75736a; --dim:#a29f92;
+      --accent:#00747d; --user:#7a3fa8; --ok:#3a7a22; --warn:#996600; --err:#b3261e; --code:#8a4b00; --code-bg:#ecebe3; --on-accent:#ffffff; }
+
     * { box-sizing: border-box; }
-    body { margin: 0; min-height: 100vh; background: radial-gradient(circle at 55% -10%, rgba(42,105,111,.24), transparent 35%), var(--bg); color: var(--text); }
-    button, input, textarea, select { font: inherit; }
-    button { cursor: pointer; }
-    header { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 22px; border-bottom: 1px solid var(--line); background: rgba(7,16,24,.88); backdrop-filter: blur(16px); }
-    .brand { display: flex; align-items: center; gap: 11px; min-width: 0; }
-    .brand .mark { flex: 0 0 36px; }
-    .mark { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 12px; background: var(--cyan); color: var(--button-text); font-weight: 900; box-shadow: 0 0 0 5px var(--mark-ring); }
-    .brand h1 { margin: 0; font-size: 18px; }
-    .brand small { display: block; margin-top: 2px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .header-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .theme-select { width:auto; border:1px solid var(--line-strong); border-radius:10px; padding:8px 9px; background:var(--surface); color:var(--text); }
+    html, body { height: 100%; }
+    body { margin: 0; overflow: hidden; background: var(--bg); color: var(--text); font: 14px/1.6 var(--mono); scrollbar-color: var(--line-strong) transparent; }
+    ::selection { background: var(--accent); color: var(--on-accent); }
+    button, input, textarea, select { font: inherit; color: inherit; }
+    button { cursor: pointer; border: 1px solid var(--line-strong); border-radius: 0; padding: 2px 10px; background: transparent; color: var(--text); }
+    button:hover:not(:disabled) { border-color: var(--accent); background: var(--accent); color: var(--on-accent); }
+    button:disabled { opacity: .45; cursor: wait; }
+    :focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
+    kbd { border: 1px solid var(--line-strong); padding: 0 4px; font: inherit; font-size: 11px; color: var(--muted); }
     .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
-    .ghost { border: 1px solid var(--line-strong); border-radius: 10px; padding: 8px 11px; background: var(--surface); color: var(--text); }
-    .ghost:hover, .send:hover, .advanced button:hover { border-color: var(--cyan); }
-    .ghost:focus-visible, .send:focus-visible, summary:focus-visible, button:focus-visible, textarea:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--cyan-strong); outline-offset: 2px; }
-    .shell { width: min(900px, calc(100% - 36px)); margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; align-items: start; }
-    .shell.context-visible { width: min(1240px, calc(100% - 36px)); grid-template-columns: minmax(0, 1fr) 306px; }
-    .main-column { min-width: 0; }
-    .conversation-list { display:flex; flex-direction:column; gap:6px; }
-    .conversation-list button { width:100%; text-align:left; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .context-bar { display: flex; align-items: stretch; flex-direction: column; gap: 8px; padding: 4px 2px 2px; color: var(--muted); font-size: 13px; }
-    .context-bar select { min-width: 180px; max-width: 340px; border: 1px solid var(--line-strong); border-radius: 9px; padding: 7px 10px; background: var(--surface); color: #dbeeed; }
-    #context-toggle { display:inline-block; }
-    #chat { min-height: calc(100vh - 270px); padding: 20px 0 150px; display: flex; flex-direction: column; gap: 18px; }
-    .message { display: flex; gap: 11px; max-width: 86%; }
-    .message.user { align-self: flex-end; flex-direction: row-reverse; }
-    .avatar { flex: 0 0 32px; width: 32px; height: 32px; display: grid; place-items: center; border-radius: 10px; background: var(--avatar-bg); color: var(--avatar-text); font-size: 12px; font-weight: 800; }
-    .message.user .avatar { background: var(--user-bg); }
-    .bubble { border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; background: var(--card-bg); overflow-wrap: anywhere; line-height: 1.58; box-shadow: 0 8px 24px rgba(0,0,0,.12); }
-    .message.user .bubble { background: var(--user-bg); border-color: var(--line-strong); white-space: pre-wrap; }
-    .message.pending .bubble { color: var(--muted); }
-    .bubble h1, .bubble h2, .bubble h3 { margin: 0 0 9px; line-height: 1.22; }
-    .bubble h1 { font-size: 1.25rem; } .bubble h2 { font-size: 1.1rem; } .bubble h3 { font-size: 1rem; }
-    .bubble p { margin: 0 0 10px; } .bubble p:last-child { margin-bottom: 0; }
-    .bubble ul, .bubble ol { margin: 6px 0 10px 20px; padding: 0; }
-    .bubble code { padding: 2px 5px; border-radius: 5px; background: var(--code-bg); color: var(--cyan-strong); font-size: .9em; }
-    .bubble pre { position: relative; margin: 10px 0; padding: 13px; padding-top: 38px; border: 1px solid var(--line); border-radius: 10px; overflow: auto; background: var(--code-bg); }
-    .bubble pre code { padding: 0; color: var(--text); white-space: pre; background: transparent; }
-    .bubble a { color: var(--cyan-strong); text-decoration: underline; text-underline-offset: 3px; }
-    .copy-code { position: absolute; top: 7px; right: 7px; border: 1px solid var(--line-strong); border-radius: 7px; padding: 4px 7px; background: var(--surface-2); color: var(--text); font-size: 11px; }
-    .composer-wrap { position: fixed; left: max(12px, calc((100vw - 900px)/2)); right: max(12px, calc((100vw - 900px)/2)); bottom: 0; padding: 16px 0 20px; background: linear-gradient(transparent, var(--bg) 28%); z-index: 4; }
-    body.context-visible .composer-wrap { left: max(12px, calc((100vw - 1240px)/2)); right: max(342px, calc((100vw - 1240px)/2 + 342px)); }
-    .composer { width: 100%; margin: 0; border: 1px solid var(--line-strong); border-radius: 17px; padding: 10px; background: var(--card-bg); box-shadow: 0 15px 50px rgba(0,0,0,.32); }
-    textarea { width: 100%; min-height: 52px; max-height: 180px; resize: vertical; border: 0; outline: 0; padding: 9px 10px; background: transparent; color: var(--text); line-height: 1.45; }
-    .composer-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 4px 4px 0; }
-    .status { color: var(--muted); font-size: 12px; }
-    .send { border: 1px solid var(--cyan); border-radius: 11px; padding: 9px 15px; background: var(--cyan); color: var(--button-text); font-weight: 800; }
-    .send:disabled { opacity: .55; cursor: wait; }
-    .side-panel { display:none; position: sticky; top: 76px; margin-top: 18px; }
-    .side-panel.context-visible { display:block; }
-    details.panel { margin: 8px 0 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--card-bg); overflow: hidden; }
-    details.panel > summary { cursor: pointer; padding: 12px 14px; color: var(--summary-text); font-weight: 650; }
-    .panel-body { border-top: 1px solid var(--line); padding: 14px; }
-    .meta { display: flex; flex-wrap: wrap; gap: 7px 14px; margin-bottom: 12px; color: var(--muted); font-size: 12px; }
-    table { width: 100%; border-collapse: collapse; font-size: 12px; }
-    th, td { padding: 8px 7px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
-    th { color: var(--muted); }
     .empty { color: var(--muted); }
-    .error { color: var(--danger); }
-    .advanced { margin: 18px 0 180px; }
-    .advanced section + section { margin-top: 20px; padding-top: 20px; border-top: 1px solid #25324a; }
-    .advanced h2 { margin: 0 0 8px; font-size: 15px; }
-    .advanced p { color: var(--muted); font-size: 13px; line-height: 1.5; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 0 12px; }
-    label { display: block; margin: 8px 0 6px; color: var(--summary-text); font-size: 13px; font-weight: 650; }
-    input { width: 100%; margin-bottom: 10px; border: 1px solid var(--line-strong); border-radius: 9px; padding: 9px 10px; background: var(--input-bg); color: var(--text); }
-    .advanced button { border: 1px solid #475569; border-radius: 9px; padding: 9px 12px; background: #e2e8f0; color: #0f172a; font-weight: 750; }
-    .advanced button.danger { background: #f59e0b; border-color: #f59e0b; }
-    pre.result { margin: 10px 0 0; border-radius: 9px; padding: 10px; background: #090e1b; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }
-    .warning { padding: 10px 12px; border: 1px solid #795b2c; border-radius: 9px; background: #2e2414; color: #f2d38c !important; }
-    .proposal-card { padding: 15px; margin-top: 2px; border: 1px solid var(--line-strong); border-radius: 14px; background: var(--card-bg); }
-    .proposal-card h2 { margin: 0 0 8px; color: var(--cyan-strong); font-size: 15px; }
-    .proposal-card p { margin: 7px 0; color: var(--proposal-text); font-size: 13px; line-height: 1.5; }
-    .proposal-card .proposal-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 12px 0; }
-    .proposal-card .fact { padding: 8px; border: 1px solid var(--line); border-radius: 9px; background: var(--input-bg); }
-    .proposal-card .fact small { display:block; color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing:.08em; }
-    .proposal-card .fact strong { display:block; margin-top: 3px; overflow-wrap:anywhere; font-size:12px; }
-    .proposal-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
-    .proposal-actions button { width:auto; margin:0; border:1px solid var(--line-strong); border-radius:9px; padding:8px 13px; font-weight:750; }
-    .proposal-actions button:first-child { background:var(--cyan); color:#092126; border-color:var(--cyan); }
-    .proposal-actions button:last-child { background:transparent; color:#cde4e6; }
-    .proposal-actions button:disabled { opacity:.55; cursor:wait; }
-    .proposal-status { display:inline-flex; margin-top:10px; padding:4px 8px; border-radius:999px; background:var(--status-bg); color:var(--text); font-size:11px; font-weight:700; }
-    .welcome-actions { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 8px 43px; }
-    .welcome-actions button { width:auto; margin:0; border:1px solid var(--line-strong); border-radius:9px; padding:8px 11px; background:var(--surface); color:var(--text); }
-    :root[data-theme="white"] body { background:radial-gradient(circle at 55% -10%, rgba(25,123,121,.12), transparent 35%), var(--bg); }
-    :root[data-theme="white"] header { background:rgba(255,255,255,.9); }
-    :root[data-theme="white"] .ghost, :root[data-theme="white"] .composer, :root[data-theme="white"] details.panel, :root[data-theme="white"] .proposal-card { background:rgba(255,255,255,.96); }
-    :root[data-theme="white"] .bubble { background:#ffffff; box-shadow:0 8px 24px rgba(22,50,56,.08); }
-    :root[data-theme="white"] .message.user .bubble { background:#e1f1ef; border-color:#9ec9c6; }
-    :root[data-theme="white"] .context-bar select, :root[data-theme="white"] input, :root[data-theme="white"] textarea { background:#ffffff; color:var(--text); }
-    :root[data-theme="white"] .bubble code, :root[data-theme="white"] .bubble pre, :root[data-theme="white"] pre.result { background:#edf4f4; color:var(--text); }
-    :root[data-theme="white"] .bubble pre code { color:var(--text); }
-    :root[data-theme="white"] .proposal-card .fact { background:#f3f8f8; }
-    :root[data-theme="white"] .send, :root[data-theme="white"] .proposal-actions button:first-child { color:#ffffff; }
-    :root[data-theme="graphite-black"] .bubble, :root[data-theme="graphite-black"] .composer, :root[data-theme="graphite-black"] details.panel, :root[data-theme="graphite-black"] .proposal-card { background:#111111; }
-    :root[data-theme="graphite-black"] .message.user .bubble { background:#1b1b1b; border-color:#484848; }
-    :root[data-theme="graphite-black"] .bubble pre, :root[data-theme="graphite-black"] .bubble code, :root[data-theme="graphite-black"] pre.result { background:#050505; }
-    @media (max-width: 980px) {
-      header { padding: 12px; }
-      .shell { display:flex; flex-direction:column; width:min(100% - 24px, 900px); }
-      header { flex-wrap:wrap; }
-      .header-actions { margin-left:auto; }
-      .header-actions { gap:6px; }
-      .theme-select { max-width:130px; padding-inline:7px; }
-      #context-toggle { display:inline-block; }
-      .shell.context-visible { width:min(100% - 24px, 900px); }
-      .side-panel, .side-panel.context-visible { display:none; order:0; position:static; width:100%; margin:0; padding:0 0 10px; overflow:visible; }
-      .side-panel.mobile-open { display:block; }
-      .main-column { order:1; }
-      .composer-wrap { left:12px; right:12px; padding-bottom:12px; }
-      .composer { width:100%; margin:0 auto; }
+    .error { color: var(--err); }
+
+    .app { height: 100vh; height: 100dvh; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; }
+
+    /* top bar */
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 5px 12px; border-bottom: 1px solid var(--line); background: var(--pane-2); }
+    .brand { display: flex; align-items: baseline; gap: 10px; min-width: 0; white-space: nowrap; overflow: hidden; }
+    .brand h1 { margin: 0; font-size: 14px; color: var(--accent); }
+    .brand h1::before { content: '◆ '; }
+    .brand small { color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
+    .header-actions { display: flex; align-items: center; gap: 6px; }
+    .theme-select { border: 1px solid var(--line-strong); padding: 1px 4px; background: var(--bg); color: var(--muted); font-size: 12px; }
+    .header-actions button { font-size: 12px; }
+
+    /* workspace */
+    .workspace { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 12px; padding: 14px 12px 10px; min-height: 0; }
+    body.panel-collapsed .workspace { grid-template-columns: minmax(0, 1fr); }
+    body.panel-collapsed .side-panel { display: none; }
+    .pane { position: relative; border: 1px solid var(--line); padding: 14px 12px 10px; }
+    .pane:focus-within { border-color: var(--line-strong); }
+    .pane-title { position: absolute; top: -.8em; left: 10px; z-index: 1; padding: 0 6px; background: var(--bg); color: var(--muted); font-size: 12px; line-height: 1.5; white-space: nowrap; }
+    .pane-title b { color: var(--accent); font-weight: 700; }
+    .pane:focus-within > .pane-title { color: var(--accent); }
+
+    /* sidebar */
+    .side-panel { display: flex; flex-direction: column; gap: 18px; min-height: 0; overflow: auto; padding: 8px 2px 2px; }
+    .conversation-list { display: flex; flex-direction: column; max-height: 34vh; overflow: auto; }
+    .conversation-list button { width: 100%; border: 0; padding: 1px 4px; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+    .conversation-list button::before { content: '  '; white-space: pre; color: var(--accent); }
+    .conversation-list button.active { background: var(--hover); color: var(--accent); }
+    .conversation-list button.active::before { content: '▸ '; }
+    .conversation-list button:hover:not(:disabled) { background: var(--hover); color: var(--accent); }
+    .context-bar { display: flex; flex-direction: column; gap: 6px; color: var(--muted); font-size: 12px; }
+    .context-bar select { width: 100%; border: 1px solid var(--line-strong); padding: 3px 6px; background: var(--bg); color: var(--text); font-size: 13px; }
+    #project-status::before { content: '└ '; color: var(--dim); }
+    .meta { display: flex; flex-wrap: wrap; gap: 2px 12px; margin-bottom: 8px; color: var(--muted); font-size: 12px; }
+    table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    th, td { padding: 3px 4px; text-align: left; vertical-align: top; border-bottom: 1px dashed var(--line); overflow-wrap: anywhere; }
+    th { color: var(--dim); font-weight: 400; text-transform: uppercase; letter-spacing: .05em; }
+    .audit-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+    .audit-table, .audit-table tbody { display: block; }
+    #audit tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "kind outcome" "action action" "detail detail"; padding: 5px 0; border-bottom: 1px dashed var(--line); }
+    #audit td { padding: 0; border: 0; }
+    #audit td:nth-child(1) { grid-area: kind; color: var(--dim); text-transform: uppercase; letter-spacing: .05em; }
+    #audit td:nth-child(2) { grid-area: action; color: var(--text); }
+    #audit td:nth-child(3) { grid-area: outcome; text-align: right; }
+    #audit td:nth-child(4) { grid-area: detail; color: var(--muted); }
+    #audit td:nth-child(4):empty { display: none; }
+    #audit td[colspan] { grid-column: 1 / -1; grid-area: auto; text-transform: none; letter-spacing: 0; color: var(--muted); }
+    td.ok { color: var(--ok); } td.err { color: var(--err); }
+    details.advanced > summary { cursor: pointer; color: var(--muted); font-size: 12px; list-style: none; }
+    details.advanced > summary::-webkit-details-marker { display: none; }
+    details.advanced > summary::before { content: '▸ '; color: var(--accent); }
+    details.advanced[open] > summary::before { content: '▾ '; }
+    .advanced h2 { margin: 12px 0 2px; font-size: 13px; color: var(--accent); }
+    .advanced p { margin: 0 0 8px; color: var(--muted); font-size: 12px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 8px; }
+    label { display: block; margin: 6px 0 2px; color: var(--muted); font-size: 11px; }
+    input { width: 100%; border: 1px solid var(--line); padding: 3px 6px; background: transparent; color: var(--text); font-size: 12px; }
+    input:focus { border-color: var(--accent); outline: 0; }
+    #bootstrap { margin-top: 10px; font-size: 12px; }
+    pre.result { margin: 8px 0 0; padding: 6px 8px; border-left: 2px solid var(--line-strong); background: var(--code-bg); white-space: pre-wrap; overflow-wrap: anywhere; font-size: 11px; }
+
+    /* conversation */
+    .chat-pane { display: grid; grid-template-rows: minmax(0, 1fr) auto; min-height: 0; margin-top: 8px; padding: 0; }
+    #chat { overflow-y: auto; padding: 18px 16px 12px; display: flex; flex-direction: column; gap: 14px; overscroll-behavior: contain; }
+    .logo { margin: 0 0 4px; color: var(--accent); font-size: 12px; line-height: 1.2; white-space: pre; opacity: .9; }
+    .message { display: grid; grid-template-columns: 6ch minmax(0, 1fr); gap: 0 12px; max-width: 980px; }
+    .avatar { color: var(--accent); font-weight: 700; text-align: right; user-select: none; }
+    .message.user .avatar { color: var(--user); }
+    .bubble { min-width: 0; padding-left: 12px; border-left: 1px solid var(--line); overflow-wrap: anywhere; }
+    .message.assistant .bubble { border-left-color: var(--line-strong); }
+    .message.user .bubble { white-space: pre-wrap; color: var(--text); }
+    .message.pending .bubble { color: var(--muted); }
+    .message.pending .bubble::before { content: '⠋'; display: inline-block; width: 2ch; color: var(--accent); animation: spin .8s steps(1) infinite; }
+    @keyframes spin { 0%{content:'⠋'} 12%{content:'⠙'} 25%{content:'⠹'} 37%{content:'⠸'} 50%{content:'⠼'} 62%{content:'⠴'} 75%{content:'⠦'} 87%{content:'⠧'} }
+    .bubble h1, .bubble h2, .bubble h3 { margin: 4px 0 6px; font-size: 14px; line-height: 1.4; color: var(--accent); }
+    .bubble h1::before { content: '# '; color: var(--dim); }
+    .bubble h2::before { content: '## '; color: var(--dim); }
+    .bubble h3::before { content: '### '; color: var(--dim); }
+    .bubble p { margin: 0 0 8px; } .bubble p:last-child { margin-bottom: 0; }
+    .bubble ul, .bubble ol { margin: 2px 0 8px; padding-left: 3ch; }
+    .bubble ul { list-style-type: '• '; }
+    .bubble li::marker { color: var(--accent); }
+    .bubble strong { color: var(--accent); font-weight: 700; }
+    .bubble code { padding: 0 4px; background: var(--code-bg); color: var(--code); }
+    .bubble pre { position: relative; margin: 6px 0 10px; padding: 26px 12px 10px; border: 1px dashed var(--line-strong); overflow: auto; background: var(--code-bg); }
+    .bubble pre::before { content: 'code'; position: absolute; top: 3px; left: 10px; color: var(--dim); font-size: 11px; }
+    .bubble pre code { padding: 0; color: var(--text); white-space: pre; background: transparent; }
+    .bubble a { color: var(--accent); text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 3px; }
+    .bubble a::after { content: ' ↗'; font-size: .85em; }
+    .copy-code { position: absolute; top: 2px; right: 4px; border: 0; padding: 0 6px; font-size: 11px; color: var(--muted); }
+    .copy-code::before { content: '['; } .copy-code::after { content: ']'; }
+    .welcome-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-left: calc(6ch + 24px); }
+    .welcome-actions button { font-size: 13px; }
+    .welcome-actions button::before { content: '› '; color: var(--accent); }
+    .welcome-actions button:hover:not(:disabled)::before { color: inherit; }
+
+    /* proposal */
+    .proposal-card { position: relative; max-width: 720px; margin: 10px 0 4px calc(6ch + 24px); padding: 16px 14px 12px; border: 1px solid var(--warn); }
+    .proposal-card h2 { position: absolute; top: -.8em; left: 10px; margin: 0; padding: 0 6px; background: var(--bg); color: var(--warn); font-size: 12px; font-weight: 700; }
+    .proposal-card h2::before { content: '⚠ '; }
+    .proposal-card p { margin: 8px 0 0; color: var(--muted); font-size: 13px; }
+    .proposal-facts { display: grid; gap: 1px 0; }
+    .proposal-facts .fact { display: grid; grid-template-columns: 12ch minmax(0, 1fr); gap: 12px; }
+    .proposal-facts .fact small { color: var(--muted); font-size: 13px; }
+    .proposal-facts .fact small::after { content: ':'; }
+    .proposal-facts .fact strong { font-weight: 400; overflow-wrap: anywhere; }
+    .proposal-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .proposal-actions button { padding: 3px 14px; font-weight: 700; }
+    .proposal-actions button:first-child { border-color: var(--ok); color: var(--ok); }
+    .proposal-actions button:first-child:hover:not(:disabled) { background: var(--ok); color: var(--on-accent); }
+    .proposal-status { display: inline-block; margin-top: 10px; color: var(--warn); font-size: 12px; }
+    .proposal-status::before { content: '[ '; } .proposal-status::after { content: ' ]'; }
+
+    /* composer */
+    .composer { display: flex; align-items: flex-start; gap: 10px; padding: 8px 12px; border-top: 1px solid var(--line); }
+    .prompt { padding-top: 4px; color: var(--accent); font-weight: 700; user-select: none; }
+    textarea { flex: 1; min-width: 0; height: 32px; min-height: 32px; max-height: 200px; resize: none; border: 0; outline: 0; padding: 4px 0; background: transparent; color: var(--text); line-height: 1.6; caret-color: var(--accent); }
+    textarea::placeholder { color: var(--dim); }
+    .send { margin-top: 2px; border-color: var(--accent); color: var(--accent); font-weight: 700; }
+
+    /* status bar */
+    .statusbar { display: flex; align-items: stretch; min-width: 0; border-top: 1px solid var(--line); background: var(--pane-2); font-size: 12px; white-space: nowrap; overflow: hidden; }
+    .statusbar .mode { padding: 1px 10px; background: var(--accent); color: var(--on-accent); font-weight: 700; }
+    .statusbar .seg { padding: 1px 10px; border-right: 1px solid var(--line); color: var(--muted); }
+    .statusbar .seg:empty { display: none; }
+    .statusbar .seg b { font-weight: 400; color: var(--text); }
+    .statusbar .dot { font-size: 9px; vertical-align: 1px; }
+    .ok { color: var(--ok); } .warn { color: var(--warn); } .err { color: var(--err); } .dim { color: var(--dim); }
+    .statusbar b.ok { color: var(--ok); } .statusbar b.warn { color: var(--warn); } .statusbar b.err { color: var(--err); } .statusbar b.dim { color: var(--muted); }
+    .status { flex: 1; min-width: 0; padding: 1px 10px; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+    .keys { padding: 1px 10px; color: var(--muted); }
+    .keys kbd { border: 0; padding: 0; color: var(--accent); }
+
+    @media (max-width: 900px) {
+      .workspace { grid-template-columns: minmax(0, 1fr); padding: 12px 8px 8px; }
+      .side-panel { display: none; }
+      body.panel-open .side-panel { display: flex; position: fixed; z-index: 20; top: 38px; bottom: 22px; left: 0; right: 0; padding: 18px 12px 12px; background: var(--bg); border-bottom: 1px solid var(--line); }
+      .conversation-list { max-height: 40vh; }
+      .topbar { padding: 5px 8px; gap: 8px; }
       .brand small { display: none; }
-      #new-chat { font-size:0; padding-inline:10px; }
-      #new-chat::after { content:'Mới'; font-size:13px; }
-      .message { max-width: 95%; }
-      .context-bar { align-items: stretch; flex-direction: column; }
-      .context-bar select { max-width: none; width: 100%; }
-      .proposal-card .proposal-facts { grid-template-columns:1fr; }
+      .header-actions { gap: 4px; min-width: 0; }
+      .header-actions button { padding: 2px 6px; }
+      .theme-select { max-width: 96px; min-width: 0; }
+      #chat { padding: 14px 10px 10px; }
+      .message { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+      .avatar { text-align: left; }
+      .bubble { padding-left: 10px; }
+      .welcome-actions, .proposal-card { margin-left: 0; }
+      .statusbar .opt, .keys { display: none; }
+      .proposal-facts .fact { grid-template-columns: minmax(0, 1fr); gap: 0; }
     }
-    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior:auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; transition-duration: .01ms !important; } }
   </style>
 </head>
 <body>
-  <header>
+ <div class="app">
+  <header class="topbar">
     <div class="brand">
-      <div class="mark">L</div>
-      <div><h1>Loren</h1><small>Trợ lý cá nhân · v0.1 · Loren owner console</small></div>
+      <h1>loren</h1><small>v0.1 · trợ lý cá nhân · owner console</small>
     </div>
     <div class="header-actions">
       <label class="sr-only" for="theme-select">Theme</label><select id="theme-select" class="theme-select" aria-label="Theme"><option value="white">White</option><option value="graphite-black">Graphite–Black</option><option value="graphite-cyan">Graphite–Cyan</option></select>
-      <button id="context-toggle" class="ghost" type="button" aria-expanded="false" aria-controls="context-panel">Chi tiết</button>
-      <button id="new-chat" class="ghost" type="button" aria-label="Cuộc trò chuyện mới">Cuộc trò chuyện mới</button>
-      <button id="logout" class="ghost" type="button">Đăng xuất</button>
+      <button id="context-toggle" type="button" aria-expanded="true" aria-controls="context-panel" title="Bật/tắt bảng ngữ cảnh (Ctrl+B)">Chi tiết</button>
+      <button id="new-chat" type="button" aria-label="Cuộc trò chuyện mới" title="Cuộc trò chuyện mới (Alt+N)">+ Mới</button>
+      <button id="logout" type="button">Thoát</button>
     </div>
   </header>
 
-  <main class="shell">
-    <div class="main-column">
-    <div id="chat" aria-live="polite"></div>
-    </div>
-
+  <main class="workspace">
     <aside class="side-panel" id="context-panel" aria-label="Ngữ cảnh và hoạt động">
-    <details class="panel" open>
-      <summary>Cuộc trò chuyện đã lưu</summary>
-      <div class="panel-body"><div id="conversation-list" class="conversation-list"><span class="empty">Đang tải…</span></div></div>
-    </details>
-    <details class="panel" id="project-context-panel">
-      <summary>Project và ngữ cảnh</summary>
-      <div class="panel-body">
+      <section class="pane">
+        <span class="pane-title"><b>1</b> cuộc trò chuyện</span>
+        <div id="conversation-list" class="conversation-list"><span class="empty">Đang tải…</span></div>
+      </section>
+      <section class="pane" id="project-context-panel">
+        <span class="pane-title"><b>2</b> project</span>
         <div class="context-bar">
-          <span>Project đang dùng</span>
+          <label class="sr-only" for="project-context">Project đang dùng</label>
           <select id="project-context" aria-label="Project context">
             <option value="">Tự nhận diện từ cuộc trò chuyện</option>
           </select>
           <span id="project-status">Đang tải project…</span>
         </div>
-      </div>
-    </details>
-    <details class="panel" id="activity-panel">
-      <summary>Hoạt động &amp; audit lượt gần nhất</summary>
-      <div class="panel-body">
+      </section>
+      <section class="pane" id="activity-panel">
+        <span class="pane-title"><b>3</b> hoạt động · audit</span>
         <div id="meta" class="meta"><span class="empty">Chưa có lượt chạy.</span></div>
-        <table>
+        <table class="audit-table">
           <thead><tr><th>Loại</th><th>Hành động</th><th>Kết quả</th><th>Chi tiết</th></tr></thead>
-            <tbody id="audit"><tr><td colspan="4" class="empty">Chưa có hoạt động tool.</td></tr></tbody>
+          <tbody id="audit"><tr><td colspan="4" class="empty">Chưa có hoạt động tool.</td></tr></tbody>
         </table>
-      </div>
-    </details>
-
-    <details class="panel advanced" id="advanced-panel">
-      <summary>Thiết lập project &amp; kiểm tra an toàn</summary>
-      <div class="panel-body">
-        <p>Các control này dành cho thiết lập local và kiểm tra ranh giới tin cậy. Dùng Loren bình thường qua cuộc trò chuyện phía trên.</p>
-
-        <section>
+      </section>
+      <section class="pane">
+        <span class="pane-title"><b>4</b> thiết lập</span>
+        <details class="advanced" id="advanced-panel">
+          <summary>Thiết lập project &amp; kiểm tra an toàn</summary>
           <h2>Khởi tạo project GitHub chuẩn</h2>
           <p>Dùng một lần trên database mới. Alias hiện có không bị đổi ngầm.</p>
           <div class="grid">
             <div><label for="bootstrap-project-name">Tên project</label><input id="bootstrap-project-name" placeholder="Loren" /></div>
-            <div><label for="bootstrap-project-alias">Alias project</label><input id="bootstrap-project-alias" placeholder="loren" /></div>
-            <div><label for="bootstrap-github-owner">Owner GitHub</label><input id="bootstrap-github-owner" placeholder="rua-den" /></div>
-            <div><label for="bootstrap-github-repository">Repository GitHub</label><input id="bootstrap-github-repository" placeholder="loren" /></div>
+            <div><label for="bootstrap-project-alias">Alias</label><input id="bootstrap-project-alias" placeholder="loren" /></div>
+            <div><label for="bootstrap-github-owner">Owner GitHub</label><input id="bootstrap-github-owner" placeholder="owner" /></div>
+            <div><label for="bootstrap-github-repository">Repository</label><input id="bootstrap-github-repository" placeholder="loren" /></div>
           </div>
           <button id="bootstrap" type="button">Lưu project chuẩn</button>
           <pre id="bootstrap-result" class="result empty">Chưa cấu hình trong phiên này.</pre>
-        </section>
-
-      </div>
-    </details>
+        </details>
+      </section>
     </aside>
+
+    <section class="pane chat-pane" aria-label="Cuộc trò chuyện">
+      <span class="pane-title"><b>0</b> hội thoại</span>
+      <div id="chat" aria-live="polite"></div>
+      <div class="composer">
+        <span class="prompt" aria-hidden="true">❯</span>
+        <textarea id="message" aria-label="Tin nhắn cho Loren" placeholder="Nhắn Loren…  (/ để focus)" rows="1" autofocus></textarea>
+        <button id="send" class="send" type="button">Gửi ⏎</button>
+      </div>
+    </section>
   </main>
 
-  <div class="composer-wrap">
-    <div class="composer">
-      <textarea id="message" aria-label="Tin nhắn cho Loren" placeholder="Nhắn Loren…" autofocus></textarea>
-      <div class="composer-actions">
-        <span id="status" class="status">Sẵn sàng · Enter để gửi · Shift+Enter xuống dòng</span>
-        <button id="send" class="send" type="button">Gửi</button>
-      </div>
-    </div>
-  </div>
+  <footer class="statusbar" aria-label="Trạng thái">
+    <span class="mode">LOREN</span>
+    <span class="seg" id="seg-sys"><span class="dot dim">●</span> sys:<b class="dim">…</b></span>
+    <span class="seg opt" id="seg-brain"></span>
+    <span class="seg opt" id="seg-web"></span>
+    <span class="seg" id="seg-writes"></span>
+    <span class="seg opt" id="seg-projects"></span>
+    <span id="status" class="status" role="status">Sẵn sàng · Enter để gửi · Shift+Enter xuống dòng</span>
+    <span class="keys"><kbd>^B</kbd> panel · <kbd>Alt+N</kbd> mới · <kbd>/</kbd> nhập · <kbd>Esc</kbd></span>
+  </footer>
+ </div>
 
   <script>
     const chat = document.getElementById('chat');
@@ -308,13 +372,16 @@ internal static class OwnerPages
     const audit = document.getElementById('audit');
     const newChat = document.getElementById('new-chat');
     const contextToggle = document.getElementById('context-toggle');
-    const contextPanel = document.getElementById('context-panel');
-    const shell = document.querySelector('.shell');
     const themeSelect = document.getElementById('theme-select');
     const logout = document.getElementById('logout');
     const bootstrap = document.getElementById('bootstrap');
     const bootstrapResult = document.getElementById('bootstrap-result');
     const conversationList = document.getElementById('conversation-list');
+    const LOGO = String.raw` _
+| |    ___  _ __ ___ _ __
+| |   / _ \| '__/ _ \ '_ \
+| |__| (_) | | |  __/ | | |
+|_____\___/|_|  \___|_| |_|`;
 
     let history = [];
     let conversationId = null;
@@ -354,7 +421,7 @@ internal static class OwnerPages
           continue;
         }
         const url = link[2].trim();
-      if (!/^https?:\/\//i.test(url)) {
+        if (!/^https?:\/\//i.test(url)) {
           parent.appendChild(document.createTextNode(link[1]));
           continue;
         }
@@ -391,14 +458,14 @@ internal static class OwnerPages
             const code = document.createElement('code');
             code.textContent = codeLines.join('\n');
             const copy = document.createElement('button');
-            copy.type = 'button'; copy.className = 'copy-code'; copy.textContent = 'Copy';
+            copy.type = 'button'; copy.className = 'copy-code'; copy.textContent = 'copy';
             copy.addEventListener('click', async () => {
               try {
                 if (!navigator.clipboard) throw new Error('Clipboard unavailable');
                 await navigator.clipboard.writeText(code.textContent ?? '');
-                copy.textContent = 'Đã copy';
-              } catch { copy.textContent = 'Không copy được'; }
-              setTimeout(() => { copy.textContent = 'Copy'; }, 1200);
+                copy.textContent = 'đã copy';
+              } catch { copy.textContent = 'lỗi copy'; }
+              setTimeout(() => { copy.textContent = 'copy'; }, 1200);
             });
             pre.append(copy, code); fragment.appendChild(pre);
             codeLines = []; inCode = false;
@@ -406,10 +473,10 @@ internal static class OwnerPages
           continue;
         }
         if (inCode) { codeLines.push(line); continue; }
-      const heading = line.match(/^(#{1,3})\s+(.+)$/);
+        const heading = line.match(/^(#{1,3})\s+(.+)$/);
         if (heading) { flushParagraph(); closeList(); const h = document.createElement(`h${heading[1].length}`); appendInline(h, heading[2]); fragment.appendChild(h); continue; }
-      const bullet = line.match(/^\s*[-*]\s+(.+)$/);
-      const ordered = line.match(/^\s*\d+[.)]\s+(.+)$/);
+        const bullet = line.match(/^\s*[-*]\s+(.+)$/);
+        const ordered = line.match(/^\s*\d+[.)]\s+(.+)$/);
         if (bullet || ordered) {
           flushParagraph();
           const nextType = bullet ? 'ul' : 'ol';
@@ -435,7 +502,7 @@ internal static class OwnerPages
       row.className = `message ${role} ${extraClass}`.trim();
       const avatar = document.createElement('div');
       avatar.className = 'avatar';
-      avatar.textContent = role === 'user' ? 'BẠN' : 'L';
+      avatar.textContent = role === 'user' ? 'bạn' : 'loren';
       const bubble = document.createElement('div');
       bubble.className = 'bubble';
       if (role === 'assistant' && extraClass !== 'pending') bubble.appendChild(renderMarkdown(text));
@@ -447,12 +514,23 @@ internal static class OwnerPages
       return row;
     }
 
+    function markActiveConversation() {
+      for (const button of conversationList.querySelectorAll('button')) {
+        const active = Boolean(conversationId) && button.dataset.id === conversationId;
+        button.classList.toggle('active', active);
+        if (active) button.setAttribute('aria-current', 'true'); else button.removeAttribute('aria-current');
+      }
+    }
+
     function resetConversation(explicit = true) {
       if (send.disabled) return;
       conversationId = null;
       if (explicit) { try { localStorage.removeItem('loren-active-conversation'); } catch {} }
       history = [];
       chat.replaceChildren();
+      const logo = document.createElement('pre');
+      logo.className = 'logo'; logo.setAttribute('aria-hidden', 'true'); logo.textContent = LOGO;
+      chat.appendChild(logo);
       addMessage('assistant', 'Hôm nay mày muốn kể gì, hay mình tiếp việc đang dở?');
       welcomeActions = document.createElement('div');
       welcomeActions.className = 'welcome-actions';
@@ -471,6 +549,7 @@ internal static class OwnerPages
       emptyAuditCell.colSpan = 4; emptyAuditCell.className = 'empty'; emptyAuditCell.textContent = 'Chưa có hoạt động tool.';
       emptyAudit.appendChild(emptyAuditCell); audit.appendChild(emptyAudit);
       status.textContent = 'Sẵn sàng · Enter để gửi · Shift+Enter xuống dòng';
+      markActiveConversation();
       message.focus();
     }
 
@@ -479,11 +558,14 @@ internal static class OwnerPages
       if (!items?.length) { conversationList.textContent = 'Chưa có cuộc trò chuyện đã lưu.'; return; }
       for (const item of items) {
         const button = document.createElement('button');
-        button.type = 'button'; button.className = 'ghost'; button.textContent = item.title || 'Cuộc trò chuyện';
+        button.type = 'button'; button.textContent = item.title || 'Cuộc trò chuyện';
+        button.title = item.title || 'Cuộc trò chuyện';
+        button.dataset.id = item.id;
         button.disabled = send.disabled;
-        button.addEventListener('click', () => void loadConversation(item.id));
+        button.addEventListener('click', () => { if (isMobile()) setContextLayout(false); void loadConversation(item.id); });
         conversationList.appendChild(button);
       }
+      markActiveConversation();
     }
 
     async function loadConversations(refreshOnly = false) {
@@ -511,7 +593,7 @@ internal static class OwnerPages
         projectContext.value = item.projectAlias ?? '';
         for (const entry of item.messages ?? []) { addMessage(entry.role === 'user' ? 'user' : 'assistant', entry.content); history.push({ role: entry.role, content: entry.content }); }
         if ((item.messages ?? []).length >= 200) meta.textContent = 'Đang hiển thị 200 tin nhắn gần nhất. Các đề xuất cũ không có nút duyệt; hãy yêu cầu kiểm tra mới nếu cần.';
-        status.textContent = 'Đã mở cuộc trò chuyện'; message.focus();
+        status.textContent = 'Đã mở cuộc trò chuyện'; markActiveConversation(); message.focus();
       } catch (error) { status.textContent = error instanceof Error ? error.message : String(error); }
       finally { if (loadVersion === conversationLoadVersion) { conversationLoading = false; if (!initializing) send.disabled = false; } }
     }
@@ -537,6 +619,33 @@ internal static class OwnerPages
       return readJson(response);
     }
 
+    function setSegment(id, label, value, tone) {
+      const segment = document.getElementById(id);
+      if (!segment) return;
+      const dot = document.createElement('span');
+      dot.className = `dot ${tone}`; dot.textContent = '●';
+      const strong = document.createElement('b');
+      strong.className = tone; strong.textContent = String(value ?? '—');
+      segment.replaceChildren(dot, document.createTextNode(` ${label}:`), strong);
+      segment.title = `${label}: ${value ?? '—'}`;
+    }
+
+    async function loadReadiness() {
+      try {
+        const report = await readJson(await fetch('/api/readiness'));
+        const tone = (value, good) => good.includes(value) ? 'ok' : (value === 'empty' ? 'dim' : 'warn');
+        setSegment('seg-sys', 'sys', report.status === 'ready' ? 'ready' : report.status, report.status === 'ready' ? 'ok' : 'warn');
+        setSegment('seg-brain', 'brain', report.brain?.status, tone(report.brain?.status, ['configured']));
+        setSegment('seg-web', 'web', report.webResearch?.status, tone(report.webResearch?.status, ['configured']));
+        const writes = report.externalWrites ?? {};
+        setSegment('seg-writes', 'writes', writes.enabled ? `ON · ${writes.status}` : 'off', writes.enabled ? (writes.status === 'ready' ? 'warn' : 'err') : 'ok');
+        const projectState = report.projects?.status;
+        setSegment('seg-projects', 'projects', projectState === 'unavailable' ? 'unavailable' : (report.projects?.count ?? 0), projectState === 'unavailable' ? 'err' : (projectState === 'empty' ? 'dim' : 'ok'));
+      } catch {
+        setSegment('seg-sys', 'sys', 'không rõ', 'err');
+      }
+    }
+
     async function loadProjects(preferredAlias = null) {
       try {
         const response = await fetch('/api/projects');
@@ -560,11 +669,20 @@ internal static class OwnerPages
         if (previous && [...projectContext.options].some(option => option.value === previous)) {
           projectContext.value = previous;
         }
+        projectStatus.className = '';
         projectStatus.textContent = projects.length ? `${projects.length} project đã cấu hình` : 'Chưa có project';
       } catch (error) {
         projectStatus.textContent = error instanceof Error ? error.message : String(error);
         projectStatus.className = 'error';
       }
+    }
+
+    function outcomeTone(outcome) {
+      const value = String(outcome ?? '').toLowerCase();
+      if (/(fail|error|denied|deny|block|reject|revok)/.test(value)) return 'err';
+      if (/(succe|complet|allow|ok|verified)/.test(value)) return 'ok';
+      if (/(pending|wait)/.test(value)) return 'warn';
+      return '';
     }
 
     function renderActivity(result) {
@@ -603,6 +721,8 @@ internal static class OwnerPages
           cell.textContent = value;
           row.appendChild(cell);
         }
+        const tone = outcomeTone(event.outcome);
+        if (tone) row.children[2].className = tone;
         audit.appendChild(row);
       }
     }
@@ -626,8 +746,8 @@ internal static class OwnerPages
         note.textContent = 'Thay đổi GitHub bên ngoài; cần mày duyệt một lần.';
         card.appendChild(note);
         const actions = document.createElement('div'); actions.className = 'proposal-actions';
-        const approve = document.createElement('button'); approve.textContent = 'Duyệt';
-        const cancel = document.createElement('button'); cancel.textContent = 'Huỷ';
+        const approve = document.createElement('button'); approve.type = 'button'; approve.textContent = 'Duyệt';
+        const cancel = document.createElement('button'); cancel.type = 'button'; cancel.textContent = 'Huỷ';
         actions.append(approve, cancel); card.appendChild(actions);
         const status = document.createElement('span'); status.className = 'proposal-status';
         const proposalStatus = String(proposal.status ?? '').toLowerCase();
@@ -646,9 +766,15 @@ internal static class OwnerPages
         };
         approve.addEventListener('click', () => void decide('approve'));
         cancel.addEventListener('click', () => void decide('cancel'));
-          card.appendChild(result);
+        card.appendChild(result);
         chat.appendChild(card);
+        card.scrollIntoView({ behavior: 'smooth', block: 'end' });
       }
+    }
+
+    function autosize() {
+      message.style.height = 'auto';
+      message.style.height = `${Math.min(message.scrollHeight, 200)}px`;
     }
 
     async function sendMessage() {
@@ -659,6 +785,7 @@ internal static class OwnerPages
       const selectedAlias = projectContext.value || null;
       addMessage('user', text);
       message.value = '';
+      autosize();
       send.disabled = true;
       if (welcomeActions) welcomeActions.querySelectorAll('button').forEach(button => { button.disabled = true; });
       status.textContent = 'Loren đang suy nghĩ…';
@@ -685,19 +812,19 @@ internal static class OwnerPages
           const inferredAlias = result.project.aliases[0];
           if ([...projectContext.options].some(option => option.value === inferredAlias)) {
             projectContext.value = inferredAlias;
-          projectStatus.textContent = `Đang dùng project nhận diện: ${result.project.name}`;
+            projectStatus.textContent = `Đang dùng project nhận diện: ${result.project.name}`;
           }
         }
 
         status.textContent = result.actionCount
-          ? `Xong · ${result.actionCount} tool action`
-          : 'Xong';
+          ? `✓ Xong · ${result.actionCount} tool action`
+          : '✓ Xong';
         void loadConversations(true);
       } catch (error) {
         pending.remove();
         const errorText = error instanceof Error ? error.message : String(error);
         addMessage('assistant', `I couldn't complete that turn: ${errorText}`);
-        status.textContent = 'Có lỗi';
+        status.textContent = '✗ Có lỗi';
       } finally {
         send.disabled = false;
         conversationList.querySelectorAll('button').forEach(button => { button.disabled = false; });
@@ -706,31 +833,46 @@ internal static class OwnerPages
     }
 
     send.addEventListener('click', sendMessage);
+    message.addEventListener('input', autosize);
     message.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter' && !event.shiftKey) {
+      if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
         event.preventDefault();
         void sendMessage();
       }
     });
 
     newChat.addEventListener('click', resetConversation);
-    function setContextLayout(open) {
-      const mobile = window.matchMedia('(max-width: 980px)').matches;
-      contextPanel.classList.remove('mobile-open', 'context-visible');
-      shell.classList.remove('context-visible');
-      document.body.classList.remove('context-visible');
-      if (open) {
-        contextPanel.classList.add(mobile ? 'mobile-open' : 'context-visible');
-        shell.classList.toggle('context-visible', !mobile);
-        document.body.classList.toggle('context-visible', !mobile);
-      }
+
+    const mobileQuery = window.matchMedia('(max-width: 900px)');
+    const isMobile = () => mobileQuery.matches;
+    const desktopPanelPreference = () => { try { return localStorage.getItem('loren-panel') !== 'closed'; } catch { return true; } };
+    let panelOpen = false;
+    function setContextLayout(open, persist = false) {
+      panelOpen = open;
+      const mobile = isMobile();
+      document.body.classList.toggle('panel-collapsed', !mobile && !open);
+      document.body.classList.toggle('panel-open', mobile && open);
       contextToggle.setAttribute('aria-expanded', String(open));
+      if (persist && !mobile) { try { localStorage.setItem('loren-panel', open ? 'open' : 'closed'); } catch {} }
     }
-    contextToggle.addEventListener('click', () => {
-      const open = contextToggle.getAttribute('aria-expanded') !== 'true';
-      setContextLayout(open);
+    const togglePanel = () => setContextLayout(!panelOpen, true);
+    contextToggle.addEventListener('click', togglePanel);
+    mobileQuery.addEventListener('change', () => setContextLayout(isMobile() ? false : desktopPanelPreference()));
+    setContextLayout(isMobile() ? false : desktopPanelPreference());
+
+    document.addEventListener('keydown', (event) => {
+      const tag = document.activeElement?.tagName;
+      const typing = tag === 'TEXTAREA' || tag === 'INPUT' || tag === 'SELECT';
+      const key = event.key.toLowerCase();
+      if ((event.ctrlKey || event.metaKey) && !event.altKey && key === 'b') { event.preventDefault(); togglePanel(); return; }
+      if (event.altKey && !event.ctrlKey && key === 'n') { event.preventDefault(); resetConversation(); return; }
+      if (event.key === 'Escape') {
+        if (isMobile() && panelOpen) setContextLayout(false);
+        else if (document.activeElement !== message) message.focus();
+        return;
+      }
+      if (!typing && !event.ctrlKey && !event.metaKey && !event.altKey && event.key === '/') { event.preventDefault(); message.focus(); }
     });
-    window.addEventListener('resize', () => setContextLayout(contextToggle.getAttribute('aria-expanded') === 'true'));
 
     bootstrap.addEventListener('click', async () => {
       bootstrap.disabled = true;
@@ -745,6 +887,7 @@ internal static class OwnerPages
         bootstrapResult.textContent = JSON.stringify(result, null, 2);
         const alias = result.aliases?.[0] ?? '';
         await loadProjects(alias);
+        void loadReadiness();
       } catch (error) {
         bootstrapResult.className = 'result error';
         bootstrapResult.textContent = error instanceof Error ? error.message : String(error);
@@ -766,6 +909,7 @@ internal static class OwnerPages
       initializing = false;
       send.disabled = false;
       conversationList.querySelectorAll('button').forEach(button => { button.disabled = false; });
+      void loadReadiness();
     })();
   </script>
 </body>
